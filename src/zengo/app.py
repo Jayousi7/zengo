@@ -28,6 +28,7 @@ from zengo.sprites.clips import CLIPS
 from zengo.sprites.compose import Frame
 from zengo.sprites.food import MAX_STACKS
 from zengo.sprites.frames import ANCHOR_COLUMN, CANVAS_WIDTH, GROUND_ROW, build_frames
+from zengo.ui.autostart import Autostart
 from zengo.ui.branch_window import BranchWindow
 from zengo.ui.bubble_window import BubbleWindow
 from zengo.ui.cage_window import CageWindow, MountWindow
@@ -88,12 +89,14 @@ class Pet:
         settings: Settings | None = None,
         settings_file: StateFile | None = None,
         flags: Flags | None = None,
+        autostart: Autostart | None = None,
     ) -> None:
         self._config = config
         self._frames = frames
         self._settings = settings or Settings(scale=config.scale)
         self._settings_file = settings_file
         self._flags = flags or Flags()
+        self._autostart = autostart or Autostart(None)
         self._settings_window: SettingsWindow | None = None
         self._world = QtWorld()
 
@@ -303,6 +306,10 @@ class Pet:
         sound = menu.addAction("Sounds", self._toggle_sound)
         sound.setCheckable(True)
         sound.setChecked(self._brain.ctx.sound_on)
+        if (login := self._autostart.enabled()) is not None:
+            start = menu.addAction("Start at login", lambda: self.set_autostart(not login))
+            start.setCheckable(True)
+            start.setChecked(login)
         menu.addAction("Settings…", self.open_settings)
         menu.addSeparator()
         menu.addAction("Quit Zengo", QApplication.quit)
@@ -338,7 +345,12 @@ class Pet:
             self._settings_window.show_settings(settings, self._settings_window_autostart())
 
     def _settings_window_autostart(self) -> bool | None:
-        return None
+        return self._autostart.enabled()
+
+    def set_autostart(self, on: bool) -> None:
+        self._autostart.set(on)
+        if self._settings_window is not None:
+            self._settings_window.show_settings(self._settings, self._autostart.enabled())
 
     def open_settings(self) -> None:
         """Show the settings window: one, reused, brought to the front."""
@@ -347,6 +359,7 @@ class Pet:
             window.changed.connect(self.change_settings)
             window.previewed.connect(lambda s: self.change_settings(s, keep=False))
             window.reset_confirmed.connect(self.reset)
+            window.autostart_changed.connect(self.set_autostart)
             self._settings_window = window
         self._settings_window.show_settings(self._settings, self._settings_window_autostart())
         self._settings_window.show()
@@ -487,6 +500,8 @@ def main(argv: list[str] | None = None) -> int:
         settings = carried
         settings_file.save(settings.to_json())  # sound on/off moved over from the state file
     config = build_config(settings, options.flags)
+    autostart = Autostart.for_this_system()
+    autostart.refresh()
     pet = Pet(
         config,
         frames,
@@ -495,6 +510,7 @@ def main(argv: list[str] | None = None) -> int:
         settings=settings,
         settings_file=settings_file,
         flags=options.flags,
+        autostart=autostart,
     )
     pet.start()
     return app.exec()
