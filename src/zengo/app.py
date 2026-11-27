@@ -34,6 +34,7 @@ from zengo.ui.catch_overlay import CatchOverlay
 from zengo.ui.food_window import FoodWindow
 from zengo.ui.qt_world import QtWorld
 from zengo.ui.sheet_loader import SheetError, load_sheet
+from zengo.ui.sound import SoundPlayer
 from zengo.ui.sprites import SpriteSheet
 from zengo.ui.state_file import StateFile
 from zengo.ui.status_panel import StatusPanel
@@ -109,6 +110,9 @@ class Pet:
         self._cage.menu_requested.connect(self._show_menu)
         self._mount = MountWindow(config)
         self._food = FoodWindow(config)
+        self._sound = SoundPlayer()
+        if (app := QApplication.instance()) is not None:
+            app.aboutToQuit.connect(self._sound.close)  # tidy away the sound files
         self._dish = FoodWindow(config)
         self._overlay: CatchOverlay | None = None
         self._door_was_open = False
@@ -163,6 +167,14 @@ class Pet:
             self._cage.raise_()  # the dish sits behind the bars
         self._show_cage()
         self._show_speech()
+        self._play_sounds()
+
+    def _play_sounds(self) -> None:
+        ctx = self._brain.ctx
+        for name in ctx.sounds:
+            if ctx.sound_on:
+                self._sound.play(name)
+        ctx.sounds.clear()
 
     def _show_cage(self) -> None:
         cage = self._brain.ctx.cage
@@ -189,9 +201,18 @@ class Pet:
             menu.addAction("Let Zengo out", self._brain.let_out)
         else:
             menu.addAction("Catch Zengo", self._start_catching)
+        sound = menu.addAction("Sounds", self._toggle_sound)
+        sound.setCheckable(True)
+        sound.setChecked(self._brain.ctx.sound_on)
         menu.addSeparator()
         menu.addAction("Quit Zengo", QApplication.quit)
         menu.exec(where)
+
+    def _toggle_sound(self) -> None:
+        ctx = self._brain.ctx
+        ctx.sound_on = not ctx.sound_on
+        if ctx.sound_on:
+            ctx.play("chirp_a")  # a little hello, so you know it's on
 
     def _start_catching(self) -> None:
         body = self._brain.ctx.body

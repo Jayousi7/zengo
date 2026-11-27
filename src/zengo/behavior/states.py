@@ -30,6 +30,9 @@ class State:
     effort: ClassVar[float] = 1.0
     """How hard he's working, as a multiple of resting: how fast he gets hungry."""
 
+    chirpy: ClassVar[bool] = False
+    """Pottering about, he chirps now and then (see ``Config.chirp_every``)."""
+
     def __init__(self) -> None:
         self.elapsed = 0.0
 
@@ -80,6 +83,7 @@ class State:
 
 class Idle(State):
     clip = "idle"
+    chirpy = True
 
     def typing(self, ctx: Context) -> State | None:
         return Bob()
@@ -137,6 +141,7 @@ class FrontIdle(State):
     """Sitting facing you for a while, looking about."""
 
     clip = "front_idle"
+    chirpy = True
     sit_for: ClassVar[tuple[float, float]] = (4.0, 10.0)
 
     def typing(self, ctx: Context) -> State | None:
@@ -154,6 +159,7 @@ class Walk(State):
     """Waddle to ``target`` (screen x), or to a random nearby spot."""
 
     clip = "walk"
+    chirpy = True
     effort = 1.6  # waddling
 
     def __init__(self, target: float | None = None, *, then: str | None = None) -> None:
@@ -189,6 +195,7 @@ class Follow(State):
     """Walk after the cursor's x position for a while."""
 
     clip = "walk"
+    chirpy = True
     effort = 1.6  # waddling
     give_up_after: ClassVar[float] = 10.0
     close_enough: ClassVar[float] = 24.0  # art px
@@ -549,7 +556,7 @@ class Whistle(_OneShot):
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
-        ctx.say(ctx.rng.choice(ctx.config.whistles), ctx.config.speech_seconds)
+        ctx.whistle()
 
 
 class _Contentment:
@@ -776,6 +783,7 @@ class OnBranch(State):
     """
 
     clip = "branch_idle"
+    chirpy = True
     grounded = False
     sit_for: ClassVar[tuple[float, float]] = (4.0, 10.0)
     clips: ClassVar[dict[str, str]] = {
@@ -819,7 +827,7 @@ class OnBranch(State):
 
     def double_clicked(self, ctx: Context) -> State | None:
         self._do(ctx, "whistle")
-        ctx.say(ctx.rng.choice(ctx.config.whistles), ctx.config.speech_seconds)
+        ctx.whistle()
         return None
 
     def petted(self, ctx: Context) -> State | None:
@@ -972,6 +980,7 @@ class Caged(State):
             self.anger, self.next_seed, self.to_eat = 0.0, 0.22, SEEDS_PER_STACK
         elif hunger.wants_to_ask and not busy and self.doing != "sleep":
             ctx.say(ctx.rng.choice(ctx.config.begging), ctx.config.complaint_seconds)
+            ctx.play("ask")
             hunger.asked(ctx)  # all he can do from in here
         if self.doing == "escape":
             if self.elapsed >= self.door_at:
@@ -1001,6 +1010,7 @@ class Caged(State):
                     ctx.config.complaint_seconds,
                     mood="angry",
                 )
+                ctx.play("squawk")
                 self.next_complaint = ctx.rng.uniform(*ctx.config.complaint_every)
             if self.anger <= 0 and cage.mount != "held":
                 self._do(ctx, "sit")
@@ -1015,6 +1025,7 @@ class Caged(State):
                 if self.to_eat <= 0 or dish.seeds <= 0 or hunger.full:
                     hunger.fed()
                     ctx.say("yum! ♥", 1.8, mood="love")
+                    ctx.play("trill")
                     self._do(ctx, "fluff")
             return None
         if self.doing == "petted":
@@ -1054,6 +1065,7 @@ class Caged(State):
             ctx.config.complaint_seconds,
             mood="angry",
         )
+        ctx.play("squawk")
         self.next_complaint = ctx.rng.uniform(*ctx.config.complaint_every)
 
     def _place(self, ctx: Context) -> None:
@@ -1068,6 +1080,8 @@ class Caged(State):
         body.facing = Facing(d)
         assert ctx.cage is not None
         ctx.say("freedom!! ♪" if ctx.cage.escaped else "hmph.", 2.0)
+        if ctx.cage.escaped:
+            ctx.play("trill")
         x1 = area.clamp_x(body.x + d * ctx.rng.uniform(cfg.px(70), cfg.px(160)), ctx.margin)
         hop = (body.x + d * cfg.px(18), body.y - cfg.px(16))
         return Fly([hop, *_landing(ctx, x1, coming_from=body.x)])
@@ -1131,6 +1145,7 @@ class Eat(State):
             return None
         ctx.hunger.fed()
         ctx.say("yum! ♥", 1.8, mood="love")
+        ctx.play("trill")
         return Shake()
 
 
@@ -1175,6 +1190,7 @@ class Ask(State):
 
     def _call_out(self, ctx: Context) -> None:
         ctx.say(ctx.rng.choice(ctx.config.begging), ctx.config.complaint_seconds)
+        ctx.play("ask")
         self.next_line = ctx.rng.uniform(*ctx.config.complaint_every)
 
 

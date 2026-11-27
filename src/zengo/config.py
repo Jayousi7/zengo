@@ -81,6 +81,9 @@ class Config:
     )
     """What a double-click gets out of him, shown in a cloud above his head."""
 
+    chirp_every: float = 50.0
+    """Pottering about, he chirps on average once in this many seconds."""
+
     speech_seconds: float = 2.6
     """How long a whistle's cloud stays up."""
 

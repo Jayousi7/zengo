@@ -35,11 +35,11 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
 | Input | Reaction |
 |---|---|
 | Left click | Crest up, startled |
-| Double-click | Bobs his head and whistles; the tune pops up in a cloud |
+| Double-click | Bobs his head and whistles: you hear the tune and see it in a cloud |
 | Type (anywhere) | Sitting about, he bobs his head along. Only the timing of your input is noticed, never the keys |
 | Stroke the mouse gently back and forth over him | Fluffs up, shuts his eyes and leans into it, with hearts; a happy shake when you stop |
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
-| Right click | Menu: a live panel of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Quit Zengo* |
+| Right click | Menu: a live panel of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Sounds* on/off, *Quit Zengo* |
 | *Feed Zengo (n/3)* | Pours out a stack of sunflower seeds, his favourite: up to three stacks, the pile filling as you add. He eats one stack whenever he gets hungry; caged, they go in his dish |
 | *Catch Zengo*, then drag a box around him | Caged where he is, and furious about it. Drag the cage: let go near the top and it hangs from a chain, near a side and it sits on a shelf, anywhere else it falls to the ground. Petting him through the bars calms him; *Let Zengo out* opens the door |
 
@@ -115,6 +115,7 @@ src/zengo/
     status.py       a read-out of his needs, for the menu
     memory.py       what he remembers between runs
     machine.py      Brain: runs states, routes mouse input
+  sounds.py         his chirps, whistles, squawks and trills, synthesized
   sprites/
     palette.py      Zengo's colours
     art.py          ASCII pixel-art layers
@@ -137,6 +138,7 @@ src/zengo/
     status_panel.py the live needs panel in his menu
     state_file.py   the file what he remembers is kept in
     input_idle.py   time since any input, from the system (never the keys)
+    sound.py        plays his sounds
 ```
 
 Only `ui/` and `app.py` import Qt. Everything else is plain Python and is

@@ -8,6 +8,7 @@ from zengo.behavior.food import STAND_OFF, Food
 from zengo.behavior.states import Caged, Dragged, Fall, Idle, State
 from zengo.behavior.status import Status
 from zengo.behavior.status import read as read_status
+from zengo.sounds import CHIRPS
 
 
 class Brain:
@@ -50,12 +51,22 @@ class Brain:
         if ctx.food is not None:
             ctx.food.pile.update(dt)
         self._mind_the_food()
+        self._maybe_chirp(dt)
         if self._state.grounded:
             self._settle()
             if ctx.body.facing is not self._facing:
                 # Turning round on the ground: a glimpse of his front, not a flip.
                 ctx.animator.interject("ground_turn")
         self._facing = ctx.body.facing
+
+    def _maybe_chirp(self, dt: float) -> None:
+        """Now and then, pottering about, a little chirp."""
+        ctx = self.ctx
+        if not self._state.chirpy or ctx.speech is not None:
+            return
+        if ctx.rng.random() < dt / ctx.config.chirp_every:
+            ctx.play(ctx.rng.choice(CHIRPS))
+            ctx.say("♪", 0.9)
 
     def _mind_the_food(self) -> None:
         """Hunger, and what he does about it given what he's up to."""

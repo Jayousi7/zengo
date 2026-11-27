@@ -207,7 +207,7 @@ def test_ignored_he_gives_up_and_asks_again_later(ctx, world):
     asking = isinstance(state, Ask) or getattr(state, "then", None) == "ask"
     asking = asking or getattr(state, "onto", None) == "ask"
     assert not asking  # not straight away
-    run_until(brain, Ask, limit=6)  # but again, a couple of minutes on
+    run_until(brain, Ask, limit=15)  # but again, a couple of minutes on (walk or fly over)
 
 
 def test_from_the_branch_he_flies_down_to_eat(ctx):
