@@ -124,3 +124,14 @@ def test_feathers_have_their_windows(make_pet):
     layers = pet._layers()
     assert layers.index(shown[0]) < layers.index(pet._window)
     assert not isinstance(pet._brain.state, OnBranch)
+
+
+def test_reset_clears_feathers_his_bath_and_the_damp(ctx):
+    from zengo.behavior.bath import BathCycle
+
+    brain = Brain(ctx)
+    ctx.moult.drop(ctx)
+    BathCycle.fill(ctx.bath, ctx)
+    ctx.damp = 20.0
+    brain.forget()
+    assert ctx.moult.feathers == [] and ctx.bath.dish is None and ctx.damp == 0

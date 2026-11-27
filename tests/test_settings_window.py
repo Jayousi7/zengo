@@ -137,3 +137,41 @@ def test_a_volume_dragged_with_the_slider_is_kept_when_let_go(pet):
     assert pet._settings_file.load() is None  # not saved mid-drag
     volume.setSliderDown(False)  # let go
     assert Settings.from_json(pet._settings_file.load()).volume == 0.8
+
+
+# --- The Life tab ------------------------------------------------------------------
+
+
+def test_the_life_tab_puts_toys_out_and_away(make_pet):
+    pet = make_pet()
+    pet.open_settings()
+    life = pet._settings_window.life
+    life.toys["mirror"].setChecked(True)
+    assert pet.settings.toys == ("mirror",)
+    pet._brain.tick(0.1)
+    assert pet._brain.ctx.toys.mirror is not None
+    life.toys["bell"].setChecked(True)
+    life.toys["mirror"].setChecked(False)
+    assert pet.settings.toys == ("bell",)
+    assert Settings.from_json(pet._settings_file.load()).toys == ("bell",)
+
+
+def test_the_life_tab_sets_baths_and_seasons(make_pet):
+    pet = make_pet()
+    pet.open_settings()
+    life = pet._settings_window.life
+    life.baths.setCurrentIndex(life.baths.findData("often"))
+    assert pet._config.bath_every == (900.0, 1800.0)
+    life.hemisphere.setCurrentIndex(life.hemisphere.findData("south"))
+    assert pet._brain.ctx.seasons.hemisphere == "south"
+    life.seasons.setChecked(False)
+    assert pet._brain.ctx.season() is None
+    assert not life.hemisphere.isEnabled()
+
+
+def test_the_hemisphere_choice_says_what_the_time_zone_gave(make_pet):
+    from zengo.ui.settings_window import SettingsWindow
+
+    window = SettingsWindow(Settings(), hemisphere_found="south")
+    assert "southern" in window.life.hemisphere.itemText(0)
+    window.close()

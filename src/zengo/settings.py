@@ -30,6 +30,13 @@ BRANCH_EVERY: dict[str, tuple[float, float]] = {
 }
 """Seconds between one branch withdrawing and the next growing out."""
 
+BATH_EVERY: dict[str, tuple[float, float]] = {
+    "rarely": (3600.0, 7200.0),
+    "sometimes": Config.bath_every,
+    "often": (900.0, 1800.0),
+}
+"""Seconds between one bath dish going and the next appearing."""
+
 APPETITE: dict[str, float] = {"slow": 0.5, "normal": 1.0, "fast": 2.0}
 """How fast he gets hungry, as a multiple of the built-in rate."""
 
@@ -45,6 +52,8 @@ class Settings:
     """How often a branch grows: a key of :data:`BRANCH_EVERY`."""
     appetite: str = "normal"
     """How fast he gets hungry: a key of :data:`APPETITE`."""
+    baths: str = "sometimes"
+    """How often his bath comes: a key of :data:`BATH_EVERY`."""
     seasons: bool = True
     """Seasonal outfits and effects: the scarf, snow, falling leaves."""
     hemisphere: str = "auto"
@@ -71,12 +80,14 @@ class Settings:
         seasons = data.get("seasons")
         hemisphere = data.get("hemisphere")
         toys = data.get("toys")
+        baths = data.get("baths")
         return cls(
             scale=_whole(scale, MIN_SCALE, MAX_SCALE, default.scale),
             sound=sound if isinstance(sound, bool) else default.sound,
             volume=_fraction(volume, default.volume),
             branch=branch if branch in BRANCH_EVERY else default.branch,
             appetite=appetite if appetite in APPETITE else default.appetite,
+            baths=baths if baths in BATH_EVERY else default.baths,
             seasons=seasons if isinstance(seasons, bool) else default.seasons,
             hemisphere=hemisphere if hemisphere in HEMISPHERES else default.hemisphere,
             toys=tuple(t for t in TOYS if t in toys) if isinstance(toys, list) else default.toys,
@@ -108,6 +119,7 @@ def build_config(
         base,
         scale=settings.scale,
         branch_every=BRANCH_EVERY[settings.branch],
+        bath_every=BATH_EVERY[settings.baths],
         hunger_drain=base.hunger_drain * APPETITE[settings.appetite],
     )
     if flags.scale is not None:

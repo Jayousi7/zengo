@@ -67,7 +67,13 @@ def test_the_settings_window_edits_his_voice_and_its_files(tmp_path):
     pet = Pet(Config(), build_frames(), random.Random(1), voice_files=files)
     pet.open_settings()
     try:
-        assert pet._settings_window.tabs.count() == 3
+        tabs = pet._settings_window.tabs
+        assert [tabs.tabText(i) for i in range(tabs.count())] == [
+            "General",
+            "Life",
+            "Words",
+            "Sounds",
+        ]
         pet._words_tab.moments.setCurrentRow(list(DEFAULT_PHRASES).index("fed"))
         pet._words_tab.lines.setPlainText("nom nom")
         pet._settings_window.close()  # takes up the edit

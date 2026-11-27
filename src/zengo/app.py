@@ -454,7 +454,11 @@ class Pet:
     def open_settings(self) -> None:
         """Show the settings window: one, reused, brought to the front."""
         if self._settings_window is None:
-            window = SettingsWindow(self._settings, scale_locked=self._flags.scale is not None)
+            window = SettingsWindow(
+                self._settings,
+                scale_locked=self._flags.scale is not None,
+                hemisphere_found=self._brain.ctx.seasons.zone_hemisphere,
+            )
             window.changed.connect(self.change_settings)
             window.previewed.connect(lambda s: self.change_settings(s, keep=False))
             window.reset_confirmed.connect(self.reset)

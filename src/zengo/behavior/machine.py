@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from zengo.behavior.bath import BathCycle
 from zengo.behavior.bond import Bond
 from zengo.behavior.cage import BELOW_FLOOR, Cage, EscapeProgress, caught_in
 from zengo.behavior.context import Context
 from zengo.behavior.food import STAND_OFF, Food, Hunger
+from zengo.behavior.moult import Moult
 from zengo.behavior.states import (
     Alert,
     Away,
@@ -285,11 +287,13 @@ class Brain:
     def forget(self) -> None:
         """Start over, as a new bird: his bond, hunger, seeds, cage, escape
         progress and the words you've taught him all back to how they are the
-        first time he runs."""
+        first time he runs; dropped feathers and his bath gone, and dry."""
         ctx = self.ctx
         ctx.bond, ctx.hunger, ctx.escape = Bond(), Hunger(), EscapeProgress()
         ctx.cage = ctx.food = ctx.speech = None
         ctx.vocabulary = Vocabulary()
+        ctx.moult, ctx.bath, ctx.damp = Moult(), BathCycle(), 0.0
+        ctx.effects.clear()
         self._asks = 0
         self._welcome_wait = 0.0
         ctx.body.vx = ctx.body.vy = 0.0

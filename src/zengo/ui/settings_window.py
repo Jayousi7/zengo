@@ -24,7 +24,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from zengo.settings import APPETITE, BRANCH_EVERY, MAX_SCALE, MIN_SCALE, Settings
+from zengo.behavior.toys import TOYS
+from zengo.settings import APPETITE, BATH_EVERY, BRANCH_EVERY, MAX_SCALE, MIN_SCALE, Settings
 
 STYLE = """
 QWidget { background: #231c1f; color: #f1e6da; }
@@ -43,6 +44,8 @@ QHeaderView::section { background: #2e2629; color: #a8978c; border: none; paddin
 
 BRANCH_WORDS = {"rarely": "Rarely", "sometimes": "Sometimes", "often": "Often"}
 APPETITE_WORDS = {"slow": "Slow", "normal": "Normal", "fast": "Fast"}
+BATH_WORDS = {"rarely": "Rarely", "sometimes": "Sometimes", "often": "Often"}
+HALVES = {"north": "northern", "south": "southern"}
 
 
 def _combo(words: dict[str, str]) -> QComboBox:
@@ -131,6 +134,77 @@ class GeneralTab(QWidget):
         )
 
 
+def _note(text: str) -> QLabel:
+    label = QLabel(text)
+    label.setObjectName("note")
+    label.setWordWrap(True)
+    return label
+
+
+class LifeTab(QWidget):
+    """The things round him: his toys, his bath, and the seasons."""
+
+    def __init__(self, hemisphere_found: str) -> None:
+        super().__init__()
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form.setHorizontalSpacing(14)
+        form.setVerticalSpacing(10)
+
+        self.toys: dict[str, QCheckBox] = {}
+        toys_column = QVBoxLayout()
+        for toy, what in TOYS.items():
+            box = QCheckBox(what.capitalize())
+            self.toys[toy] = box
+            toys_column.addWidget(box)
+        toys_column.addWidget(_note("Ticked, it's out for him; untick to put it away."))
+        form.addRow("Toys", toys_column)
+
+        assert BATH_WORDS.keys() == BATH_EVERY.keys()
+        self.baths = _combo(BATH_WORDS)
+        form.addRow("His bath comes", self.baths)
+
+        self.seasons = QCheckBox("Show the seasons")
+        seasons_column = QVBoxLayout()
+        seasons_column.addWidget(self.seasons)
+        seasons_column.addWidget(
+            _note(
+                "A scarf and snow in winter, song in spring, panting on hot "
+                "afternoons, falling leaves in autumn, and a dimmer look late in "
+                "the evening. From your computer's date only: nothing is looked up."
+            )
+        )
+        form.addRow("Seasons", seasons_column)
+
+        self.hemisphere = QComboBox()
+        found = HALVES.get(hemisphere_found, "northern")
+        self.hemisphere.addItem(f"From my time zone ({found})", "auto")
+        self.hemisphere.addItem("Northern", "north")
+        self.hemisphere.addItem("Southern", "south")
+        form.addRow("Hemisphere", self.hemisphere)
+
+        layout = QVBoxLayout(self)
+        layout.addLayout(form)
+        layout.addStretch()
+
+    def show_settings(self, settings: Settings) -> None:
+        for toy, box in self.toys.items():
+            box.setChecked(toy in settings.toys)
+        self.baths.setCurrentIndex(self.baths.findData(settings.baths))
+        self.seasons.setChecked(settings.seasons)
+        self.hemisphere.setCurrentIndex(self.hemisphere.findData(settings.hemisphere))
+        self.hemisphere.setEnabled(settings.seasons)
+
+    def read(self, settings: Settings) -> Settings:
+        return replace(
+            settings,
+            toys=tuple(toy for toy, box in self.toys.items() if box.isChecked()),
+            baths=self.baths.currentData(),
+            seasons=self.seasons.isChecked(),
+            hemisphere=self.hemisphere.currentData(),
+        )
+
+
 class SettingsWindow(QWidget):
     """Reports each change as it's made:
 
@@ -146,7 +220,9 @@ class SettingsWindow(QWidget):
     autostart_changed = Signal(bool)
     reset_confirmed = Signal()
 
-    def __init__(self, settings: Settings, *, scale_locked: bool = False) -> None:
+    def __init__(
+        self, settings: Settings, *, scale_locked: bool = False, hemisphere_found: str = "north"
+    ) -> None:
         super().__init__(None, Qt.WindowType.Window)
         self.setWindowTitle("Zengo settings")
         self.setStyleSheet(STYLE)
@@ -156,6 +232,8 @@ class SettingsWindow(QWidget):
         self.tabs = QTabWidget()
         self.general = GeneralTab(scale_locked)
         self.tabs.addTab(self.general, "General")
+        self.life = LifeTab(hemisphere_found)
+        self.tabs.addTab(self.life, "Life")
         layout = QVBoxLayout(self)
         layout.addWidget(self.tabs)
         self.resize(420, 400)
@@ -169,6 +247,11 @@ class SettingsWindow(QWidget):
         g.volume.sliderReleased.connect(self._volume_let_go)
         g.autostart.toggled.connect(self._autostart_toggled)
         g.reset.clicked.connect(self._ask_reset)
+        life = self.life
+        for box in (*life.toys.values(), life.seasons):
+            box.toggled.connect(self._edited)
+        for combo in (life.baths, life.hemisphere):
+            combo.currentIndexChanged.connect(self._edited)
 
     def add_tab(self, tab: QWidget, title: str) -> None:
         self.tabs.addTab(tab, title)
@@ -187,14 +270,16 @@ class SettingsWindow(QWidget):
         self._showing = True
         try:
             self.general.show_settings(settings, autostart)
+            self.life.show_settings(settings)
         finally:
             self._showing = False
 
     def _edited(self, *_: object) -> None:
         if self._showing:
             return
-        settings = self.general.read(self._settings)
+        settings = self._read()
         self.general.volume.setEnabled(settings.sound)
+        self.life.hemisphere.setEnabled(settings.seasons)
         if settings != self._settings:
             self._settings = settings
             self.changed.emit(settings)
@@ -212,8 +297,11 @@ class SettingsWindow(QWidget):
         been heard there while dragging."""
         if self._showing:
             return
-        self._settings = self.general.read(self._settings)
+        self._settings = self._read()
         self.changed.emit(self._settings)
+
+    def _read(self) -> Settings:
+        return self.life.read(self.general.read(self._settings))
 
     def _autostart_toggled(self, on: bool) -> None:
         if not self._showing and on != self._autostart:
