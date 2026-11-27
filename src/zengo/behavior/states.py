@@ -707,7 +707,7 @@ class _Contentment:
         if ctx.petting.active:
             self.unpetted = 0.0
             if self.since_heart >= self.heart_every:
-                ctx.say("♥", 1.0, mood="love")
+                ctx.say(ctx.phrase("petted"), 1.0, mood="love")
                 self.since_heart = 0.0
         else:
             self.unpetted += dt
@@ -1172,7 +1172,7 @@ class Caged(State):
         self.until = 0.0
         self.next_seed = 0.0
         if self.just_caught:
-            self._provoked(ctx, ctx.rng.choice(ctx.config.complaints))
+            self._provoked(ctx, ctx.phrase("caged"))
             self.anger = ctx.rng.uniform(*self.tantrum)
         else:
             self.anger = 0.0
@@ -1224,7 +1224,7 @@ class Caged(State):
             self._do(ctx, "eat")  # dinner! all is forgiven, for now
             self.anger, self.next_seed, self.to_eat = 0.0, 0.22, SEEDS_PER_STACK
         elif hunger.wants_to_ask and not busy and self.doing != "sleep":
-            ctx.say(ctx.rng.choice(ctx.config.begging), ctx.config.complaint_seconds)
+            ctx.say(ctx.phrase("hungry"), ctx.config.complaint_seconds)
             ctx.play("ask")
             hunger.asked(ctx)  # all he can do from in here
         if self.doing == "escape":
@@ -1251,7 +1251,7 @@ class Caged(State):
             self.next_complaint -= dt
             if self.next_complaint <= 0:
                 ctx.say(
-                    ctx.rng.choice(ctx.config.complaints),
+                    ctx.phrase("caged"),
                     ctx.config.complaint_seconds,
                     mood="angry",
                 )
@@ -1269,7 +1269,7 @@ class Caged(State):
                     hunger.ate_seed(ctx)
                 if self.to_eat <= 0 or dish.seeds <= 0 or hunger.full:
                     hunger.fed()
-                    ctx.say("yum! ♥", 1.8, mood="love")
+                    ctx.say(ctx.phrase("fed"), 1.8, mood="love")
                     ctx.play("trill")
                     self._do(ctx, "fluff")
             return None
@@ -1306,7 +1306,7 @@ class Caged(State):
         self.anger = max(getattr(self, "anger", 0.0), 3.0)
         self._do(ctx, "angry")
         ctx.say(
-            text or ctx.rng.choice(ctx.config.complaints),
+            text or ctx.phrase("caged"),
             ctx.config.complaint_seconds,
             mood="angry",
         )
@@ -1324,7 +1324,7 @@ class Caged(State):
         d = 1 if cage_x < (area.left + area.right) / 2 else -1
         body.facing = Facing(d)
         assert ctx.cage is not None
-        ctx.say("freedom!! ♪" if ctx.cage.escaped else "hmph.", 2.0)
+        ctx.say(ctx.phrase("freed") if ctx.cage.escaped else "hmph.", 2.0)
         if ctx.cage.escaped:
             ctx.play("trill")
         x1 = area.clamp_x(body.x + d * ctx.rng.uniform(cfg.px(70), cfg.px(160)), ctx.margin)
@@ -1389,7 +1389,7 @@ class Eat(State):
         if self.to_eat > 0 and food.pile.seeds > 0 and not ctx.hunger.full:
             return None
         ctx.hunger.fed()
-        ctx.say("yum! ♥", 1.8, mood="love")
+        ctx.say(ctx.phrase("fed"), 1.8, mood="love")
         ctx.play("trill")
         return Shake()
 
@@ -1434,7 +1434,7 @@ class Ask(State):
         return None
 
     def _call_out(self, ctx: Context) -> None:
-        ctx.say(ctx.rng.choice(ctx.config.begging), ctx.config.complaint_seconds)
+        ctx.say(ctx.phrase("hungry"), ctx.config.complaint_seconds)
         ctx.play("ask")
         self.next_line = ctx.rng.uniform(*ctx.config.complaint_every)
 

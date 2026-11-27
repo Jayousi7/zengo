@@ -182,7 +182,7 @@ def test_devoted_he_greets_you_back(ctx, world):
     world.cursor_pos = (ctx.body.x + 300, ctx.body.y - 100)
     brain = Brain(ctx, Idle())
     come_back(brain, world)
-    assert ctx.speech.text == "you're back! ♪" and "trill" in ctx.sounds
+    assert ctx.speech.text == "you're back! ♪" and "greeting" in ctx.sounds
     assert isinstance(brain.state, Fly | Follow)
 
 

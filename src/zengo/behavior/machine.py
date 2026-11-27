@@ -98,8 +98,8 @@ class Brain:
             ctx.say("oh, hi! ♪", 1.8)
             ctx.play("chirp_a")
             return
-        ctx.say("you're back! ♪", 2.2, mood="love")
-        ctx.play("trill")
+        ctx.say(ctx.phrase("greeting"), 2.2, mood="love")
+        ctx.play("greeting")
         if cursor_is_inviting(ctx):
             self.transition(Fly.to_cursor(ctx))
         elif self._state.grounded:
@@ -116,7 +116,7 @@ class Brain:
         )
         if ctx.rng.random() < dt / every:
             ctx.play(ctx.rng.choice(CHIRPS))
-            ctx.say("♪", 0.9)
+            ctx.say(ctx.phrase("random"), 1.4)
 
     def _mind_the_food(self) -> None:
         """Hunger, and what he does about it given what he's up to."""

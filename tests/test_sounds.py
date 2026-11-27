@@ -22,15 +22,15 @@ def test_every_sound_is_short_soft_and_a_real_wav():
 
 
 def test_each_whistle_phrase_has_its_own_tune(ctx):
-    tunes = {sounds.whistle_for(i) for i in range(len(ctx.config.whistles))}
-    assert len(tunes) == len(ctx.config.whistles)
+    tunes = {sounds.whistle_for(i) for i in range(len(ctx.voice.lines("whistle")))}
+    assert len(tunes) == len(ctx.voice.lines("whistle"))
     assert all(t in sounds.names() for t in tunes)
 
 
 def test_a_whistle_plays_its_tune(ctx):
     brain = Brain(ctx, Idle())
     brain.double_click()
-    phrase = ctx.config.whistles.index(ctx.speech.text)
+    phrase = ctx.voice.lines("whistle").index(ctx.speech.text)
     assert ctx.sounds == [sounds.whistle_for(phrase)]
 
 
@@ -94,3 +94,19 @@ def test_without_multimedia_he_stays_quiet(monkeypatch):
     assert player._folder is None
     player.play("chirp_a")  # nothing happens, nothing breaks
     player.close()
+
+
+def test_a_replaced_sound_plays_your_file_and_a_missing_one_his_own(tmp_path, capsys):
+    from zengo.ui.sound import SoundPlayer
+
+    mine = tmp_path / "mine.wav"
+    mine.write_bytes(sounds.wav(sounds.sound("chirp_a")))
+    player = SoundPlayer(0.35, {"trill": mine, "ask": tmp_path / "gone.wav"})
+    if player._folder is None:
+        return  # no Qt multimedia here
+    try:
+        assert player._effects["trill"].source().toLocalFile() == str(mine)
+        assert player._effects["ask"].source().toLocalFile().endswith("ask.wav")
+        assert "gone.wav" in capsys.readouterr().err
+    finally:
+        player.close()

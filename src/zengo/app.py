@@ -22,6 +22,7 @@ from zengo.behavior.context import Context
 from zengo.behavior.machine import Brain
 from zengo.behavior.memory import restore, snapshot
 from zengo.behavior.states import Away
+from zengo.behavior.voice import VoiceFiles
 from zengo.config import Config
 from zengo.settings import Flags, Settings, build_config, migrated
 from zengo.sprites.cage import CAGE_WIDTH, FLOOR
@@ -92,6 +93,7 @@ class Pet:
         settings_file: StateFile | None = None,
         flags: Flags | None = None,
         autostart: Autostart | None = None,
+        voice_files: VoiceFiles | None = None,
     ) -> None:
         self._config = config
         self._frames = frames
@@ -99,6 +101,7 @@ class Pet:
         self._settings_file = settings_file
         self._flags = flags or Flags()
         self._autostart = autostart or Autostart(None)
+        self._voice_files = voice_files
         self._settings_window: SettingsWindow | None = None
         self._world = QtWorld()
 
@@ -106,6 +109,8 @@ class Pet:
         body = Body(x=(area.left + area.right) / 2, y=area.bottom)
         animator = Animator(CLIPS, initial="idle")
         self._brain = Brain(Context(body, self._world, animator, config, rng or random.Random()))
+        if voice_files is not None:
+            self._brain.ctx.voice = voice_files.load()
         if branch_now:
             self._brain.ctx.scenery.grow(self._brain.ctx)
         self._memory = memory
@@ -137,7 +142,7 @@ class Pet:
         self._window.grabbed.connect(lambda *_: self.restack())
         self._window.menu_requested.connect(self._show_menu)
         self._build_windows()
-        self._sound = SoundPlayer(self._settings.volume)
+        self._sound = SoundPlayer(self._settings.volume, self._brain.ctx.voice.sounds)
         if (app := QApplication.instance()) is not None:
             app.aboutToQuit.connect(self._sound.close)  # tidy away the sound files
         self._overlay: CatchOverlay | None = None
@@ -547,6 +552,7 @@ def main(argv: list[str] | None = None) -> int:
         settings_file=settings_file,
         flags=options.flags,
         autostart=autostart,
+        voice_files=VoiceFiles(memory.path.parent),
     )
     pet.start()
     return app.exec()

@@ -182,7 +182,7 @@ def test_hungry_with_nothing_to_eat_he_comes_to_you_and_asks(ctx, world):
     run_until(brain, Ask, limit=15)
     assert ctx.body.x == pytest.approx(world.cursor_pos[0], abs=1)  # right below your pointer
     assert ctx.body.y == ctx.world.area.bottom
-    assert ctx.speech.text in ctx.config.begging
+    assert ctx.speech.text in ctx.voice.lines("hungry")
 
 
 def test_feed_him_while_he_asks_and_he_eats_straight_away(ctx, world):
@@ -276,7 +276,7 @@ def test_caged_and_hungry_with_an_empty_dish_he_only_asks(ctx):
     make_hungry(ctx)
     brain.tick(DT)
     assert isinstance(brain.state, Caged)  # can't come to you from in there
-    assert ctx.speech.text in ctx.config.begging
+    assert ctx.speech.text in ctx.voice.lines("hungry")
 
 
 def test_feeding_him_in_the_cage_counts_against_escaping(ctx):

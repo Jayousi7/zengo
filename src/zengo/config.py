@@ -67,16 +67,6 @@ class Config:
     branch_visit: tuple[float, float] = (40.0, 150.0)
     """Seconds Zengo sits on the branch before flying off."""
 
-    whistles: tuple[str, ...] = (
-        "♪ fweet-fweet! ♪",
-        "♫ wheee-ooo! ♫",
-        "♪ tu-tu-tweeet ♪",
-        "Zengo! ♪",
-        "pretty bird! ♫",
-        "♪ ♫ ♪",
-    )
-    """What a double-click gets out of him, shown in a cloud above his head."""
-
     chirp_every: float = 50.0
     """Pottering about, he chirps on average once in this many seconds."""
 
@@ -96,9 +86,6 @@ class Config:
     cage_swing_stiffness: float = 9.0
     cage_swing_damping: float = 1.2
     """How a hung cage swings (1/s², 1/s): a few slow swings, then it's still."""
-
-    complaints: tuple[str, ...] = ("HEY!!", "let me out!", "squawk!!", "rude.", ">:(", "not cool!")
-    """What a caged Zengo has to say about it."""
 
     complaint_every: tuple[float, float] = (4.5, 7.0)
     complaint_seconds: float = 2.5
@@ -129,9 +116,6 @@ class Config:
 
     nag_every: float = 120.0
     """Hungry with nothing to eat, how often he asks you for food."""
-
-    begging: tuple[str, ...] = ("feed me!!", "seeds pls? ♥", "hungryyy...", "*stares*")
-    """What he says asking for food."""
 
     # --- Bond: how close he feels to you, 0 to 1 (see behavior.bond) -----------
     # Earned slowly: an attentive owner (a couple of minutes' petting an hour, the

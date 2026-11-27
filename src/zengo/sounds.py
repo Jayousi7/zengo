@@ -64,7 +64,7 @@ _RECIPES = {
     "chirp_a": lambda: _notes([(0.09, 2800, 4200)]),
     "chirp_b": lambda: _notes([(0.06, 3400, 2700), (0.07, 2700, 3900)]),
     "chirp_c": lambda: _notes([(0.05, 3000, 3800), _rest(0.05), (0.06, 3000, 4000)]),
-    # One tune per whistle phrase, in the order of Config.whistles.
+    # One tune per whistle phrase, in the order of his whistle phrases.
     "whistle_0": lambda: _notes(
         [(0.16, 1800, 3200), _rest(0.07), (0.18, 1800, 3400)]
     ),  # fweet-fweet
@@ -83,6 +83,8 @@ _RECIPES = {
     "squawk": lambda: _notes([(0.24, 1500, 1100)], rough=0.55, seed=3),
     # Asking for food: a pleading rise, twice.
     "ask": lambda: _notes([(0.12, 2300, 3300), _rest(0.08), (0.16, 2400, 3600)]),
+    # Greeting you back: a bright two-note hello.
+    "greeting": lambda: _notes([(0.1, 2600, 3400), _rest(0.05), (0.18, 2800, 3900)]),
     # Content (a meal, freedom): a quick trill.
     "trill": lambda: _notes([(0.32, 3000, 3300)], warble=320),
 }

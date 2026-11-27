@@ -52,7 +52,7 @@ def test_double_click_gets_a_whistle_in_a_cloud(ctx):
     brain = Brain(ctx, Idle())
     brain.double_click()
     assert isinstance(brain.state, Whistle)
-    assert ctx.speech is not None and ctx.speech.text in ctx.config.whistles
+    assert ctx.speech is not None and ctx.speech.text in ctx.voice.lines("whistle")
     brain.tick(DT)
     assert ctx.animator.clip_name == "whistle"
     run_until(brain, Idle, limit=5)
