@@ -71,6 +71,7 @@ def test_the_settings_window_edits_his_voice_and_its_files(tmp_path):
         assert [tabs.tabText(i) for i in range(tabs.count())] == [
             "General",
             "Life",
+            "Focus",
             "Words",
             "Sounds",
         ]

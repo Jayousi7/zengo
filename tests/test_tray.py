@@ -93,7 +93,7 @@ def test_the_tray_menu_follows_him():
     called = []
     actions = {
         k: (lambda k=k: called.append(k))
-        for k in ("summon", "show", "hide", "feed", "settings", "quit")
+        for k in ("summon", "show", "hide", "feed", "focus", "pause", "stop", "settings", "quit")
     }
     tray = Tray(build_frames(), actions, "")
     tray.update(needs_you=True, away=False, can_hide=True, can_feed=True)
@@ -137,3 +137,36 @@ def test_his_window_goes_while_hes_away_and_comes_back_with_him():
     assert pet._window.isVisible()
     pet._timer.stop()
     pet._window.close()
+
+
+def test_the_tray_has_the_focus_timer():
+    from zengo.sprites.frames import build_frames
+    from zengo.ui.tray import Tray
+
+    called = []
+    actions = {
+        k: (lambda k=k: called.append(k))
+        for k in ("summon", "show", "hide", "feed", "focus", "pause", "stop", "settings", "quit")
+    }
+    tray = Tray(build_frames(), actions, "")
+    tray.update(needs_you=False, away=False, can_hide=True, can_feed=True)
+    assert tray._focus.text() == "Focus…"
+    assert not tray._pause.isVisible() and not tray._stop.isVisible()
+    plain = tray._icon.icon().pixmap(64).toImage()
+    tray.update(
+        needs_you=False, away=False, can_hide=True, can_feed=True,
+        focus=("focus", 0.5, False, "12:30 left of focus"),
+    )  # fmt: skip
+    assert tray._focus.text() == "Focus: 12:30 left of focus"
+    assert tray._pause.isVisible() and tray._pause.text() == "Pause focus"
+    assert "12:30" in tray._icon.toolTip()
+    assert tray._icon.icon().pixmap(64).toImage() != plain  # the ring
+    tray.update(
+        needs_you=False, away=False, can_hide=True, can_feed=True,
+        focus=("focus", 0.5, True, "12:30 left of focus, paused"),
+    )  # fmt: skip
+    assert tray._pause.text() == "Resume focus"
+    tray._focus.trigger()
+    tray._pause.trigger()
+    tray._stop.trigger()
+    assert called == ["focus", "pause", "stop"]

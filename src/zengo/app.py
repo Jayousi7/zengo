@@ -41,6 +41,7 @@ from zengo.ui.cage_window import CageWindow, MountWindow
 from zengo.ui.catch_overlay import CatchOverlay
 from zengo.ui.effects_window import EffectsWindow
 from zengo.ui.feather_window import FeatherWindow
+from zengo.ui.focus_tab import describe
 from zengo.ui.food_window import FoodWindow
 from zengo.ui.qt_world import QtWorld, time_zone
 from zengo.ui.recorder import RecorderBox, microphone
@@ -185,6 +186,9 @@ class Pet:
                     "show": self._brain.show,
                     "hide": self._brain.hide,
                     "feed": self._brain.feed,
+                    "focus": lambda: self.open_settings("Focus"),
+                    "pause": self.pause_focus,
+                    "stop": self.stop_focus,
                     "settings": self.open_settings,
                     "quit": QApplication.quit,
                 },
@@ -319,6 +323,8 @@ class Pet:
         self._effects.show_particles(ctx.effects.particles)
         self._show_speech()
         self._show_start_button()
+        if self._settings_window is not None and self._settings_window.isVisible():
+            self._show_timer()
         self._play_sounds()
         showing = tuple(w.isVisible() for w in self._layers())
         if _menu_open():
@@ -331,11 +337,15 @@ class Pet:
         if self._tray is None:
             return
         brain = self._brain
+        focus = brain.ctx.focus
+        now = brain.ctx.clock()
+        words = "" if focus.phase == "off" else describe(focus.phase, focus.left(now), focus.paused)
         self._tray.update(
             needs_you=brain.ctx.hunger.hungry or brain.caged,
             away=isinstance(brain.state, Away),
             can_hide=brain.can_hide(),
             can_feed=brain.food_stacks < MAX_STACKS,
+            focus=(focus.phase, focus.fraction_left(now), focus.paused, words.rstrip(".")),
         )
 
     def _layers(self) -> list:
@@ -457,8 +467,9 @@ class Pet:
         if self._settings_window is not None:
             self._settings_window.show_settings(self._settings, self._autostart.enabled())
 
-    def open_settings(self) -> None:
-        """Show the settings window: one, reused, brought to the front."""
+    def open_settings(self, tab: str | None = None) -> None:
+        """Show the settings window (at ``tab``, if given): one, reused, brought
+        to the front."""
         if self._settings_window is None:
             window = SettingsWindow(
                 self._settings,
@@ -469,10 +480,16 @@ class Pet:
             window.previewed.connect(lambda s: self.change_settings(s, keep=False))
             window.reset_confirmed.connect(self.reset)
             window.autostart_changed.connect(self.set_autostart)
+            window.focus_start.connect(self.start_focus)
+            window.focus_pause.connect(self.pause_focus)
+            window.focus_stop.connect(self.stop_focus)
             if self._voice_files is not None:
                 self._add_voice_tabs(window)
             self._settings_window = window
         self._settings_window.show_settings(self._settings, self._settings_window_autostart())
+        if tab is not None:
+            self._settings_window.show_tab(tab)
+        self._show_timer()
         self._settings_window.show()
         self._settings_window.raise_()
         self._settings_window.activateWindow()
@@ -586,6 +603,14 @@ class Pet:
     def _focus_changed(self) -> None:
         self.save()
         self._render()
+
+    def _show_timer(self) -> None:
+        """Keep the Focus tab's time left up to date while the window's open."""
+        window = self._settings_window
+        if window is None or (not window.isVisible() and not self._timer.isActive()):
+            return
+        focus = self._brain.ctx.focus
+        window.focus.show_timer(focus.phase, focus.left(self._brain.ctx.clock()), focus.paused)
 
     def _show_start_button(self) -> None:
         """By his head while he waits for you to start the next session."""

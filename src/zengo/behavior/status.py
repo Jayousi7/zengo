@@ -33,6 +33,10 @@ class Status:
     """How close he feels to you, 0 (grumpy) to 1 (devoted)."""
     bond_mood: str = "content"
     """``"devoted"``, ``"content"`` or ``"grumpy"``."""
+    focus_phase: str = "off"
+    """The focus timer: ``"off"``, ``"focus"``, ``"break"`` or ``"waiting"``."""
+    focus_left: float = 0.0
+    focus_paused: bool = False
 
 
 def read(ctx: Context, food_stacks: int) -> Status:
@@ -50,6 +54,9 @@ def read(ctx: Context, food_stacks: int) -> Status:
         escape_started=escape.caged_for >= cfg.escape_after,
         escape_warmup=min(1.0, escape.caged_for / cfg.escape_after) if cfg.escape_after else 1.0,
         bond=ctx.bond.level,
+        focus_phase=ctx.focus.phase,
+        focus_left=ctx.focus.left(ctx.clock()),
+        focus_paused=ctx.focus.paused,
         bond_mood="devoted"
         if ctx.bond.close(cfg)
         else "grumpy"

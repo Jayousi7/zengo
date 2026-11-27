@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 
 from zengo.behavior.toys import TOYS
 from zengo.settings import APPETITE, BATH_EVERY, BRANCH_EVERY, MAX_SCALE, MIN_SCALE, Settings
+from zengo.ui.focus_tab import FocusTab
 
 STYLE = """
 QWidget { background: #231c1f; color: #f1e6da; }
@@ -217,6 +218,9 @@ class SettingsWindow(QWidget):
 
     changed = Signal(object)
     previewed = Signal(object)
+    focus_start = Signal()
+    focus_pause = Signal()
+    focus_stop = Signal()
     autostart_changed = Signal(bool)
     reset_confirmed = Signal()
 
@@ -234,9 +238,12 @@ class SettingsWindow(QWidget):
         self.tabs.addTab(self.general, "General")
         self.life = LifeTab(hemisphere_found)
         self.tabs.addTab(self.life, "Life")
+        self.focus = FocusTab()
+        self.tabs.addTab(self.focus, "Focus")
         layout = QVBoxLayout(self)
         layout.addWidget(self.tabs)
-        self.resize(420, 400)
+        hint = self.sizeHint()
+        self.resize(max(440, hint.width()), max(400, hint.height()))
         self.show_settings(settings)
 
         g = self.general
@@ -252,6 +259,10 @@ class SettingsWindow(QWidget):
             box.toggled.connect(self._edited)
         for combo in (life.baths, life.hemisphere):
             combo.currentIndexChanged.connect(self._edited)
+        self.focus.edited.connect(self._edited)
+        self.focus.start.connect(self.focus_start.emit)
+        self.focus.pause.connect(self.focus_pause.emit)
+        self.focus.stop.connect(self.focus_stop.emit)
 
     def add_tab(self, tab: QWidget, title: str) -> None:
         self.tabs.addTab(tab, title)
@@ -271,6 +282,7 @@ class SettingsWindow(QWidget):
         try:
             self.general.show_settings(settings, autostart)
             self.life.show_settings(settings)
+            self.focus.show_settings(settings)
         finally:
             self._showing = False
 
@@ -301,7 +313,12 @@ class SettingsWindow(QWidget):
         self.changed.emit(self._settings)
 
     def _read(self) -> Settings:
-        return self.life.read(self.general.read(self._settings))
+        return self.focus.read(self.life.read(self.general.read(self._settings)))
+
+    def show_tab(self, title: str) -> None:
+        for i in range(self.tabs.count()):
+            if self.tabs.tabText(i) == title:
+                self.tabs.setCurrentIndex(i)
 
     def _autostart_toggled(self, on: bool) -> None:
         if not self._showing and on != self._autostart:

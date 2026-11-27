@@ -23,6 +23,7 @@ POOR = QColor("#e07a5f")
 SEED = QColor("#b08d74")
 ESCAPE = QColor("#c9a45a")
 HEART = QColor("#e58fa3")
+FOCUS = QColor("#9db7d8")
 
 
 @dataclass(frozen=True)
@@ -86,7 +87,21 @@ def rows(status: Status) -> list[Row]:
             "∴",
         ),
         Row("Escape", *escape, escape_share, ESCAPE, "⇥"),
+        *_focus_row(status),
     ]
+
+
+def _focus_row(status: Status) -> list[Row]:
+    """The focus timer's time left, while there's a session on."""
+    phase = status.focus_phase
+    if phase == "off":
+        return []
+    if phase == "waiting":
+        return [Row("Focus", "▶", "break over: start the next session", 1.0, FOCUS, "◷")]
+    what = "focus" if phase == "focus" else "break"
+    note = f"{what} left" + (" (paused)" if status.focus_paused else "")
+    colour = QUIET if status.focus_paused else FOCUS if phase == "focus" else GOOD
+    return [Row("Focus", clock(status.focus_left), note, 1.0, colour, "◷")]
 
 
 class StatusPanel(QWidget):

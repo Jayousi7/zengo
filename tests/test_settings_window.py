@@ -175,3 +175,40 @@ def test_the_hemisphere_choice_says_what_the_time_zone_gave(make_pet):
     window = SettingsWindow(Settings(), hemisphere_found="south")
     assert "southern" in window.life.hemisphere.itemText(0)
     window.close()
+
+
+# --- The Focus tab -------------------------------------------------------------------
+
+
+def test_the_focus_tab_sets_the_lengths_and_runs_the_timer(make_pet):
+    pet = make_pet()
+    pet.open_settings("Focus")
+    window = pet._settings_window
+    assert window.tabs.tabText(window.tabs.currentIndex()) == "Focus"
+    tab = window.focus
+    tab.focus.setValue(40)
+    tab.next_session.setCurrentIndex(tab.next_session.findData("auto"))
+    assert pet.settings.focus_minutes == 40 and pet.settings.next_session == "auto"
+    tab.start_button.click()
+    ctx = pet._brain.ctx
+    assert ctx.focus.focusing and ctx.focus.session.focus == 40 * 60
+    pet._render()
+    assert "40:00 left of focus" in tab.state.text()
+    assert not tab.start_button.isEnabled() and tab.pause_button.isEnabled()
+    tab.pause_button.click()
+    pet._render()
+    assert ctx.focus.paused and tab.pause_button.text() == "Resume"
+    tab.stop_button.click()
+    assert ctx.focus.phase == "off"
+    tab._reset()
+    assert pet.settings.focus_minutes == 25 and pet.settings.short_break_minutes == 5
+
+
+def test_the_needs_strip_shows_the_time_left(make_pet):
+    from zengo.ui.status_panel import rows
+
+    pet = make_pet()
+    assert not any(row.title == "Focus" for row in rows(pet._brain.status()))
+    pet.start_focus()
+    focus_rows = [row for row in rows(pet._brain.status()) if row.title == "Focus"]
+    assert focus_rows and focus_rows[0].headline == "25:00"
