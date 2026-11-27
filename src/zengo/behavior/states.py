@@ -190,8 +190,10 @@ class Fly(State):
     mouse pointer, and :meth:`down` back to the ground from a perch. A bare
     ``Fly()`` is a hop.
 
-    The wings follow the path: flapping while climbing or flying level, held out
-    in a glide on the way down, and flared for the last moment before touchdown.
+    The wings follow the path the way a cockatiel's do. He's a strong, fast
+    flapper: he flaps whenever climbing or flying level, and on the way down he
+    only coasts in short glides between bursts of wingbeats. Coming in to land,
+    he holds one steady glide, then flares his wings for touchdown.
     """
 
     clip = "fly"
@@ -199,8 +201,13 @@ class Fly(State):
 
     glide_above: ClassVar[float] = 0.3
     flap_below: ClassVar[float] = 0.05
-    """Descent (sine of the angle below level) at which he starts gliding, and
-    below which he flaps again. The gap stops the wings flickering between the two."""
+    """Descent (sine of the angle below level) steep enough for a glide, and
+    shallow enough that he flaps again."""
+    glide_bout: ClassVar[float] = 0.7
+    flaps_between: ClassVar[float] = 0.4
+    """Longest single glide on the way down, and the wingbeats before the next."""
+    approach_seconds: ClassVar[float] = 1.0
+    """The final glide in, before the flare."""
     flare_seconds: ClassVar[float] = 0.45
     turn_seconds: ClassVar[float] = 0.24
     """How long he shows his front, wings spread, when banking round to fly the other way."""
@@ -295,6 +302,8 @@ class Fly(State):
         )
         self.duration = max(1.0, self.path.length / cfg.px(cfg.fly_speed))
         self.gliding = False
+        self.in_mode = 0.0
+        """Seconds spent gliding, or flapping, since he last switched."""
         self.turning = 0.0
         dx, _ = self.path.heading(0.0, cfg.px(12))
         if dx:  # still on the ground or the perch: just turn to face the way out
@@ -329,11 +338,7 @@ class Fly(State):
                 return CursorPerch()
             return OnBranch() if self.onto == "branch" else Idle()
 
-        descent = dy / (math.hypot(dx, dy) or 1.0)
-        if self.gliding and descent < self.flap_below:
-            self.gliding = False
-        elif not self.gliding and descent > self.glide_above:
-            self.gliding = True
+        self._choose_glide(dx, dy, seconds_left=(1.0 - p) * self.duration, dt=dt)
         if p >= 1.0 - self.flare_seconds / self.duration:
             ctx.animator.play("flare")
         elif self.turning:
@@ -341,6 +346,19 @@ class Fly(State):
         else:
             ctx.animator.play("glide" if self.gliding else "fly")
         return None
+
+    def _choose_glide(self, dx: float, dy: float, *, seconds_left: float, dt: float) -> None:
+        """Flap or glide: short glides on the way down, one steady glide to land."""
+        self.in_mode += dt
+        descent = dy / (math.hypot(dx, dy) or 1.0)
+        if seconds_left <= self.approach_seconds + self.flare_seconds:
+            glide = descent > self.flap_below
+        elif self.gliding:
+            glide = descent > self.flap_below and self.in_mode < self.glide_bout
+        else:
+            glide = descent > self.glide_above and self.in_mode >= self.flaps_between
+        if glide != self.gliding:
+            self.gliding, self.in_mode = glide, 0.0
 
     def _perch_is_gone(self, ctx: Context, spot: Point) -> bool:
         if self.onto == "cursor":
@@ -597,7 +615,15 @@ class Glide(State):
         if p >= 1.0:
             ctx.body.y = y1
             return Shake()
-        ctx.animator.play("glide" if p < self.flare_from else "flare")
+        if p >= self.flare_from:
+            ctx.animator.play("flare")
+        else:
+            # A long way down: short glides between bursts of wingbeats, then one
+            # steady glide for the last second, as in a flight (see Fly).
+            cycle = Fly.glide_bout + Fly.flaps_between
+            far_out = (1.0 - p) * self.duration > Fly.approach_seconds
+            flapping = far_out and self.elapsed % cycle >= Fly.glide_bout
+            ctx.animator.play("fly" if flapping else "glide")
         return None
 
 

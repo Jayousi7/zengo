@@ -359,3 +359,42 @@ def test_a_straight_flight_never_turns(ctx):
     brain = Brain(ctx, Fly())
     _, clips = fly_and_record(brain, ctx)
     assert "turn" not in clips
+
+
+def glides_in(clips_by_tick: list[str]) -> list[int]:
+    """Lengths, in ticks, of each unbroken run of the glide clip."""
+    runs, n = [], 0
+    for clip in [*clips_by_tick, None]:
+        if clip == "glide":
+            n += 1
+        elif n:
+            runs.append(n)
+            n = 0
+    return runs
+
+
+def test_on_a_tour_he_mostly_flaps_and_glides_only_in_short_bouts(ctx):
+    brain = Brain(ctx, Fly.tour(ctx))
+    clips = []
+    while True:
+        brain.tick(DT)
+        if not isinstance(brain.state, Fly):
+            break
+        clips.append(ctx.animator.clip_name)
+    *during, approach = glides_in(clips) or [0]
+    longest_bout = round((Fly.glide_bout + DT) / DT)
+    assert all(run <= longest_bout for run in during)
+    assert clips.count("fly") > clips.count("glide")  # a flapper, not a glider
+    assert approach * DT <= Fly.approach_seconds + 0.1  # one steady glide in
+
+
+def test_level_flight_is_flapped_not_glided(ctx):
+    x, y = ctx.body.x, ctx.body.y
+    level = [(x + 100, y - 300), (x + 500, y - 300), (x + 900, y - 300), (x + 1000, y)]
+    brain = Brain(ctx, Fly(level))
+    seen_level = []
+    while isinstance(brain.state, Fly):
+        brain.tick(DT)
+        if abs(ctx.body.y - (y - 300)) < 3 and x + 300 < ctx.body.x < x + 700:
+            seen_level.append(ctx.animator.clip_name)
+    assert seen_level and set(seen_level) <= {"fly", "turn"}
