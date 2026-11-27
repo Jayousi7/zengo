@@ -54,7 +54,7 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
   hungry, starting at login, and *Reset Zengo* to start over (your settings and
   voice files stay). Kept in `settings.json` beside the state file; command-line
   flags win over it.
-- **Teach him words** (*Teach Zengo…*): type a word or short phrase and choose
+- **Teach him words** (*Teach Zengo…* in the *Words* tab of his settings): type a word or short phrase and choose
   when he'll say it: any time, or at a moment (greeting you, asking for food,
   after a meal, being petted, in the cage, getting free). He cocks his head,
   listens and tries it back. It takes about five lessons at least an hour apart
@@ -72,7 +72,7 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
   of the screen ("here I am!"); its menu hides him (he flies off the side and
   waits out of sight) or shows him, feeds him, opens his settings or quits. A
   dot on it means he needs you: hungry, or caged.
-- **Start at login**: in his menu and settings. On Linux it's
+- **Start at login**: in his settings. On Linux it's
   `~/.config/autostart/zengo.desktop`; on Windows, the current user's *Run* key.
 
 | Input | Reaction |
@@ -82,7 +82,7 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
 | Type (anywhere) | Sitting about, he bobs his head along. Only the timing of your input is noticed, never the keys |
 | Stroke the mouse gently back and forth over him | Fluffs up, shuts his eyes and leans into it, with hearts; a happy shake when you stop |
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
-| Right click | Menu: a live strip of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Sounds* on/off, *Start at login*, *Teach Zengo…*, *Settings…*, *Quit Zengo* |
+| Right click | Menu: a live strip of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Settings…* and *Quit Zengo*. Sound, starting at login and teaching him words are all in *Settings…* |
 | Click his tray icon | He flies to the middle of your screen: "here I am!" |
 | *Feed Zengo (n/3)* | Pours out a stack of sunflower seeds, his favourite: up to three stacks, the pile filling as you add. He eats one stack whenever he gets hungry; caged, they go in his dish |
 | *Catch Zengo*, then drag a box around him | Caged where he is, and furious about it. Drag the cage: let go near the top and it hangs from a chain, near a side and it sits on a shelf (unless that's too near the floor for one), anywhere else it falls to the ground. Petting him through the bars calms him; *Let Zengo out* opens the door |

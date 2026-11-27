@@ -45,6 +45,8 @@ class WordsTab(QWidget):
     """New phrases, a mapping of moment to lines."""
     forget = Signal(str)
     """Forget this taught word."""
+    teach = Signal()
+    """Open the box to teach him a word."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -64,7 +66,8 @@ class WordsTab(QWidget):
         self.taught.setMaximumHeight(110)
         self.forget_button = QPushButton("Forget word")
         self.forget_button.setEnabled(False)
-        self.no_words = _note("No words taught yet: use “Teach Zengo…” in his menu.")
+        self.teach_button = QPushButton("Teach Zengo…")
+        self.no_words = _note("No words taught yet.")
 
         editor = QVBoxLayout()
         editor.addWidget(self.when)
@@ -76,12 +79,17 @@ class WordsTab(QWidget):
         layout = QVBoxLayout(self)
         layout.addLayout(row, 1)
         layout.addWidget(_note(f"Up to {MAX_PHRASE} characters each. Saved to phrases.toml."))
-        layout.addWidget(QLabel("Words you've taught him"))
+        heading = QHBoxLayout()
+        heading.addWidget(QLabel("Words you've taught him"))
+        heading.addStretch()
+        heading.addWidget(self.teach_button)
+        layout.addLayout(heading)
         layout.addWidget(self.no_words)
         layout.addWidget(self.taught)
         layout.addWidget(self.forget_button, alignment=Qt.AlignmentFlag.AlignRight)
         self.taught.currentRowChanged.connect(lambda row: self.forget_button.setEnabled(row >= 0))
         self.forget_button.clicked.connect(self._forget)
+        self.teach_button.clicked.connect(self.teach.emit)
 
         self._pause = QTimer(self, singleShot=True, interval=SAVE_AFTER_MS)
         self._pause.timeout.connect(self._take)

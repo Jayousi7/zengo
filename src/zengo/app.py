@@ -9,7 +9,7 @@ import signal
 import sys
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt, QTimer
@@ -352,26 +352,11 @@ class Pet:
             menu.addAction("Let Zengo out", self._brain.let_out)
         else:
             menu.addAction("Catch Zengo", self._start_catching)
-        sound = menu.addAction("Sounds", self._toggle_sound)
-        sound.setCheckable(True)
-        sound.setChecked(self._brain.ctx.sound_on)
-        if (login := self._autostart.enabled()) is not None:
-            start = menu.addAction("Start at login", lambda: self.set_autostart(not login))
-            start.setCheckable(True)
-            start.setChecked(login)
-        menu.addAction("Teach Zengo…", self.open_teach_box)
-        menu.addAction("Settings…", self.open_settings)
+        menu.addAction("Settings…", self.open_settings)  # everything else lives there
         menu.addSeparator()
         menu.addAction("Quit Zengo", QApplication.quit)
         menu.aboutToShow.connect(menu.raise_)
         menu.exec(where)
-
-    def _toggle_sound(self) -> None:
-        ctx = self._brain.ctx
-        ctx.sound_on = not ctx.sound_on
-        self.change_settings(replace(self._settings, sound=ctx.sound_on))
-        if ctx.sound_on:
-            ctx.play("chirp_a")  # a little hello, so you know it's on
 
     @property
     def settings(self) -> Settings:
@@ -385,6 +370,8 @@ class Pet:
             self._settings = settings
             self._config = build_config(settings, self._flags)
             self._brain.ctx.config = self._config
+            if settings.sound and not self._brain.ctx.sound_on:
+                self._brain.ctx.play("chirp_a")  # a little hello, so you know it's on
             self._brain.ctx.sound_on = settings.sound
             self._sound.set_volume(settings.volume)
             if self._config.scale != old_scale:
@@ -426,6 +413,7 @@ class Pet:
         self._words_tab.show_phrases(voice.phrases)
         self._words_tab.edited.connect(lambda p: self.change_voice(voice_with(self.voice, p)))
         self._words_tab.forget.connect(self.forget_word)
+        self._words_tab.teach.connect(self.open_teach_box)
         self._show_taught()
         self._sounds_tab = SoundsTab()
         self._sounds_tab.show_sounds(voice.sounds)

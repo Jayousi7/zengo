@@ -151,6 +151,9 @@ def test_lessons_show_in_the_words_tab_and_can_be_forgotten_there(tmp_path):
         assert tab.no_words.isVisibleTo(tab)
         assert pet.teach("hello", "random") is not None
         assert tab.taught.count() == 1 and "1 of 5 lessons" in tab.taught.item(0).text()
+        tab.teach_button.click()  # teaching starts from his settings now
+        assert pet._teach_box is not None and pet._teach_box.isVisible()
+        pet._teach_box.close()
         tab.taught.setCurrentRow(0)
         tab.forget_button.click()
         assert pet._brain.ctx.vocabulary.words == [] and tab.taught.count() == 0

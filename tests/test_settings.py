@@ -82,7 +82,7 @@ def test_turning_sound_off_in_the_menu_is_saved_in_the_settings(tmp_path):
     memory, file = StateFile(tmp_path / "state.json"), StateFile(tmp_path / "settings.json")
     pet = Pet(Config(), build_frames(), random.Random(1), memory=memory, settings_file=file)
     assert not file.path.exists()  # nothing written until something changes
-    pet._toggle_sound()
+    pet.change_settings(replace(pet.settings, sound=False))  # from the settings window
     assert pet._brain.ctx.sound_on is False
     assert Settings.from_json(file.load()).sound is False
     pet.save()
