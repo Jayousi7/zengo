@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QWidget
 from zengo.behavior.food import Pile
 from zengo.config import Config
 from zengo.sprites.food import MAX_SEEDS, PILE_HEIGHT, PILE_WIDTH, build_pile
+from zengo.ui.layering import bypass_window_manager
 from zengo.ui.sprites import frame_to_image
 
 
@@ -16,15 +17,17 @@ class FoodWindow(QWidget):
     """A pile of sunflower seeds: filling as stacks pour on, shrinking as he eats.
     Used for the pile on the ground and the dish in the cage. Clicks pass through."""
 
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, in_front_of: QWidget | None = None) -> None:
         super().__init__(
-            None,
+            in_front_of,
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
             | Qt.WindowType.WindowDoesNotAcceptFocus
             | Qt.WindowType.WindowTransparentForInput,
         )
+        if in_front_of is not None:
+            bypass_window_manager(self)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setWindowTitle("Zengo's seeds")

@@ -27,6 +27,7 @@ from zengo.sprites.cage import (
     build_chain_link,
     build_shelf,
 )
+from zengo.ui.layering import bypass_window_manager
 from zengo.ui.sprites import clip_to, frame_to_image, mirror
 
 _FLAGS = (
@@ -57,8 +58,12 @@ class CageWindow(QWidget):
     released = Signal()
     menu_requested = Signal(QPoint)
 
-    def __init__(self, config: Config, drag_threshold: int) -> None:
-        super().__init__(None, _FLAGS)
+    def __init__(
+        self, config: Config, drag_threshold: int, in_front_of: QWidget | None = None
+    ) -> None:
+        super().__init__(in_front_of, _FLAGS)
+        if in_front_of is not None:
+            bypass_window_manager(self)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setWindowTitle("Zengo's cage")

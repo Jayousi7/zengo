@@ -6,6 +6,8 @@ from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPaintEvent, QPixmap
 from PySide6.QtWidgets import QWidget
 
+from zengo.ui.layering import bypass_window_manager
+
 INK = QColor("#3a2a30")
 PAPER = QColor("#fcf7ef")
 HEART = QColor("#d9576b")
@@ -20,15 +22,17 @@ class BubbleWindow(QWidget):
     an ordinary font so they stay readable. Clicks pass straight through.
     """
 
-    def __init__(self, scale: int) -> None:
+    def __init__(self, scale: int, in_front_of: QWidget | None = None) -> None:
         super().__init__(
-            None,
+            in_front_of,
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
             | Qt.WindowType.WindowDoesNotAcceptFocus
             | Qt.WindowType.WindowTransparentForInput,
         )
+        if in_front_of is not None:
+            bypass_window_manager(self)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setWindowTitle("Zengo says")

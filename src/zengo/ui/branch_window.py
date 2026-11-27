@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QWidget
 from zengo.behavior.scenery import Branch
 from zengo.config import Config
 from zengo.sprites.branch import TOP_ROW, build_branch
+from zengo.ui.layering import bypass_window_manager
 from zengo.ui.sprites import frame_to_image, mirror
 
 _PADDING = 1
@@ -23,15 +24,17 @@ class BranchWindow(QWidget):
     hangs down behind the branch, as it would.
     """
 
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, in_front_of: QWidget | None = None) -> None:
         super().__init__(
-            None,
+            in_front_of,
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
             | Qt.WindowType.WindowDoesNotAcceptFocus
             | Qt.WindowType.WindowTransparentForInput,
         )
+        if in_front_of is not None:
+            bypass_window_manager(self)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setWindowTitle("Zengo's branch")

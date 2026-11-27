@@ -56,6 +56,9 @@ QMenu::separator { height: 1px; background: #3a3034; margin: 4px 8px; }
 """
 """Dark, to match the needs panel at its top."""
 
+RESTACK_EVERY = 1.0
+"""Seconds between checks that the windows are in their proper order."""
+
 SAVE_EVERY_MS = 15_000
 """How often what he remembers is written down, besides when he quits."""
 
@@ -99,11 +102,19 @@ class Pet:
         self._window.grabbed.connect(self._brain.grab)
         self._window.dragged.connect(self._brain.drag)
         self._window.released.connect(self._brain.release)
-        self._branch = BranchWindow(config)
-        self._window.released.connect(self._branch.keep_in_front)
-        self._bubble = BubbleWindow(config.scale)
+        # Windows that must stay in front of him are made his window's transients:
+        # the window manager then keeps them above it whatever it's asked or clicked.
+        # (Asking it to raise them doesn't work: it refuses, to stop windows that
+        # never take focus from pushing in front of others.)
+        self._branch = BranchWindow(config, in_front_of=self._window)
+        # A click or drag makes the window manager raise his window over the
+        # branch and cage: put the stacking right again straight away.
+        for gesture in (self._window.clicked, self._window.double_clicked, self._window.released):
+            gesture.connect(self.restack)
+        self._window.grabbed.connect(lambda *_: self.restack())
+        self._bubble = BubbleWindow(config.scale, in_front_of=self._window)
         self._window.menu_requested.connect(self._show_menu)
-        self._cage = CageWindow(config, config.drag_threshold)
+        self._cage = CageWindow(config, config.drag_threshold, in_front_of=self._window)
         self._cage.grabbed.connect(self._brain.cage_grab)
         self._cage.dragged.connect(self._brain.cage_drag)
         self._cage.released.connect(self._brain.cage_release)
@@ -113,9 +124,11 @@ class Pet:
         self._sound = SoundPlayer()
         if (app := QApplication.instance()) is not None:
             app.aboutToQuit.connect(self._sound.close)  # tidy away the sound files
-        self._dish = FoodWindow(config)
+        self._dish = FoodWindow(config, in_front_of=self._window)
         self._overlay: CatchOverlay | None = None
         self._door_was_open = False
+        self._restacked = -RESTACK_EVERY
+        self._showing: tuple[bool, ...] = ()
         self._speech_at: QPointF | None = None
         self._speech_of: object = None
 
@@ -126,6 +139,7 @@ class Pet:
     def start(self) -> None:
         self._render()
         self._window.show()
+        self.restack()  # windows restored from memory came up before his
         self._last_tick = time.monotonic()
         self._timer.start()
         if self._memory is not None:
@@ -163,11 +177,46 @@ class Pet:
         cage = ctx.cage
         if cage is None or cage.door_open:
             self._dish.show_pile(None)
-        elif self._dish.show_pile(cage.dish, cage.shown_x, cage.y):
-            self._cage.raise_()  # the dish sits behind the bars
+        else:
+            self._dish.show_pile(cage.dish, cage.shown_x, cage.y)
         self._show_cage()
         self._show_speech()
         self._play_sounds()
+        showing = tuple(w.isVisible() for w in self._layers())
+        if showing != self._showing or time.monotonic() - self._restacked >= RESTACK_EVERY:
+            self._showing = showing  # one has just come or gone: order them at once
+            self.restack()
+
+    def _layers(self) -> list:
+        return [
+            self._mount,
+            self._food,
+            self._window,
+            self._branch,
+            self._dish,
+            self._cage,
+            self._bubble,
+        ]
+
+    def restack(self) -> None:
+        """Put the windows in their proper order, back to front.
+
+        Behind Zengo: the chain or shelf and the seed pile. In front of him: the
+        branch (so his tail hangs behind it), the dish and the cage (so he's behind
+        the bars; once the door's open he comes out in front), and the speech cloud.
+        Window managers reorder windows on clicks and when new ones appear, so this
+        is done at start, after any click or drag on him, and every so often.
+        """
+        self._restacked = time.monotonic()
+        cage = self._brain.ctx.cage
+        door_open = cage is not None and cage.door_open
+        back_to_front = self._layers()
+        if door_open:
+            back_to_front.remove(self._window)
+            back_to_front.insert(back_to_front.index(self._cage) + 1, self._window)
+        for window in back_to_front:
+            if window.isVisible():
+                window.raise_()
 
     def _play_sounds(self) -> None:
         ctx = self._brain.ctx
@@ -181,8 +230,8 @@ class Pet:
         self._mount.show_mount(cage)
         self._cage.show_cage(cage, QGuiApplication.primaryScreen().virtualGeometry())
         door_open = cage is not None and cage.door_open
-        if door_open and not self._door_was_open:
-            self._window.raise_()  # out through the door, in front of the bars
+        if door_open != self._door_was_open:
+            self.restack()  # out through the door, in front of the bars
         self._door_was_open = door_open
 
     # --- Menu and catching -------------------------------------------------------
