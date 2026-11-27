@@ -50,6 +50,9 @@ PALETTE: dict[str, RGBA] = {
     "m": _rgb("#66666e"),  # iron in shadow
     # Food: sunflower seeds, black with pale stripes (the black is the eye colour, K).
     "k": _rgb("#d9d2c4"),  # seed stripe
+    # His winter scarf: red wool, knitted in ribs.
+    "R": _rgb("#c4524b"),  # wool
+    "r": _rgb("#97393a"),  # wool in the rib
 }
 
 

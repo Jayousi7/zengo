@@ -160,6 +160,9 @@ class Config:
     night: tuple[int, int] = (23, 6)
     """Local hours [start, end) during which Zengo naps readily, wrapping midnight."""
 
+    dusk: tuple[int, int] = (21, 6)
+    """Local hours [start, end) in which he's drawn dimmed, wrapping midnight."""
+
     edge_margin: float = 31.0
     """Art pixels kept between the anchor and a screen edge; the tail reaches this far back."""
 
@@ -170,8 +173,15 @@ class Config:
         return art_pixels * self.scale
 
     def is_night(self, hour: int) -> bool:
-        start, end = self.night
-        return start <= hour or hour < end if start > end else start <= hour < end
+        return _within(self.night, hour)
+
+    def is_dusk(self, hour: int) -> bool:
+        return _within(self.dusk, hour)
+
+
+def _within(hours: tuple[int, int], hour: int) -> bool:
+    start, end = hours
+    return start <= hour or hour < end if start > end else start <= hour < end
 
 
 def quick(config: Config) -> Config:

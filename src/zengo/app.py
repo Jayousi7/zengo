@@ -99,9 +99,12 @@ class Pet:
         flags: Flags | None = None,
         autostart: Autostart | None = None,
         voice_files: VoiceFiles | None = None,
+        custom: frozenset[str] = frozenset(),
     ) -> None:
         self._config = config
         self._frames = frames
+        self._custom = custom
+        """Frames replaced from an Aseprite sheet."""
         self._settings = settings or Settings(scale=config.scale)
         self._settings_file = settings_file
         self._flags = flags or Flags()
@@ -187,7 +190,7 @@ class Pet:
         """Make the windows drawn at his size: everything but his own window,
         which simply takes whatever sprite it's given."""
         config = self._config
-        self._sheet = SpriteSheet(self._frames, config.scale)
+        self._sheet = SpriteSheet(self._frames, config.scale, self._custom)
         self._branch = BranchWindow(config, in_front_of=self._window)
         self._bubble = BubbleWindow(config.scale, in_front_of=self._window)
         self._cage = CageWindow(config, config.drag_threshold, in_front_of=self._window)
@@ -252,7 +255,7 @@ class Pet:
         elif not self._window.isVisible() and self._timer.isActive():
             self._window.show()
         body = ctx.body
-        sprite = self._sheet.get(ctx.animator.frame, body.facing)
+        sprite = self._sheet.get(ctx.animator.frame, body.facing, self._brain.look)
         # Mirroring flips the anchor column too; +0.5 centres on the column.
         anchor = ANCHOR_COLUMN if body.facing is Facing.RIGHT else CANVAS_WIDTH - 1 - ANCHOR_COLUMN
         left = body.x - self._config.px(anchor + 0.5)
@@ -617,9 +620,12 @@ def main(argv: list[str] | None = None) -> int:
     app.setQuitOnLastWindowClosed(False)
 
     frames = build_frames()
+    custom: frozenset[str] = frozenset()
     if options.sprites is not None:
         try:
-            frames.update(load_sheet(options.sprites, frames.keys()))
+            loaded = load_sheet(options.sprites, frames.keys())
+            frames.update(loaded)
+            custom = frozenset(loaded)
         except (OSError, KeyError, SheetError) as error:
             print(f"zengo: cannot load sprites from {options.sprites}: {error}", file=sys.stderr)
             return 2
@@ -650,6 +656,7 @@ def main(argv: list[str] | None = None) -> int:
         flags=options.flags,
         autostart=autostart,
         voice_files=VoiceFiles(memory.path.parent),
+        custom=custom,
     )
     pet.start()
     return app.exec()

@@ -10,6 +10,7 @@ from PySide6.QtGui import QBitmap, QImage, QPixmap, QRegion
 
 from zengo.behavior.body import Facing
 from zengo.sprites.compose import Frame
+from zengo.sprites.looks import PLAIN, Look, frame_in
 
 
 def frame_to_image(frame: Frame, scale: int) -> QImage:
@@ -33,17 +34,28 @@ class Sprite:
 
 
 class SpriteSheet:
-    """Every frame pre-rendered for both facings, so playback never rasterises."""
+    """Every frame pre-rendered for both facings, so playback never rasterises.
 
-    def __init__(self, frames: Mapping[str, Frame], scale: int) -> None:
-        self._sprites: dict[tuple[str, Facing], Sprite] = {}
-        for name, frame in frames.items():
-            image = frame_to_image(frame, scale)
-            self._sprites[name, Facing.RIGHT] = _sprite(image)
-            self._sprites[name, Facing.LEFT] = _sprite(mirror(image))
+    Frames in another look (damp, a scarf, dimmed: see :mod:`zengo.sprites.looks`)
+    are drawn the first time they're shown and kept: most never are."""
 
-    def get(self, name: str, facing: Facing) -> Sprite:
-        return self._sprites[name, facing]
+    def __init__(
+        self, frames: Mapping[str, Frame], scale: int, custom: frozenset[str] = frozenset()
+    ) -> None:
+        self._frames, self._scale, self._custom = frames, scale, custom
+        self._sprites: dict[tuple[str, Look, Facing], Sprite] = {}
+        for name in frames:
+            self._render(name, PLAIN)
+
+    def get(self, name: str, facing: Facing, look: Look = PLAIN) -> Sprite:
+        if (name, look, facing) not in self._sprites:
+            self._render(name, look)
+        return self._sprites[name, look, facing]
+
+    def _render(self, name: str, look: Look) -> None:
+        image = frame_to_image(frame_in(name, look, self._frames, self._custom), self._scale)
+        self._sprites[name, look, Facing.RIGHT] = _sprite(image)
+        self._sprites[name, look, Facing.LEFT] = _sprite(mirror(image))
 
 
 def _sprite(image: QImage) -> Sprite:

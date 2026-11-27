@@ -23,6 +23,7 @@ from zengo.behavior.status import Status
 from zengo.behavior.status import read as read_status
 from zengo.behavior.vocabulary import Lesson, Vocabulary
 from zengo.sounds import CHIRPS
+from zengo.sprites.looks import Look
 
 
 class Brain:
@@ -267,6 +268,18 @@ class Brain:
         self._welcome_wait = 0.0
         ctx.body.vx = ctx.body.vy = 0.0
         self.transition(Fall() if ctx.body.y < ctx.area().bottom - 1 else Idle())
+
+    @property
+    def look(self) -> Look:
+        """How he looks just now: damp after a bath, wrapped up in winter, dimmed
+        late in the evening (the last two only with seasons on)."""
+        ctx = self.ctx
+        season = ctx.season()
+        return Look(
+            damp=ctx.damp > 0,
+            scarf=season == "winter",
+            dim=season is not None and ctx.config.is_dusk(ctx.world.local_hour()),
+        )
 
     @property
     def caged(self) -> bool:

@@ -62,6 +62,8 @@ class Context:
     talking: bool = False
     """He's just said one of your words: the app shows his beak working."""
     seasons: Seasons = field(default_factory=Seasons)
+    damp: float = 0.0
+    """Seconds until he's dry after a bath."""
 
     def season(self) -> str | None:
         """The time of year as he shows it, or ``None`` with seasons turned off."""
