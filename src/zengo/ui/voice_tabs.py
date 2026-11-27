@@ -43,6 +43,8 @@ class WordsTab(QWidget):
 
     edited = Signal(object)
     """New phrases, a mapping of moment to lines."""
+    forget = Signal(str)
+    """Forget this taught word."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -58,7 +60,11 @@ class WordsTab(QWidget):
         self.lines = QPlainTextEdit()
         self.lines.setPlaceholderText("One phrase per line. Empty: his built-in ones.")
         self.reset = QPushButton("Built-in phrases")
-        self.taught = QVBoxLayout()
+        self.taught = QListWidget()
+        self.taught.setMaximumHeight(110)
+        self.forget_button = QPushButton("Forget word")
+        self.forget_button.setEnabled(False)
+        self.no_words = _note("No words taught yet: use “Teach Zengo…” in his menu.")
 
         editor = QVBoxLayout()
         editor.addWidget(self.when)
@@ -70,7 +76,12 @@ class WordsTab(QWidget):
         layout = QVBoxLayout(self)
         layout.addLayout(row, 1)
         layout.addWidget(_note(f"Up to {MAX_PHRASE} characters each. Saved to phrases.toml."))
-        layout.addLayout(self.taught)
+        layout.addWidget(QLabel("Words you've taught him"))
+        layout.addWidget(self.no_words)
+        layout.addWidget(self.taught)
+        layout.addWidget(self.forget_button, alignment=Qt.AlignmentFlag.AlignRight)
+        self.taught.currentRowChanged.connect(lambda row: self.forget_button.setEnabled(row >= 0))
+        self.forget_button.clicked.connect(self._forget)
 
         self._pause = QTimer(self, singleShot=True, interval=SAVE_AFTER_MS)
         self._pause.timeout.connect(self._take)
@@ -86,6 +97,25 @@ class WordsTab(QWidget):
     def show_phrases(self, phrases: Mapping[str, tuple[str, ...]]) -> None:
         self._phrases = dict(phrases)
         self._pick()
+
+    def show_taught(self, words: list[tuple[str, str, int, int]]) -> None:
+        """Taught words: ``(text, moment, lessons, lessons needed)`` each."""
+        self.taught.clear()
+        for text, moment, lessons, needed in words:
+            when = "any time" if moment == "random" else moment
+            progress = "learned" if lessons >= needed else f"{lessons} of {needed} lessons"
+            item_text = f"“{text}”  ·  {when}  ·  {progress}"
+            self.taught.addItem(item_text)
+            self.taught.item(self.taught.count() - 1).setData(Qt.ItemDataRole.UserRole, text)
+        self.taught.setVisible(bool(words))
+        self.no_words.setVisible(not words)
+        self.forget_button.setVisible(bool(words))
+        self.forget_button.setEnabled(False)
+
+    def _forget(self) -> None:
+        item = self.taught.currentItem()
+        if item is not None:
+            self.forget.emit(item.data(Qt.ItemDataRole.UserRole))
 
     def flush(self) -> None:
         """Take up an edit still waiting for the typing pause (the window is closing)."""

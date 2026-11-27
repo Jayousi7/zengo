@@ -1482,3 +1482,32 @@ class Away(State):
 
     def ask_for_food(self, ctx: Context) -> State | None:
         return None
+
+
+class Listen(State):
+    """A lesson: head cocked, listening to the word you've typed, then his try
+    at it in a cloud, beak working."""
+
+    clip = "listen"
+    listen_for: ClassVar[float] = 1.4
+    say_for: ClassVar[float] = 2.2
+
+    def __init__(self, said: str, learned: bool) -> None:
+        super().__init__()
+        self.said, self.learned, self.trying = said, learned, False
+
+    def clicked(self, ctx: Context) -> State | None:
+        return None  # listening
+
+    def typing(self, ctx: Context) -> State | None:
+        return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        if not self.trying and self.elapsed >= self.listen_for:
+            self.trying = True
+            ctx.animator.play("talk", restart=True)
+            ctx.say(self.said, self.say_for, mood="love" if self.learned else "plain")
+            ctx.play("trill" if self.learned else "chirp_c")
+        if self.trying and self.elapsed >= self.listen_for + self.say_for:
+            return Idle()
+        return None

@@ -79,6 +79,9 @@ CLIPS: dict[str, Clip] = {
         (0.1, 0.12, *(0.16,) * 12, 0.1),
         loop=False,
     ),
+    # Listening to a lesson, then trying the word (drawn properly with the poses).
+    "listen": Clip(("alert",), (1.0,)),
+    "talk": Clip(("chew_a", "chew_b") * 4, (0.14,) * 8, loop=False),
     # A quick ruffle after landing, then settle.
     # Turned towards you, back through the middle, away, and so on: a turn of the
     # head each way, quick but never skipping the middle.

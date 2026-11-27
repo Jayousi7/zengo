@@ -22,6 +22,7 @@ from zengo.behavior.context import Context
 from zengo.behavior.machine import Brain
 from zengo.behavior.memory import restore, snapshot
 from zengo.behavior.states import Away
+from zengo.behavior.vocabulary import Lesson
 from zengo.behavior.voice import Voice, VoiceFiles
 from zengo.config import Config
 from zengo.settings import Flags, Settings, build_config, migrated
@@ -43,6 +44,7 @@ from zengo.ui.sound import SoundPlayer
 from zengo.ui.sprites import SpriteSheet
 from zengo.ui.state_file import StateFile
 from zengo.ui.status_panel import StatusPanel
+from zengo.ui.teach_box import TeachBox
 from zengo.ui.tray import Tray
 from zengo.ui.voice_tabs import SoundsTab, WordsTab, voice_with
 from zengo.ui.window import PetWindow
@@ -104,6 +106,8 @@ class Pet:
         self._autostart = autostart or Autostart(None)
         self._voice_files = voice_files
         self._settings_window: SettingsWindow | None = None
+        self._teach_box: TeachBox | None = None
+        self._words_tab: WordsTab | None = None
         self._world = QtWorld()
 
         area = self._world.area_at(*self._world.cursor())
@@ -352,6 +356,7 @@ class Pet:
             start = menu.addAction("Start at login", lambda: self.set_autostart(not login))
             start.setCheckable(True)
             start.setChecked(login)
+        menu.addAction("Teach Zengo…", self.open_teach_box)
         menu.addAction("Settings…", self.open_settings)
         menu.addSeparator()
         menu.addAction("Quit Zengo", QApplication.quit)
@@ -415,6 +420,8 @@ class Pet:
         self._words_tab = WordsTab()
         self._words_tab.show_phrases(voice.phrases)
         self._words_tab.edited.connect(lambda p: self.change_voice(voice_with(self.voice, p)))
+        self._words_tab.forget.connect(self.forget_word)
+        self._show_taught()
         self._sounds_tab = SoundsTab()
         self._sounds_tab.show_sounds(voice.sounds)
         self._sounds_tab.edited.connect(
@@ -424,6 +431,34 @@ class Pet:
         self._sounds_tab.set_recording(False, "not available yet")
         window.add_tab(self._words_tab, "Words")
         window.add_tab(self._sounds_tab, "Sounds")
+
+    def open_teach_box(self) -> None:
+        if self._teach_box is None:
+            self._teach_box = TeachBox(self.teach, self._brain.can_learn)
+        self._teach_box.show()
+        self._teach_box.raise_()
+        self._teach_box.activateWindow()
+
+    def teach(self, text: str, moment: str) -> Lesson | None:
+        lesson = self._brain.lesson(text, moment)
+        if lesson is not None:
+            self.save()
+            self._show_taught()
+        return lesson
+
+    def forget_word(self, text: str) -> None:
+        self._brain.ctx.vocabulary.forget(text)
+        self.save()
+        self._show_taught()
+
+    def _show_taught(self) -> None:
+        if self._words_tab is None:
+            return
+        ctx = self._brain.ctx
+        needed = ctx.words_needed()
+        self._words_tab.show_taught(
+            [(w.text, w.moment, w.lessons, needed) for w in ctx.vocabulary.words]
+        )
 
     @property
     def voice(self) -> Voice:
@@ -442,6 +477,7 @@ class Pet:
         """Start over: he forgets everything he remembers (your settings stay)."""
         self._brain.forget()
         self.save()
+        self._show_taught()
         self._render()
 
     def _start_catching(self) -> None:

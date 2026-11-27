@@ -15,11 +15,13 @@ from zengo.behavior.states import (
     Fly,
     Follow,
     Idle,
+    Listen,
     State,
     cursor_is_inviting,
 )
 from zengo.behavior.status import Status
 from zengo.behavior.status import read as read_status
+from zengo.behavior.vocabulary import Lesson, Vocabulary
 from zengo.sounds import CHIRPS
 
 
@@ -214,12 +216,39 @@ class Brain:
         if not (near and self._state.grounded and ctx.body.y >= area.bottom - 1):
             self.transition(Fly.to_middle(ctx))
 
+    # --- Lessons -------------------------------------------------------------------
+
+    def can_learn(self) -> str | None:
+        """Why he can't have a lesson right now, or ``None`` if he can."""
+        if self.away:
+            return "He's away. Show him first."
+        if self.caged:
+            return "Not while he's caged: let him out first."
+        if isinstance(self._state, Listen):
+            return "He's still on the last one."
+        if not self._state.grounded:
+            return "He's busy. Try again when he's settled."
+        return None
+
+    def lesson(self, text: str, moment: str) -> Lesson | None:
+        """Teach him ``text`` (to say at ``moment`` once learned): he listens, then
+        tries it. ``None`` if he can't now (see :meth:`can_learn`) or it's empty."""
+        ctx = self.ctx
+        if self.can_learn() is not None:
+            return None
+        lesson = ctx.vocabulary.teach(text, moment, ctx.clock(), ctx.words_needed(), ctx.rng)
+        if lesson is not None:
+            self.transition(Listen(lesson.said, lesson.learned))
+        return lesson
+
     def forget(self) -> None:
-        """Start over, as a new bird: his bond, hunger, seeds, cage and escape
-        progress all back to how they are the first time he runs."""
+        """Start over, as a new bird: his bond, hunger, seeds, cage, escape
+        progress and the words you've taught him all back to how they are the
+        first time he runs."""
         ctx = self.ctx
         ctx.bond, ctx.hunger, ctx.escape = Bond(), Hunger(), EscapeProgress()
         ctx.cage = ctx.food = ctx.speech = None
+        ctx.vocabulary = Vocabulary()
         self._asks = 0
         self._welcome_wait = 0.0
         ctx.body.vx = ctx.body.vy = 0.0

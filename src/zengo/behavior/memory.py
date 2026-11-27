@@ -1,7 +1,7 @@
 """What Zengo remembers between runs: where he was and which way he faced, whether
 he was caged (and where the cage hung or stood, and the seeds in its dish), how
-full he is, whether he's hungry, the seeds you've put out, and how far he's got
-towards escaping.
+full he is, whether he's hungry, the seeds you've put out, how far he's got
+towards escaping, and the words you've taught him.
 
 Plain data in and out, so the app can keep it in a file. Restoring is forgiving:
 anything missing, of the wrong type or out of range is left at its default, so a
@@ -19,9 +19,11 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Any
 
+from zengo.behavior import vocabulary
 from zengo.behavior.body import Facing
 from zengo.behavior.cage import BELOW_FLOOR, Cage
 from zengo.behavior.food import STAND_OFF, Food, Pile
+from zengo.behavior.voice import MOMENTS
 from zengo.sprites.cage import CAGE_WIDTH, FLOOR
 from zengo.sprites.food import MAX_SEEDS
 
@@ -45,6 +47,7 @@ def snapshot(ctx: Context) -> dict[str, Any]:
         "zengo": {"x": round(ctx.body.x, 1), "facing": int(ctx.body.facing)},
         "cage": _cage_snapshot(ctx.cage),
         "bond": round(ctx.bond.level, 4),
+        "vocabulary": vocabulary.to_json(ctx.vocabulary),
         "escape": {
             "caged_for": round(ctx.escape.caged_for, 2),
             "feedings": ctx.escape.feedings,
@@ -59,6 +62,8 @@ def restore(ctx: Context, data: object) -> None:
         return
     cfg = ctx.config
     ctx.bond.level = _number(data.get("bond"), 0.0, 1.0, ctx.bond.level)
+    if "vocabulary" in data:
+        ctx.vocabulary = vocabulary.from_json(data["vocabulary"], tuple(MOMENTS))
     hunger = data.get("hunger")
     if isinstance(hunger, dict):
         h = ctx.hunger
