@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -171,6 +172,13 @@ class SettingsWindow(QWidget):
 
     def add_tab(self, tab: QWidget, title: str) -> None:
         self.tabs.addTab(tab, title)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        for i in range(self.tabs.count()):
+            flush = getattr(self.tabs.widget(i), "flush", None)
+            if flush is not None:
+                flush()  # an edit still waiting for the pause in typing
+        super().closeEvent(event)
 
     def show_settings(self, settings: Settings, autostart: bool | None = None) -> None:
         """Show what's in force (changed elsewhere too: the menu's Sounds toggle).

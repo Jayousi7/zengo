@@ -22,7 +22,7 @@ from zengo.behavior.context import Context
 from zengo.behavior.machine import Brain
 from zengo.behavior.memory import restore, snapshot
 from zengo.behavior.states import Away
-from zengo.behavior.voice import VoiceFiles
+from zengo.behavior.voice import Voice, VoiceFiles
 from zengo.config import Config
 from zengo.settings import Flags, Settings, build_config, migrated
 from zengo.sprites.cage import CAGE_WIDTH, FLOOR
@@ -44,6 +44,7 @@ from zengo.ui.sprites import SpriteSheet
 from zengo.ui.state_file import StateFile
 from zengo.ui.status_panel import StatusPanel
 from zengo.ui.tray import Tray
+from zengo.ui.voice_tabs import SoundsTab, WordsTab, voice_with
 from zengo.ui.window import PetWindow
 
 MAX_FRAME_DT = 0.1
@@ -401,11 +402,41 @@ class Pet:
             window.previewed.connect(lambda s: self.change_settings(s, keep=False))
             window.reset_confirmed.connect(self.reset)
             window.autostart_changed.connect(self.set_autostart)
+            if self._voice_files is not None:
+                self._add_voice_tabs(window)
             self._settings_window = window
         self._settings_window.show_settings(self._settings, self._settings_window_autostart())
         self._settings_window.show()
         self._settings_window.raise_()
         self._settings_window.activateWindow()
+
+    def _add_voice_tabs(self, window: SettingsWindow) -> None:
+        voice = self._brain.ctx.voice
+        self._words_tab = WordsTab()
+        self._words_tab.show_phrases(voice.phrases)
+        self._words_tab.edited.connect(lambda p: self.change_voice(voice_with(self.voice, p)))
+        self._sounds_tab = SoundsTab()
+        self._sounds_tab.show_sounds(voice.sounds)
+        self._sounds_tab.edited.connect(
+            lambda s: self.change_voice(voice_with(self.voice, sounds=s))
+        )
+        self._sounds_tab.play.connect(self._sound.play)
+        self._sounds_tab.set_recording(False, "not available yet")
+        window.add_tab(self._words_tab, "Words")
+        window.add_tab(self._sounds_tab, "Sounds")
+
+    @property
+    def voice(self) -> Voice:
+        return self._brain.ctx.voice
+
+    def change_voice(self, voice: Voice) -> None:
+        """New phrases or sounds: used at once, and saved to his voice files."""
+        old = self._brain.ctx.voice
+        self._brain.ctx.voice = voice
+        if voice.sounds != old.sounds:
+            self._sound.use(voice.sounds)
+        if self._voice_files is not None:
+            self._voice_files.save(voice)
 
     def reset(self) -> None:
         """Start over: he forgets everything he remembers (your settings stay)."""
