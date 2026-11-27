@@ -74,9 +74,11 @@ CLIPS: dict[str, Clip] = {
     # Whistling: crest up, nodding to the tune.
     "whistle": Clip(("whistle_a", "alert") * 7, (0.16,) * 14, loop=False),
     # A quick ruffle after landing, then settle.
+    # Turned towards you, back through the middle, away, and so on: a turn of the
+    # head each way, quick but never skipping the middle.
     "shake": Clip(
-        ("shake_a", "shake_b") * 3 + ("perch",),
-        (0.07,) * 6 + (0.25,),
+        ("shake_mid",) + ("shake_a", "shake_mid", "shake_b", "shake_mid") * 2 + ("perch",),
+        (0.12,) + (0.07, 0.05, 0.07, 0.05) * 2 + (0.25,),
         loop=False,
     ),
 }
@@ -105,7 +107,9 @@ FRONT_CLIPS: dict[str, Clip] = {
         loop=False,
     ),
     "front_fluff": Clip(
-        ("front_fluff_a", "front_fluff_b") * 3 + ("front_perch",), (0.07,) * 6 + (0.3,), loop=False
+        ("front_fluff_a", "front_alert", "front_fluff_b", "front_alert") * 2 + ("front_perch",),
+        (0.07, 0.05, 0.07, 0.05) * 2 + (0.3,),
+        loop=False,
     ),
     "front_sleep": Clip(("front_sleep",), (1.0,)),
     # Bobbing his head along while you type, on uneven beats.

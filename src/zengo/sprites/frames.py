@@ -35,6 +35,8 @@ _FLYING_HEAD = _shifted(0, 9, art.CREST_FLAT, art.HEAD)
 _STARTLED_HEAD = _shifted(0, 9, art.CREST_RAISED, art.HEAD)
 
 _PECKING_BODY = (art.LEGS, art.TAIL, art.BODY, art.WING_FOLDED)
+_SITTING = _PECKING_BODY
+_PUFFED = (art.LEGS, art.TAIL, art.BODY, art.PUFF, art.WING_FOLDED)
 _HELD_BODY = (art.TAIL_HANGING, art.BODY, art.WING_FOLDED)
 _HELD_HEAD = (art.HEAD, art.CREST_RAISED)
 
@@ -73,57 +75,18 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     "held_blink": (art.LEGS_DANGLE, *_HELD_BODY, *_HELD_HEAD, art.EYE_CLOSED),
     "held_kick_a": (art.LEGS_KICK_FRONT, *_HELD_BODY, *_HELD_HEAD),
     "held_kick_b": (art.LEGS_KICK_BACK, *_HELD_BODY, *_HELD_HEAD),
-    "held_look": (art.LEGS_DANGLE, *_HELD_BODY, *_shifted(1, 2, *_HELD_HEAD)),
+    "held_look": (art.LEGS_DANGLE, *_HELD_BODY, art.HEAD_DOWN, art.CREST_RAISED.shifted(1, 1)),
     "held_flick": (art.LEGS_DANGLE, art.TAIL_HANGING, art.BODY, art.WING_HALF, *_HELD_HEAD),
-    # Feathers puffed and the head shaken side to side, settling after a landing.
-    "shake_a": (
-        art.LEGS,
-        art.TAIL,
-        art.BODY,
-        art.PUFF,
-        art.WING_FOLDED,
-        *_shifted(-1, 0, art.HEAD, art.CREST_RAISED),
-    ),
-    "shake_b": (
-        art.LEGS,
-        art.TAIL,
-        art.BODY,
-        art.PUFF,
-        art.WING_FOLDED,
-        *_shifted(1, 0, art.HEAD, art.CREST_RAISED),
-    ),
-    # Petted: fluffed up, eyes shut, crest relaxed, leaning into the hand.
-    "petted_a": (
-        art.LEGS,
-        art.TAIL,
-        art.BODY,
-        art.PUFF,
-        art.WING_FOLDED,
-        *_shifted(0, 1, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED),
-    ),
-    "petted_b": (
-        art.LEGS,
-        art.TAIL,
-        art.BODY,
-        art.PUFF,
-        art.WING_FOLDED,
-        *_shifted(-1, 2, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED),
-    ),
-    # Bobbing his head along to your typing: forward, then down, and back.
-    "bob_fwd": (
-        art.LEGS,
-        art.TAIL,
-        art.BODY,
-        art.WING_FOLDED,
-        *_shifted(1, 0, art.CREST, art.HEAD),
-    ),
-    "bob": (
-        art.LEGS,
-        art.TAIL,
-        art.BODY,
-        art.WING_FOLDED,
-        *_shifted(1, 1, art.CREST, art.HEAD),
-    ),
+    # Feathers puffed and the head shaken: turned towards you, back, and away.
+    "shake_a": (*_PUFFED, art.HEAD_TURNED, art.CREST_RAISED),
+    "shake_mid": (*_PUFFED, art.HEAD, art.CREST_RAISED),
+    "shake_b": (*_PUFFED, art.HEAD_AWAY, art.CREST_RAISED.shifted(-1, 0)),
+    # Petted: fluffed up, eyes shut, crest relaxed, tilting his head into the hand.
+    "petted_a": (*_PUFFED, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED),
+    "petted_b": (*_PUFFED, art.CREST_FLAT.shifted(1, 1), art.HEAD_DOWN, art.EYE_CLOSED),
+    # Bobbing his head along to your typing: it tips down, then dips a little.
+    "bob_fwd": (*_SITTING, art.HEAD_DOWN, art.CREST.shifted(1, 1)),
+    "bob": (*_SITTING, art.HEAD_DOWN.shifted(0, 1), art.CREST.shifted(1, 2)),
     # Keeping his balance on a moving window: crest up, leaning back, a wing out.
     "grip": (
         art.LEGS,
@@ -132,19 +95,12 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.WING_HALF,
         *_shifted(-1, 1, art.CREST_RAISED, art.HEAD),
     ),
-    # Whistling: crest up, nodding to the tune with the beak open. The head nods
-    # down into the body, so no gap can open at the neck.
-    "whistle_a": (
-        art.LEGS,
-        art.TAIL,
-        art.BODY,
-        art.WING_FOLDED,
-        *_shifted(1, 1, art.CREST_RAISED, art.HEAD, art.BEAK_OPEN),
-    ),
+    # Whistling: crest up, head tipped back to sing with the beak open.
+    "whistle_a": (*_SITTING, art.HEAD_UP, art.BEAK_OPEN_UP, art.CREST_RAISED.shifted(-1, 0)),
     # Eating seeds off the ground: the head dips to peck one up, then comes back up
     # to crack it, beak working.
-    "peck_down": (*_PECKING_BODY, *_shifted(5, 9, art.CREST_FLAT, art.HEAD)),
-    "peck_low": (*_PECKING_BODY, *_shifted(6, 11, art.CREST_FLAT, art.HEAD)),
+    "peck_down": (*_PECKING_BODY, *_shifted(5, 8, art.CREST_FLAT, art.HEAD_DOWN)),
+    "peck_low": (*_PECKING_BODY, *_shifted(6, 10, art.CREST_FLAT, art.HEAD_DOWN)),
     "chew_a": (*_PECKING_BODY, *_shifted(2, 3, art.CREST, art.HEAD, art.BEAK_OPEN)),
     "chew_b": (*_PECKING_BODY, *_shifted(2, 3, art.CREST, art.HEAD)),
     # The downstroke lifts the body a pixel.
@@ -167,46 +123,59 @@ _MIDLINE = ANCHOR_COLUMN - PADDING
 
 _FRONT_UP = (art.FRONT_CREST, art.FRONT_HEAD)
 _FRONT_SITTING = (art.FRONT_FEET, art.FRONT_BODY)
+_FRONT_TURN_L = (art.FRONT_HEAD_TURN.mirrored(_MIDLINE),)
 # Preening from the front: the head turns to a shoulder in profile, beak in the wing.
 _PREEN_TO_SIDE = _shifted(-6, 5, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED)
 
 FRONT_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     "front_perch": (*_FRONT_SITTING, *_FRONT_UP),
     "front_blink": (*_FRONT_SITTING, *_FRONT_UP, art.FRONT_EYES_CLOSED),
-    "front_look_l": (*_FRONT_SITTING, *_shifted(-1, 0, *_FRONT_UP)),
-    "front_look_r": (*_FRONT_SITTING, *_shifted(1, 0, *_FRONT_UP)),
+    "front_look_l": (*_FRONT_SITTING, *_FRONT_TURN_L, art.FRONT_CREST.shifted(-1, 0)),
+    "front_look_r": (*_FRONT_SITTING, art.FRONT_HEAD_TURN, art.FRONT_CREST.shifted(1, 0)),
     "front_alert": (*_FRONT_SITTING, art.FRONT_CREST_RAISED, art.FRONT_HEAD),
     "front_preen_a": (*_FRONT_SITTING, *_PREEN_TO_SIDE),
     "front_preen_b": (*_FRONT_SITTING, *(layer.mirrored(_MIDLINE) for layer in _PREEN_TO_SIDE)),
+    # A ruffle from the front: puffed up, the head turned one way, then the other.
     "front_fluff_a": (
         *_FRONT_SITTING,
         art.FRONT_PUFF,
-        *_shifted(-1, 0, art.FRONT_CREST_RAISED, art.FRONT_HEAD),
+        *_FRONT_TURN_L,
+        art.FRONT_CREST_RAISED.shifted(-1, 0),
     ),
     "front_fluff_b": (
         *_FRONT_SITTING,
         art.FRONT_PUFF,
-        *_shifted(1, 0, art.FRONT_CREST_RAISED, art.FRONT_HEAD),
+        art.FRONT_HEAD_TURN,
+        art.FRONT_CREST_RAISED.shifted(1, 0),
     ),
+    # Petted: eyes shut, crest relaxed, tilting his head down into the hand.
     "front_petted_a": (
         *_FRONT_SITTING,
         art.FRONT_PUFF,
-        *_shifted(-1, 1, art.FRONT_CREST_FLAT, art.FRONT_HEAD, art.FRONT_EYES_CLOSED),
+        art.FRONT_CREST_FLAT,
+        art.FRONT_HEAD,
+        art.FRONT_EYES_CLOSED,
     ),
     "front_petted_b": (
         *_FRONT_SITTING,
         art.FRONT_PUFF,
-        *_shifted(1, 1, art.FRONT_CREST_FLAT, art.FRONT_HEAD, art.FRONT_EYES_CLOSED),
+        art.FRONT_CREST_FLAT.shifted(0, 1),
+        art.FRONT_HEAD_DOWN,
+        art.FRONT_EYES_CLOSED.shifted(0, 1),
     ),
-    "front_bob": (*_FRONT_SITTING, *_shifted(0, 1, art.FRONT_CREST, art.FRONT_HEAD)),
+    "front_bob": (*_FRONT_SITTING, art.FRONT_HEAD_DOWN, art.FRONT_CREST.shifted(0, 1)),
     "front_whistle_a": (
         *_FRONT_SITTING,
-        *_shifted(0, 1, art.FRONT_CREST_RAISED, art.FRONT_HEAD, art.FRONT_BEAK_OPEN),
+        art.FRONT_CREST_RAISED,
+        art.FRONT_HEAD,
+        art.FRONT_BEAK_OPEN,
     ),
-    "front_peck": (*_FRONT_SITTING, *_shifted(0, 4, art.FRONT_CREST, art.FRONT_HEAD)),
+    "front_peck": (*_FRONT_SITTING, *_shifted(0, 3, art.FRONT_CREST, art.FRONT_HEAD_DOWN)),
     "front_chew": (
         *_FRONT_SITTING,
-        *_shifted(0, 1, art.FRONT_CREST, art.FRONT_HEAD, art.FRONT_BEAK_OPEN),
+        art.FRONT_CREST.shifted(0, 1),
+        art.FRONT_HEAD_DOWN,
+        art.FRONT_BEAK_OPEN.shifted(0, 1),
     ),
     "front_sleep": (
         *_FRONT_SITTING,

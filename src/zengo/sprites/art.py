@@ -667,3 +667,116 @@ BACK_PEEK = _layer(
     x=25,
     y=10,
 )
+
+
+# --- Turning and tilting the head -------------------------------------------------
+# A head moves by turning on its neck, not by sliding across the body: these are
+# the same head seen at other angles, in the same place as HEAD / FRONT_HEAD.
+
+# Tilted down, beak tucked: nodding, pecking, looking at the ground.
+HEAD_DOWN = _layer(
+    """
+    .....LWWW
+    ...LLWWWWW
+    ..BLWWWWWW
+    ..BLLWWWWW
+    ..BLLWWKWWW
+    ..BBLWWWWWQ
+    .SBBLWWWWQQ
+    SBBBLLWWWQq
+    ........qq
+    """,
+    x=30,
+    y=8,
+)
+
+# Tipped up, beak raised: singing.
+HEAD_UP = _layer(
+    """
+    ....LWWWW
+    ...LLWWWWWQ
+    ..BLWWWWWQq
+    ..BLLWWKWWq
+    ..BLLWWWWW
+    ..BBLWWWWW
+    .SBBLWWWW
+    SBBBLLWWW
+    """,
+    x=30,
+    y=8,
+)
+
+# Singing, beak open: the lower mandible drops away.
+BEAK_OPEN_UP = _layer(
+    """
+    K
+    .q
+    """,
+    x=40,
+    y=10,
+)
+
+# Turned towards you: both eyes, the beak pointing your way.
+HEAD_TURNED = _layer(
+    """
+    ....LWWWW
+    ...LWWWWWW
+    ..BLWWWWWWL
+    ..BLKWWWKWL
+    ..BLWWWQWWL
+    ..BBLWQQqWL
+    .SBBLWWqWW
+    SBBBLLWWW
+    """,
+    x=30,
+    y=8,
+)
+
+# Turned away: the back of his head, an eye and the beak tip just showing.
+HEAD_AWAY = _layer(
+    """
+    ....LLLWW
+    ...LLLLWWW
+    ..BBLLLWWW
+    ..BBLLLLWW
+    ..BBBLLKWW
+    ..BBBLLLWWQ
+    .SBBBBLLWW
+    SBBBBLLLW
+    """,
+    x=30,
+    y=8,
+)
+
+# From the front, nodding: more forehead, eyes and beak lower in the face.
+FRONT_HEAD_DOWN = _layer(
+    """
+    .LWWWWWL
+    LWWWWWWWL
+    WWWWWWWWW
+    WWWWWWWWW
+    WKWWWWWKW
+    LWWWQWWWL
+    .LWQQqWL
+    .BLWqWLB
+    """,
+    x=26,
+    y=8,
+)
+
+# From the front, turned three-quarters to his left (your right). Mirror it for
+# the other way.
+FRONT_HEAD_TURN = _layer(
+    """
+    .LLWWWWL
+    BLWWWWWWL
+    BLWWWWWWW
+    BLWKWWWKW
+    BLWWWWWQW
+    BBLWWQQqW
+    .BLWWWqWL
+    .BBLWWWLB
+    """,
+    x=26,
+    y=8,
+)
