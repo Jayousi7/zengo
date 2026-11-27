@@ -1,7 +1,6 @@
 """The Words and Sounds tabs of his settings window."""
 
 import random
-from pathlib import Path
 
 from zengo.behavior.voice import DEFAULT_PHRASES, VoiceFiles
 
@@ -74,8 +73,9 @@ def test_the_settings_window_edits_his_voice_and_its_files(tmp_path):
         pet._settings_window.close()  # takes up the edit
         assert pet.voice.lines("fed") == ("nom nom",)
         assert VoiceFiles(tmp_path).load().lines("fed") == ("nom nom",)
-        pet._sounds_tab._choose = lambda: Path("/somewhere/t.wav")
+        elsewhere = tmp_path.parent / "somewhere" / "t.wav"
+        pet._sounds_tab._choose = lambda: elsewhere
         pet._sounds_tab.buttons["trill"]["file"].click()
-        assert VoiceFiles(tmp_path).load().sounds == {"trill": Path("/somewhere/t.wav")}
+        assert VoiceFiles(tmp_path).load().sounds == {"trill": elsewhere}
     finally:
         pet._window.close()

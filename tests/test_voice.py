@@ -1,7 +1,6 @@
 """His phrases and sounds, from phrases.toml and sounds.toml."""
 
 import tomllib
-from pathlib import Path
 
 from zengo.behavior.machine import Brain
 from zengo.behavior.states import Idle
@@ -55,18 +54,19 @@ def test_bad_entries_fall_back_on_their_own():
 
 
 def test_sounds_point_at_files_and_unknown_ones_are_ignored(tmp_path):
+    elsewhere = tmp_path.parent / "elsewhere" / "ask.wav"  # absolute, on any system
     sounds = sounds_from(
-        {"trill": "mine.wav", "ask": "/abs/ask.wav", "chirp_a": "built-in", "squeak": "x.wav"},
+        {"trill": "mine.wav", "ask": str(elsewhere), "chirp_a": "built-in", "squeak": "x.wav"},
         tmp_path,
     )
-    assert sounds == {"trill": tmp_path / "mine.wav", "ask": Path("/abs/ask.wav")}
+    assert sounds == {"trill": tmp_path / "mine.wav", "ask": elsewhere}
 
 
 def test_the_files_round_trip_awkward_text(tmp_path):
     awkward = ('say "hi"', "back\\slash", "♪ ♫ 🐦", "tab\there", "new\nline")
     phrases = {**DEFAULT_PHRASES, "random": awkward}
     assert phrases_from(tomllib.loads(phrases_toml(phrases)))["random"] == awkward
-    sounds = {"trill": tmp_path / "my trill.wav", "ask": Path('/x/a"b.wav')}
+    sounds = {"trill": tmp_path / "my trill.wav", "ask": tmp_path / "sub dir" / "a'b ♪.wav"}
     assert sounds_from(tomllib.loads(sounds_toml(sounds, tmp_path)), tmp_path) == sounds
 
 
