@@ -15,6 +15,7 @@ from zengo.behavior.states import (
     Dragged,
     Fall,
     Fly,
+    FocusRest,
     Follow,
     Idle,
     Listen,
@@ -23,6 +24,7 @@ from zengo.behavior.states import (
     Walk,
     can_fly,
     cursor_is_inviting,
+    focus_rest,
 )
 from zengo.behavior.status import Status
 from zengo.behavior.status import read as read_status
@@ -55,8 +57,12 @@ class Brain:
         ctx.animator.update(dt)
         ctx.scenery.update(ctx, dt, occupied=self._state.holds_branch)
         ctx.effects.update(dt, ctx.config.scale)
+        self._mind_the_focus()
         ctx.bath.update(
-            ctx, dt, occupied=self._state.holds_bath, free=not (self.caged or self.away)
+            ctx,
+            dt,
+            occupied=self._state.holds_bath,
+            free=not (self.caged or self.away or ctx.focus.focusing),
         )
         ctx.damp = max(0.0, ctx.damp - dt)
         ctx.toys.update(ctx, dt, caged=self.caged, away=self.away, at_mirror=self._state.at_mirror)
@@ -101,6 +107,8 @@ class Brain:
         ctx, cfg = self.ctx, self.ctx.config
         if ctx.bond.welcome_due:
             ctx.bond.welcome_due, self._welcome_wait = False, 30.0
+        if ctx.focus.focusing:
+            self._welcome_wait = 0.0  # no fuss while you're focusing
         if self._welcome_wait <= 0:
             return
         self._welcome_wait -= dt
@@ -127,7 +135,7 @@ class Brain:
         """Now and then, pottering about, a little chirp: more often when he's
         devoted to you, less when he's grumpy."""
         ctx, cfg = self.ctx, self.ctx.config
-        if not self._state.chirpy or ctx.speech is not None:
+        if not self._state.chirpy or ctx.speech is not None or ctx.hushed:
             return
         every = cfg.chirp_every * (
             0.6 if ctx.bond.close(cfg) else 2.0 if ctx.bond.grumpy(cfg) else 1.0
@@ -150,6 +158,16 @@ class Brain:
         if side_on and self._state.grounded and not isinstance(self._state, Listen):
             ctx.animator.interject("talk")
 
+    def _mind_the_focus(self) -> None:
+        """Keep time for the focus timer, and act on what it says."""
+        ctx = self.ctx
+        ctx.focus.update(ctx.clock())
+        for event in ctx.focus.take_events():
+            if event == "focus" and self._state.pottering:
+                self.transition(focus_rest(ctx))  # settle down somewhere out of the way
+            elif event == "stopped" and isinstance(self._state, FocusRest):
+                self.transition(Idle())
+
     def _mind_the_food(self) -> None:
         """Hunger, and what he does about it given what he's up to."""
         ctx = self.ctx
@@ -162,7 +180,7 @@ class Brain:
         following = None
         if food is not None and food.pile.seeds > 0:
             following = self._state.go_eat(ctx)
-        elif ctx.hunger.wants_to_ask:
+        elif ctx.hunger.wants_to_ask and not ctx.focus.focusing:  # he'll ask at the break
             following = self._state.ask_for_food(ctx)
             if following is not None:
                 ctx.hunger.asked(ctx)

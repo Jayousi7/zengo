@@ -37,6 +37,10 @@ class State:
     chirpy: ClassVar[bool] = False
     """Pottering about, he chirps now and then (see ``Config.chirp_every``)."""
 
+    pottering: ClassVar[bool] = False
+    """Just pottering about: free to drop it for something else (to settle down
+    for your focus session, say)."""
+
     def __init__(self) -> None:
         self.elapsed = 0.0
 
@@ -102,6 +106,7 @@ AFTERNOON = (13, 18)
 class Idle(State):
     clip = "idle"
     chirpy = True
+    pottering = True
 
     def typing(self, ctx: Context) -> State | None:
         return Bob()
@@ -136,7 +141,10 @@ def can_fly(ctx: Context) -> bool:
 
 
 def choose_activity(ctx: Context) -> State:
-    """Weighted pick of what to do after idling."""
+    """Weighted pick of what to do after idling. While you're focusing, only one
+    thing: settling down out of the way."""
+    if ctx.focus.focusing:
+        return focus_rest(ctx)
     if is_sleepy(ctx) and ctx.rng.random() < 0.6:
         return Sleep()
     flies = can_fly(ctx)
@@ -205,6 +213,7 @@ class Sulk(State):
     you've noticed. Petting brings him round."""
 
     clip = "sulk"
+    pottering = True
     effort = 0.6
 
     def enter(self, ctx: Context) -> None:
@@ -228,6 +237,7 @@ class Puffed(State):
     """Winter: sitting about puffed up against the cold."""
 
     clip = "puffed"
+    pottering = True
     chirpy = True
     effort = 0.8
 
@@ -246,6 +256,7 @@ class FrontIdle(State):
     """Sitting facing you for a while, looking about."""
 
     clip = "front_idle"
+    pottering = True
     chirpy = True
     sit_for: ClassVar[tuple[float, float]] = (4.0, 10.0)
 
@@ -277,6 +288,10 @@ class Walk(State):
     @property
     def holds_bath(self) -> bool:
         return self.then == "bathe"
+
+    @property
+    def pottering(self) -> bool:  # type: ignore[override]
+        return self.then is None
 
     def go_eat(self, ctx: Context) -> State | None:
         return None if self.then == "eat" else super().go_eat(ctx)
@@ -311,6 +326,8 @@ class Walk(State):
             return Bathe() if ctx.bath.usable else Idle()
         if self.then == "mirror":
             return PlayMirror() if ctx.toys.mirror is not None else Idle()
+        if self.then == "rest":
+            return FocusRest() if ctx.focus.focusing else Idle()
         return Ask() if self.then == "ask" else Idle()
 
 
@@ -318,6 +335,7 @@ class Follow(State):
     """Walk after the cursor's x position for a while."""
 
     clip = "walk"
+    pottering = True
     chirpy = True
     effort = 1.6  # waddling
     give_up_after: ClassVar[float] = 10.0
@@ -591,6 +609,8 @@ class Fly(State):
                 return Bathe() if ctx.bath.usable else Idle()
             if self.onto == "mirror":
                 return PlayMirror() if ctx.toys.mirror is not None else Idle()
+            if self.onto == "rest":
+                return FocusRest() if ctx.focus.focusing else Idle()
             if self.onto == "window":
                 return OnWindow(self.window, self.offset)
             if self.onto == "away":
@@ -1309,7 +1329,7 @@ class Caged(State):
         if hunger.hungry and dish.seeds > 0 and not busy:
             self._do(ctx, "eat")  # dinner! all is forgiven, for now
             self.anger, self.next_seed, self.to_eat = 0.0, 0.22, SEEDS_PER_STACK
-        elif hunger.wants_to_ask and not busy and self.doing != "sleep":
+        elif hunger.wants_to_ask and not busy and self.doing != "sleep" and not ctx.hushed:
             ctx.say(ctx.phrase("hungry"), ctx.config.complaint_seconds)
             ctx.play("ask")
             hunger.asked(ctx)  # all he can do from in here
@@ -1388,12 +1408,17 @@ class Caged(State):
             return None
         games = [
             *(["ring"] if bell_in_reach(ctx, "cage") else []),
-            *(["chat"] if ctx.toys.ready() and ctx.toys.mirror is not None else []),
+            *(
+                ["chat"]
+                if ctx.toys.ready() and ctx.toys.mirror is not None and not ctx.focus.focusing
+                else []
+            ),
         ]
         if games and ctx.rng.random() < 0.6:
             self._do(ctx, ctx.rng.choice(games))
             return None
-        pick = ctx.rng.choices(("preen", "fluff", "sit", "grumble"), (0.3, 0.2, 0.3, 0.2))[0]
+        grumble = 0.0 if ctx.hushed else 0.2  # not while you're focusing
+        pick = ctx.rng.choices(("preen", "fluff", "sit", "grumble"), (0.3, 0.2, 0.3, grumble))[0]
         if pick == "grumble":
             self._provoked(ctx)
             self.anger = ctx.rng.uniform(2.0, 3.0)
@@ -1652,7 +1677,7 @@ def bell_in_reach(ctx: Context, where: str) -> bool:
     """His bell's hanging ``where`` (``"branch"`` or ``"cage"``), he can reach it,
     and he's in the mood for a game."""
     bell = ctx.toys.bell
-    if bell is None or bell.where != where or not ctx.toys.ready():
+    if bell is None or bell.where != where or not ctx.toys.ready() or ctx.focus.focusing:
         return False
     return where == "cage" or abs(bell.x - ctx.body.x) <= ctx.config.px(BELL_REACH)
 
@@ -1724,6 +1749,59 @@ class PlayMirror(State):
         return None
 
 
+# --- Focus -----------------------------------------------------------------------
+
+FOCUS_SPOT = 12
+"""Art px in from his margin by the screen edge where he settles during focus."""
+
+
+def focus_rest(ctx: Context) -> State:
+    """Settle down out of the way, by the nearer side of the screen, for your
+    focus session: walk there (or fly, if it's far), then rest."""
+    cfg, body, area = ctx.config, ctx.body, ctx.area()
+    near_left = body.x - area.left < area.right - body.x
+    edge = area.left + ctx.margin if near_left else area.right - ctx.margin
+    spot = edge + (1 if near_left else -1) * cfg.px(FOCUS_SPOT)
+    on_ground = body.y >= area.bottom - 1
+    if on_ground and abs(spot - body.x) <= cfg.px(6):
+        return FocusRest()
+    if on_ground and (abs(spot - body.x) <= cfg.px(200) or not can_fly(ctx)):
+        return Walk(spot, then="rest")
+    return Fly(
+        [*_takeoff(ctx, towards=spot), *_landing(ctx, spot, coming_from=body.x)], onto="rest"
+    )
+
+
+class FocusRest(State):
+    """Out of the way while you focus: dozing, now and then a quiet preen. Your
+    typing doesn't stir him; the end of the session does."""
+
+    clip = "sleep"
+    effort = 0.4
+    doze: ClassVar[tuple[float, float]] = (40.0, 120.0)
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        self.until = ctx.rng.uniform(*self.doze)
+        self.preening = False
+
+    def typing(self, ctx: Context) -> State | None:
+        return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        if not ctx.focus.focusing:
+            return Idle()
+        if self.preening:
+            if ctx.animator.finished:
+                self.preening = False
+                ctx.animator.play("sleep", restart=True)
+                self.until = self.elapsed + ctx.rng.uniform(*self.doze)
+        elif self.elapsed >= self.until:
+            self.preening = True
+            ctx.animator.play("preen", restart=True)
+        return None
+
+
 def go_ask(ctx: Context) -> State:
     """Hungry with nothing to eat: he comes over to where your pointer is, lands
     below it and asks. If it's on another screen, he asks from where he is."""
@@ -1774,6 +1852,7 @@ class Bob(State):
     he was sitting. When the typing stops, he goes back to sitting about."""
 
     clip = "bob"
+    pottering = True
 
     def __init__(self, *, facing_you: bool = False) -> None:
         super().__init__()

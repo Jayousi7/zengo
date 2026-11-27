@@ -107,9 +107,16 @@ class Context:
             return garble(word.text, word.lessons / needed, self.rng)
         return self.rng.choice(self.voice.lines(moment))
 
+    @property
+    def hushed(self) -> bool:
+        """You're focusing: he keeps quiet."""
+        return self.focus.focusing
+
     def play(self, sound: str) -> None:
-        """Make a sound (see :mod:`zengo.sounds`); the app plays it if sound is on."""
-        self.sounds.append(sound)
+        """Make a sound (see :mod:`zengo.sounds`); the app plays it if sound is on.
+        Not a peep while you're focusing."""
+        if not self.hushed:
+            self.sounds.append(sound)
 
     def whistle(self) -> None:
         """A whistle: one of his phrases in a cloud, and its tune."""
