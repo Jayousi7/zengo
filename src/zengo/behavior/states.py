@@ -181,7 +181,7 @@ class Follow(State):
     clip = "walk"
     effort = 1.6  # waddling
     give_up_after: ClassVar[float] = 10.0
-    close_enough: ClassVar[float] = 18.0  # art px
+    close_enough: ClassVar[float] = 24.0  # art px
 
     def step(self, ctx: Context, dt: float) -> State | None:
         if self.elapsed >= self.give_up_after or not _cursor_on_same_screen(ctx):

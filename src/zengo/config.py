@@ -12,10 +12,11 @@ class Config:
 
     fps: int = 30
 
-    walk_speed: float = 10.0
-    """Average art pixels per second; a slow cockatiel waddle of about 2.5 px per step."""
+    walk_speed: float = 14.0
+    """Average art pixels per second. He only moves while a foot is lifted, so at the
+    walk clip's 7 frames a second that's about 4 px a step: a long bird's waddle."""
 
-    fly_speed: float = 110.0
+    fly_speed: float = 150.0
     gravity: float = 500.0
     max_fall_speed: float = 140.0
     """Fluttering caps the fall speed; Zengo never drops like a stone."""
@@ -36,7 +37,7 @@ class Config:
     air_drag: float = 1.5
     """Rate (1/s) at which a thrown Zengo loses horizontal speed."""
 
-    glide_speed: float = 90.0
+    glide_speed: float = 120.0
     """Speed of the glide that brings him down after being dropped or thrown."""
 
     idle_seconds: tuple[float, float] = (3.0, 9.0)

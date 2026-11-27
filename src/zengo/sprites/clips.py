@@ -30,7 +30,7 @@ CLIPS: dict[str, Clip] = {
         (3.2, 0.12, 2.4, 0.12, 0.18, 0.12),
     ),
     "alert": Clip(("alert", "blink", "alert"), (0.7, 0.1, 0.6), loop=False),
-    "walk": Clip.even("step_back", "perch", "step_front", "perch", fps=8),
+    "walk": Clip.even("step_back", "perch", "step_front", "perch", fps=7),
     "preen": Clip(
         ("preen_a", "preen_b") * 4 + ("preen_a",),
         (0.35, 0.25) * 4 + (0.5,),
@@ -38,10 +38,10 @@ CLIPS: dict[str, Clip] = {
     ),
     "sleep": Clip(("sleep",), (1.0,)),
     # Up, level, down, recover. Kept slow: fast two-frame flapping reads as an insect.
-    "fly": Clip.even("wings_up", "wings_level", "wings_down", "wings_recover", fps=10),
+    "fly": Clip.even("wings_up", "wings_level", "wings_down", "wings_recover", fps=12),
     "glide": Clip(("wings_level",), (1.0,)),
     "flare": Clip(("wings_up",), (1.0,)),
-    "flutter": Clip.even("wings_up", "wings_level", "wings_down", "wings_recover", fps=13),
+    "flutter": Clip.even("wings_up", "wings_level", "wings_down", "wings_recover", fps=15),
     # Front view, banking round to fly the other way.
     "turn": Clip(("turn_up", "turn_down"), (0.12, 0.12)),
     "held": Clip(*zip(*_HELD_FIDGETS, strict=True)),
