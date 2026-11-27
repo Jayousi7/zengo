@@ -12,10 +12,6 @@ class Config:
 
     fps: int = 30
 
-    walk_speed: float = 14.0
-    """Average art pixels per second. He only moves while a foot is lifted, so at the
-    walk clip's 7 frames a second that's about 4 px a step: a long bird's waddle."""
-
     fly_speed: float = 150.0
     gravity: float = 500.0
     max_fall_speed: float = 140.0

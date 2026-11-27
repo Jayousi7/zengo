@@ -73,6 +73,11 @@ class Animator:
         return not clip.loop and self._time >= clip.length
 
     @property
+    def base_frame(self) -> str:
+        """The current clip's frame, ignoring any one-shot clip shown over it."""
+        return _frame_at(self._clips[self._name], self._time)
+
+    @property
     def frame(self) -> str:
         if self._aside is not None:
             name, t = self._aside

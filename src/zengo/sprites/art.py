@@ -1,8 +1,9 @@
-"""Zengo's pixel art, facing right, on a 52x34 grid.
+"""Zengo's pixel art, facing right, on a 52x40 grid.
 
 Proportions follow a real cockatiel in side view: a small white-faced head with
 a tall crest, a slim body sloping back, and a tail as long as the rest of him.
-Rows below the ground row are left free for the wing's downstroke in flight.
+Rows below the ground row are left free for the wing's downstroke in flight,
+and for his tail hanging down behind the branch when he sits on it facing you.
 
 Every perched pose is the base drawing plus small overlays: a shifted head, a
 different crest, closed eyes. Flight has its own level body, with the head
@@ -573,7 +574,8 @@ FRONT_FEET = _layer(
 )
 
 
-# Seen from the front on the branch, the tail hangs down behind it.
+# Seen from the front on the branch, the tail hangs down behind it: as long as
+# the rest of him, so most of it shows below the branch.
 FRONT_TAIL = _layer(
     """
     tTt
@@ -581,6 +583,12 @@ FRONT_TAIL = _layer(
     tTt
     tTt
     tTt
+    tTt
+    tTt
+    tTt
+    tTt
+    .Tt
+    .T
     .t
     """,
     x=29,

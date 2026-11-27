@@ -81,6 +81,39 @@ def test_he_rides_along_when_the_window_moves(ctx, world):
     assert (ctx.body.x, ctx.body.y) == (pytest.approx(x + 100), 420)
 
 
+def test_between_window_list_reads_he_rides_on_a_fresh_read_and_keeps_his_balance(ctx, world):
+    brain = Brain(ctx, Idle())
+    perch(ctx, world, brain)
+    run(brain, 1)
+    x = ctx.body.x
+    world.live_windows[7] = Window(7, 650, 480, 1250, 900)  # being dragged; the list is stale
+    brain.tick(DT)
+    assert isinstance(brain.state, OnWindow)
+    assert (ctx.body.x, ctx.body.y) == (pytest.approx(x + 50), 480)
+    assert ctx.animator.frame == "grip"
+    run(brain, 0.5)  # the window has stopped
+    assert ctx.animator.frame != "grip"
+
+
+def test_a_ride_wakes_him(ctx, world):
+    brain = Brain(ctx, Idle())
+    perch(ctx, world, brain)
+    brain.state._do(ctx, "sleep")
+    world.live_windows[7] = Window(7, 650, 480, 1250, 900)
+    brain.tick(DT)
+    assert brain.state.doing == "alert"
+
+
+def test_losing_his_window_startles_him(ctx, world):
+    brain = Brain(ctx, Idle())
+    perch(ctx, world, brain)
+    world.windows_on_top = []
+    brain.tick(DT)
+    assert isinstance(brain.state, Fall)
+    assert ctx.animator.frame.startswith("startle_")
+    assert "chirp_b" in ctx.sounds
+
+
 @pytest.mark.parametrize(
     "change",
     [

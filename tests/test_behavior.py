@@ -3,7 +3,7 @@ import pytest
 from zengo.behavior.body import Facing
 from zengo.behavior.machine import Brain
 from zengo.behavior.states import (
-    STEPPING_FRAMES,
+    STRIDE,
     Alert,
     CursorPerch,
     Dragged,
@@ -322,14 +322,27 @@ def test_cursor_moving_away_mid_flight_turns_it_into_a_glide_down(ctx, world):
     run_until(brain, Shake, limit=10)
 
 
-def test_walking_moves_only_while_a_foot_is_lifted(ctx):
-    """The frame on screen after a tick decides whether that tick moved the body."""
+def test_walking_moves_a_whole_stride_as_each_step_lands(ctx):
+    """He moves only from push-off to reach, by exactly one stride, so the planted
+    foot keeps its place on the screen."""
     brain = Brain(ctx, Walk(target=1500))
-    for _ in range(60):
-        before = ctx.body.x
+    stride = ctx.config.px(STRIDE)
+    moves = []
+    for _ in range(round(3 / DT)):
+        before, was = ctx.body.x, ctx.animator.base_frame
         brain.tick(DT)
-        moved = ctx.body.x != before
-        assert moved == (ctx.animator.frame in STEPPING_FRAMES), ctx.animator.frame
+        if ctx.body.x != before:
+            moves.append(ctx.body.x - before)
+            assert was == "step_back" and ctx.animator.base_frame != "step_back"
+    assert moves and all(m == stride for m in moves)
+    assert 12 <= len(moves) <= 15  # a step every 0.22 s
+
+
+def test_the_last_step_is_shortened_to_stop_on_the_spot(ctx):
+    target = ctx.body.x + ctx.config.px(STRIDE) * 2.5
+    brain = Brain(ctx, Walk(target=target))
+    run_until(brain, Idle, limit=5)
+    assert ctx.body.x == target
 
 
 def test_hanging_still_is_never_a_frozen_frame(ctx):

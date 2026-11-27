@@ -39,6 +39,11 @@ class World(Protocol):
         """Visible tops of other windows that aren't maximized or minimized."""
         ...
 
+    def window_frame(self, window: int) -> Window | None:
+        """Where one window is right now, read fresh (ledges may be a moment old),
+        or None if that can't be told."""
+        ...
+
     def input_idle_seconds(self) -> float | None:
         """Seconds since any keyboard or mouse input at all, or None if unknown."""
         ...

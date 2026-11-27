@@ -26,6 +26,8 @@ class Body:
     facing: Facing = Facing.RIGHT
     vx: float = 0.0
     vy: float = 0.0
+    gait: str = ""
+    """The walk frame last seen, to catch the moment a step lands (see _walk_towards)."""
 
     def face_towards(self, x: float) -> None:
         if x != self.x:

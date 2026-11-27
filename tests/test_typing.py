@@ -29,7 +29,7 @@ def test_sitting_about_he_bobs_along_while_you_type(ctx, world):
         world.input_idle = (i % 6) * DT
         brain.tick(DT)
         frames.add(ctx.animator.frame)
-    assert frames == {"perch", "bob"}  # nodding
+    assert frames == {"perch", "bob_fwd", "bob"}  # nodding
 
 
 def test_he_stops_soon_after_you_do(ctx, world):

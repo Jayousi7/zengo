@@ -30,7 +30,11 @@ CLIPS: dict[str, Clip] = {
         (3.2, 0.12, 2.4, 0.12, 0.18, 0.12),
     ),
     "alert": Clip(("alert", "blink", "alert"), (0.7, 0.1, 0.6), loop=False),
-    "walk": Clip.even("step_back", "perch", "step_front", "perch", fps=7),
+    # One step: feet together, push off with the back foot lifted, then reach
+    # forward with it. The body moves a stride between push-off and reach, while
+    # the planted foot stays put (see behavior.states.STRIDE). A step every
+    # 0.22 s, 3 px each: about 14 art px a second, a long bird's quick little waddle.
+    "walk": Clip(("perch", "step_back", "step_front"), (0.08, 0.07, 0.07)),
     "preen": Clip(
         ("preen_a", "preen_b") * 4 + ("preen_a",),
         (0.35, 0.25) * 4 + (0.5,),
@@ -42,6 +46,15 @@ CLIPS: dict[str, Clip] = {
     "glide": Clip(("wings_level",), (1.0,)),
     "flare": Clip(("wings_up",), (1.0,)),
     "flutter": Clip.even("wings_up", "wings_level", "wings_down", "wings_recover", fps=15),
+    # Startled off a perch that went from under him: fast, crest up. Shown over
+    # the fall's own flapping, once.
+    "startle": Clip.even(
+        *("startle_up", "startle_level", "startle_down", "startle_recover") * 3,
+        fps=18,
+        loop=False,
+    ),
+    # Balancing on a window that's being moved: shown over whatever he's doing.
+    "grip": Clip(("grip",), (0.3,), loop=False),
     # Front view, banking round to fly the other way.
     "turn": Clip(("turn_up", "turn_down"), (0.12, 0.12)),
     "held": Clip(*zip(*_HELD_FIDGETS, strict=True)),
@@ -50,8 +63,12 @@ CLIPS: dict[str, Clip] = {
         ("peck_down", "peck_low", "peck_down", "chew_a", "chew_b", "chew_a", "chew_b"),
         (0.08, 0.16, 0.08, 0.18, 0.16, 0.18, 0.2),
     ),
-    # Bobbing his head along while you type.
-    "bob": Clip(("perch", "bob"), (0.16, 0.16)),
+    # Bobbing his head along while you type: forward and down, back through the
+    # same in-between. Uneven beats, so minutes of it never look mechanical.
+    "bob": Clip(
+        ("perch", "bob_fwd", "bob", "bob_fwd") * 3,
+        (0.12, 0.05, 0.13, 0.05, 0.16, 0.05, 0.11, 0.05, 0.1, 0.06, 0.15, 0.05),
+    ),
     # Petted: a slow lean into the hand and back.
     "petted": Clip(("petted_a", "petted_b"), (1.1, 0.9)),
     # Whistling: crest up, nodding to the tune.
@@ -91,8 +108,11 @@ FRONT_CLIPS: dict[str, Clip] = {
         ("front_fluff_a", "front_fluff_b") * 3 + ("front_perch",), (0.07,) * 6 + (0.3,), loop=False
     ),
     "front_sleep": Clip(("front_sleep",), (1.0,)),
-    # Bobbing his head along while you type.
-    "front_bob": Clip(("front_perch", "front_bob"), (0.16, 0.16)),
+    # Bobbing his head along while you type, on uneven beats.
+    "front_bob": Clip(
+        ("front_perch", "front_bob") * 3,
+        (0.14, 0.16, 0.18, 0.13, 0.12, 0.17),
+    ),
     # Working the cage latch open with his beak, glancing about to see if you notice.
     "front_pick": Clip(
         ("front_peck", "front_look_r", "front_peck", "front_look_l"), (0.25, 0.3, 0.25, 0.3)

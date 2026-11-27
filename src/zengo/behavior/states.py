@@ -234,26 +234,30 @@ class Follow(State):
         return None
 
 
-STEPPING_FRAMES = frozenset({"step_back", "step_front"})
-"""Walk frames with a foot lifted. Zengo only moves on these, so the body
-advances in steps instead of sliding at constant speed over still feet."""
+STRIDE = 3
+"""Art pixels between his feet, and so how far one step carries him."""
 
 
 def _walk_towards(ctx: Context, target: float, dt: float) -> bool:
     """Advance one tick towards ``target``. Returns True on arrival.
 
-    Half the walk cycle is spent stepping, so the stepping speed is doubled to
-    keep the average at ``walk_speed``.
+    He moves in whole strides, one per step, at the instant the push-off frame
+    gives way to the reach: in the push-off his front foot is planted under him,
+    in the reach the same foot is a stride further back. Moving the body by
+    exactly that much then keeps the planted foot still on the screen, so his
+    feet never slide.
     """
-    ctx.body.face_towards(target)
-    remaining = target - ctx.body.x
+    body = ctx.body
+    body.face_towards(target)
+    remaining = target - body.x
     if abs(remaining) < 0.5:
-        ctx.body.x = target
+        body.x = target
         return True
-    if ctx.animator.frame not in STEPPING_FRAMES:
-        return False
-    stride = 2 * ctx.config.px(ctx.config.walk_speed) * dt
-    ctx.body.x += max(-stride, min(stride, remaining))
+    frame = ctx.animator.base_frame
+    if body.gait == "step_back" and frame != "step_back":
+        stride = ctx.config.px(STRIDE)
+        body.x += max(-stride, min(stride, remaining))
+    body.gait = frame
     return False
 
 
@@ -889,8 +893,10 @@ class _Perched(State):
         return None
 
     def step(self, ctx: Context, dt: float) -> State | None:
-        if not self.settle(ctx):  # it's gone: drop off and glide down
+        if not self.settle(ctx):  # it's gone: startled, he flaps off and glides down
             ctx.body.vx, ctx.body.vy = 0.0, -ctx.config.px(40)
+            ctx.animator.interject("startle")
+            ctx.play("chirp_b")
             return Fall()
         if self.doing == "petted":
             if not self.contentment.still_enjoying(ctx, dt):
@@ -996,18 +1002,49 @@ class OnWindow(_Perched):
         return ctx.config.window_visit
 
     def settle(self, ctx: Context) -> bool:
-        x = self._x(ctx)
-        ledge = None if x is None else _ledge_under(ctx, self.window, x)
-        if x is None or ledge is None:
+        """Sit at his place along the window, wherever the window is right now.
+
+        Whether his stretch of the top edge is still in view comes from the
+        window list (re-read a few times a second); where the window is comes
+        from a fresh read of it each frame when there is one, so he rides along
+        smoothly as it's dragged.
+        """
+        reach = ctx.config.px(3)
+        ledge = next(
+            (
+                ledge
+                for ledge in ctx.world.ledges()
+                if ledge.window == self.window
+                and ledge.left - ledge.window_left - reach
+                <= self.offset
+                <= ledge.right - ledge.window_left + reach
+            ),
+            None,
+        )
+        if ledge is None:
             return False
-        ctx.body.x, ctx.body.y = min(max(x, ledge.left), ledge.right), ledge.y
+        left, y = ledge.window_left, ledge.y
+        live = ctx.world.window_frame(self.window)
+        if live is not None:
+            left, y = live.left, live.top
+        along = min(
+            max(self.offset, ledge.left - ledge.window_left), ledge.right - ledge.window_left
+        )
+        body = ctx.body
+        x = left + along
+        self.moving = abs(x - body.x) + abs(y - body.y) > 0.5 and self.elapsed > 0
+        body.x, body.y = x, y
         return True
 
-    def _x(self, ctx: Context) -> float | None:
-        for ledge in ctx.world.ledges():
-            if ledge.window == self.window:
-                return ledge.window_left + self.offset  # rides along as it moves
-        return None
+    def step(self, ctx: Context, dt: float) -> State | None:
+        was = getattr(self, "doing", "")
+        following = super().step(ctx, dt)
+        if following is None and getattr(self, "moving", False):
+            if was == "sleep":  # woken by the ride
+                self._do(ctx, "alert")
+            elif self.doing != "petted":
+                ctx.animator.interject("grip")  # crest up, a wing out for balance
+        return following
 
     def fly_off(self, ctx: Context) -> State:
         """Hop off towards the middle of the screen, then glide down or tour."""

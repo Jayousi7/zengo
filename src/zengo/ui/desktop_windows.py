@@ -207,7 +207,13 @@ def _x11() -> Reader | None:
         x.XSync(display, 0)
         return found
 
+    def one(window: int) -> tuple[int, int, int, int] | None:
+        rect = frame(window)
+        x.XSync(display, 0)
+        return rect
+
     read.keep_alive = ignore  # type: ignore[attr-defined]  # the error handler must outlive us
+    read.frame = one  # type: ignore[attr-defined]
     return read
 
 
@@ -258,4 +264,15 @@ def _windows() -> Reader | None:
         user32.EnumWindows(enum_proc(visit), 0)
         return found
 
+    def one(hwnd: int) -> tuple[int, int, int, int] | None:
+        if not user32.IsWindow(hwnd):
+            return None
+        rect = wintypes.RECT()
+        if dwmapi.DwmGetWindowAttribute(
+            hwnd, dwmwa_extended_frame_bounds, ctypes.byref(rect), ctypes.sizeof(rect)
+        ) and not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+            return None
+        return rect.left, rect.top, rect.right, rect.bottom
+
+    read.frame = one  # type: ignore[attr-defined]
     return read

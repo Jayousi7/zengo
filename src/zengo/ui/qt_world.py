@@ -10,7 +10,7 @@ from PySide6.QtGui import QCursor, QGuiApplication
 
 from zengo.ui.desktop_windows import windows_reader
 from zengo.ui.input_idle import InputIdle
-from zengo.world import Area, Ledge, visible_ledges
+from zengo.world import Area, Ledge, Window, visible_ledges
 
 LEDGES_EVERY = 0.25
 """Seconds between looks at where the other windows are."""
@@ -59,6 +59,16 @@ class QtWorld:
             self._ledges_read = now
             self._ledges = visible_ledges(self._read_windows())
         return self._ledges
+
+    def window_frame(self, window: int) -> Window | None:
+        """One window's rectangle, read now: cheap enough to do every frame for the
+        window he's riding on, so he moves with it smoothly."""
+        read = getattr(self._read_windows, "frame", None)
+        try:
+            rect = None if read is None else read(window)
+        except OSError:
+            return None
+        return None if rect is None else Window(window, *rect)
 
     def input_idle_seconds(self) -> float | None:
         return self._input.seconds()

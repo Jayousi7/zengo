@@ -9,7 +9,7 @@ from zengo.sprites.compose import Frame, Layer, compose
 from zengo.sprites.palette import PALETTE, RGBA, outline_for
 
 ART_WIDTH = 52
-ART_HEIGHT = 34
+ART_HEIGHT = 40
 """Size of the grid the art in :mod:`zengo.sprites.art` is drawn on."""
 
 PADDING = 1
@@ -32,6 +32,7 @@ def _shifted(dx: int, dy: int, *layers: Layer) -> tuple[Layer, ...]:
 _UPPER = (art.TAIL, art.BODY, art.WING_FOLDED, art.HEAD, art.CREST)
 _FLYING_HEAD = _shifted(0, 9, art.CREST_FLAT, art.HEAD)
 """Head lowered to lead the level flying body, crest laid back in the airflow."""
+_STARTLED_HEAD = _shifted(0, 9, art.CREST_RAISED, art.HEAD)
 
 _PECKING_BODY = (art.LEGS, art.TAIL, art.BODY, art.WING_FOLDED)
 _HELD_BODY = (art.TAIL_HANGING, art.BODY, art.WING_FOLDED)
@@ -108,13 +109,28 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.WING_FOLDED,
         *_shifted(-1, 2, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED),
     ),
-    # Bobbing his head along to your typing: a quick nod down and forward.
+    # Bobbing his head along to your typing: forward, then down, and back.
+    "bob_fwd": (
+        art.LEGS,
+        art.TAIL,
+        art.BODY,
+        art.WING_FOLDED,
+        *_shifted(1, 0, art.CREST, art.HEAD),
+    ),
     "bob": (
         art.LEGS,
         art.TAIL,
         art.BODY,
         art.WING_FOLDED,
         *_shifted(1, 1, art.CREST, art.HEAD),
+    ),
+    # Keeping his balance on a moving window: crest up, leaning back, a wing out.
+    "grip": (
+        art.LEGS,
+        art.TAIL,
+        art.BODY,
+        art.WING_HALF,
+        *_shifted(-1, 1, art.CREST_RAISED, art.HEAD),
     ),
     # Whistling: crest up, nodding to the tune with the beak open. The head nods
     # down into the body, so no gap can open at the neck.
@@ -136,6 +152,11 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     "wings_level": (art.FLIGHT_BODY, art.WING_LEVEL, *_FLYING_HEAD),
     "wings_down": _shifted(0, -1, art.FLIGHT_BODY, art.WING_DOWN, *_FLYING_HEAD),
     "wings_recover": (art.FLIGHT_BODY, art.WING_RECOVER, *_FLYING_HEAD),
+    # Startled off a perch: the same wingbeats with the crest shot up.
+    "startle_up": (art.FLIGHT_BODY, art.WING_UP, *_STARTLED_HEAD),
+    "startle_level": (art.FLIGHT_BODY, art.WING_LEVEL, *_STARTLED_HEAD),
+    "startle_down": _shifted(0, -1, art.FLIGHT_BODY, art.WING_DOWN, *_STARTLED_HEAD),
+    "startle_recover": (art.FLIGHT_BODY, art.WING_RECOVER, *_STARTLED_HEAD),
     "turn_up": (art.TURN_WINGS_UP, art.FRONT_FLY_BODY),
     "turn_down": (art.TURN_WINGS_DOWN, art.FRONT_FLY_BODY),
 }
