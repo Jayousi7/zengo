@@ -192,16 +192,28 @@ PUFF = _layer(
     """
     ........S
     ......S
-    ....S
+    ....S...............L
     ..S.................L
     S...................L
-    ...................L
-    ..................L
-    ................L
+    ...................LL
+    ..................LL
+    ................LLL
     ................B
     ..............BB
     """,
     x=20,
+    y=16,
+)
+"""Feathers fluffed out: a rounded chest and back, not a point."""
+
+# Preening deep in the wing, his head drawn back off his chest: the chest's top
+# corner tucks in with it, rather than poking out in front of his face.
+CHEST_TUCKED = _layer(
+    """
+    __
+    ._
+    """,
+    x=38,
     y=16,
 )
 

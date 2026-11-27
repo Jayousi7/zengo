@@ -59,6 +59,7 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.TAIL,
         art.BODY,
         art.WING_FOLDED,
+        art.CHEST_TUCKED,
         *_shifted(-3, 3, art.CREST, art.HEAD, art.EYE_CLOSED),
     ),
     "sleep": (

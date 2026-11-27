@@ -67,15 +67,17 @@ DAMP_PALETTE: dict[str, RGBA] = {
 
 _SIDE_SCARF = Layer.parse(
     """
-    rRRrRRrRR
-    .rRRrRRrR
-    ......Rr.
-    ......rR.
-    .......r.
+    rRRrRRr
+    .rRRrRr
+    ...Rr..
+    ...rR..
+    ....r..
     """,
     x=31,
     y=16,
 )
+"""Ending two pixels short of the front of his chest: his own outline stays round
+there, even when he tips his head back to preen or sleep and it's in view."""
 
 _FLYING_SCARF = Layer.parse(
     """
