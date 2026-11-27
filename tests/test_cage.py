@@ -287,20 +287,21 @@ def test_he_tries_once_a_minute_from_five_minutes(ctx):
 
     ctx.config = replace(ctx.config, escape_chance=0.0, escape_chance_rise=0.0)
     brain = Brain(ctx, Idle())
-    cage = catch(ctx, brain)
+    catch(ctx, brain)
     tries = []
-    original = cage.tries_to_escape
+    escape = ctx.escape
+    original = escape.tries_to_escape
 
     def counting(c):
         result = original(c)
-        if cage._next_try is not None and (not tries or tries[-1] != cage._next_try):
-            tries.append(cage._next_try)
+        if escape.next_try is not None and (not tries or tries[-1] != escape.next_try):
+            tries.append(escape.next_try)
         return result
 
-    cage.tries_to_escape = counting
+    escape.tries_to_escape = counting
     run(brain, 8 * 60)
     assert isinstance(brain.state, Caged)  # 0%: he never gets out
-    attempts = [t - ctx.config.escape_every for t in tries[1:]]
+    attempts = [t - ctx.config.escape_every for t in tries]
     assert attempts[0] == pytest.approx(5 * 60, abs=0.1)
     assert {round(b - a) for a, b in itertools.pairwise(attempts)} == {60}
 
@@ -331,3 +332,33 @@ def test_no_escaping_while_the_cage_is_carried(ctx):
         brain.cage_drag(cage.x + i % 3, cage.y - 30)
         brain.tick(DT)
     assert isinstance(brain.state, Caged) and not cage.door_open
+
+
+def test_letting_him_out_keeps_his_escape_progress_and_catching_him_again_carries_on(ctx):
+    brain = Brain(ctx, Idle())
+    catch(ctx, brain)
+    brain.feed()
+    run(brain, 3 * 60)
+    brain.let_out()
+    run_until(brain, Idle, limit=15)
+    run(brain, 2)
+    assert ctx.cage is None
+    assert ctx.escape.caged_for == pytest.approx(3 * 60, abs=1)  # kept
+    assert ctx.escape.feedings == 1
+    run(brain, 60)
+    assert ctx.escape.caged_for == pytest.approx(3 * 60, abs=1)  # paused while free
+    catch(ctx, brain)
+    run(brain, 60)
+    assert ctx.escape.caged_for == pytest.approx(4 * 60, abs=1)  # carries on
+
+
+def test_only_escaping_starts_his_progress_over(ctx):
+    from zengo.config import quick
+
+    ctx.config = quick(ctx.config)
+    brain = Brain(ctx, Idle())
+    catch(ctx, brain)
+    brain.feed()
+    run_until(brain, Fly, limit=15)
+    assert ctx.cage.escaped
+    assert (ctx.escape.caged_for, ctx.escape.feedings, ctx.escape.next_try) == (0, 0, None)

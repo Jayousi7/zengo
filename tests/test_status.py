@@ -7,48 +7,64 @@ from zengo.behavior.states import Idle
 from zengo.ui.status_panel import StatusPanel, clock, rows
 
 
-def test_well_fed_he_is_not_peckish(ctx):
-    ctx.hunger.fullness = 0.9
+def by_title(status):
+    return {row.title: row for row in rows(status)}
+
+
+def test_one_bar_each_for_hunger_seeds_and_escape(ctx):
     status = Brain(ctx, Idle()).status()
-    assert status.hunger_chance == 0
-    assert [r.title for r in rows(status)] == ["Fullness", "Hunger", "Seeds"]
-    assert "not peckish" in rows(status)[1].value
+    assert [row.title for row in rows(status)] == ["Fullness", "Seeds", "Escape"]
 
 
-def test_the_emptier_he_is_the_higher_his_odds_shown(ctx):
+def test_the_hunger_bar_is_his_fullness_with_his_odds_beside_it(ctx):
+    brain = Brain(ctx, Idle())
+    ctx.hunger.fullness = 0.9
+    row = by_title(brain.status())["Fullness"]
+    assert row.share == pytest.approx(0.9) and row.value == "90% · not peckish"
+    ctx.hunger.fullness = 0.2
+    status = brain.status()
+    row = by_title(status)["Fullness"]
+    assert 0 < status.hunger_chance < 1
+    assert row.value.startswith("20% · ") and f"{status.hunger_chance:.0%} hungry in" in row.value
+    ctx.hunger.hungry = True
+    assert by_title(brain.status())["Fullness"].value == "20% · hungry now!"
+
+
+def test_the_emptier_he_is_the_higher_his_odds(ctx):
     brain = Brain(ctx, Idle())
     ctx.hunger.fullness = 0.5
     half = brain.status().hunger_chance
     ctx.hunger.fullness = 0.2
-    low = brain.status().hunger_chance
-    assert 0 < half < low
-    assert f"{low:.0%}" in rows(brain.status())[1].value
+    assert 0 < half < brain.status().hunger_chance
 
 
-def test_hungry_shows_as_hungry(ctx):
-    ctx.hunger.hungry = True
-    assert rows(Brain(ctx, Idle()).status())[1].value == "hungry now!"
+def test_the_escape_bar_fills_towards_his_first_try_then_shows_his_odds(ctx):
+    brain = Brain(ctx, Idle())
+    row = by_title(brain.status())["Escape"]
+    assert row.share == 0 and "5:00 to go (paused)" in row.value  # never caged yet
+    ctx.escape.caged_for = 2 * 60
+    assert by_title(brain.status())["Escape"].share == pytest.approx(0.4)
+    ctx.escape.caged_for = 6 * 60 + 10
+    ctx.escape.next_try = 7 * 60
+    status = brain.status()
+    row = by_title(status)["Escape"]
+    assert status.escape_started and row.share == pytest.approx(status.escape_chance)
+    assert row.value == f"{status.escape_chance:.0%} at next try (paused)"
 
 
-def test_caged_it_shows_his_dish_and_escape_odds_and_countdown(ctx):
+def test_caged_it_shows_his_dish_and_the_countdown_running(ctx):
     brain = Brain(ctx, Idle())
     brain.catch_in(ctx.body.x - 40, ctx.body.y - 80, ctx.body.x + 40, ctx.body.y + 5)
     brain.feed()
-    status = brain.status()
-    assert status.caged and not status.escape_started
-    assert status.escape_try_in == pytest.approx(ctx.config.escape_after, abs=1)
-    assert status.escape_chance == pytest.approx(0.15 - 0.03)  # fed once in there
-    escape = rows(status)[-1]
-    assert escape.title == "Escape" and "first try in 5:00" in escape.value
-    assert rows(status)[2].title == "Dish" and rows(status)[2].value == "1/3 stacks"
+    rows_ = by_title(brain.status())
+    assert rows_["Dish"].value == "1/3 stacks"
+    assert "5:00 to go" in rows_["Escape"].value and "paused" not in rows_["Escape"].value
 
 
-def test_the_panel_draws_and_refreshes(ctx):
-    brain = Brain(ctx, Idle())
-    panel = StatusPanel(brain.status)
+def test_the_panel_draws(ctx):
+    panel = StatusPanel(Brain(ctx, Idle()).status)
     panel.resize(panel.sizeHint())
     assert not panel.grab().isNull()
-    assert panel.sizeHint().height() > 3 * StatusPanel.ROW_HEIGHT
 
 
 def test_clock():

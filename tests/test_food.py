@@ -284,4 +284,4 @@ def test_feeding_him_in_the_cage_counts_against_escaping(ctx):
     cage_him(ctx, brain)
     brain.feed()
     brain.feed()
-    assert ctx.cage.feedings == 2
+    assert ctx.escape.feedings == 2

@@ -124,7 +124,7 @@ class Brain:
         if cage is not None and not cage.door_open:
             added = cage.dish.add_stack()
             if added:
-                cage.feedings += 1
+                ctx.escape.feedings += 1
         else:
             if ctx.food is None:
                 area, reach = ctx.area(), cfg.px(STAND_OFF)

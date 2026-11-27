@@ -104,3 +104,12 @@ def test_the_app_remembers_across_a_restart(tmp_path):
     ctx = second._brain.ctx
     assert ctx.hunger.fullness == pytest.approx(0.3)
     assert second._brain.food_stacks == 2
+
+
+def test_his_escape_progress_is_remembered(ctx, tmp_path):
+    ctx.escape.caged_for, ctx.escape.feedings, ctx.escape.next_try = 400.0, 2, 420.0
+    file = StateFile(tmp_path / "state.json")
+    file.save(snapshot(ctx))
+    ctx.escape.caged_for, ctx.escape.feedings, ctx.escape.next_try = 0.0, 0, None
+    restore(ctx, file.load())
+    assert (ctx.escape.caged_for, ctx.escape.feedings, ctx.escape.next_try) == (400.0, 2, 420.0)

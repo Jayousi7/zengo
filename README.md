@@ -21,10 +21,14 @@ he flies over to your pointer and asks for some (from a cage, he just asks).
 Caged, after 5 minutes he tries the latch once a minute: 15% the first time, 1%
 more each try, 3% less for every time you've fed him in there.
 
-His right-click menu opens with a live panel of all this: how full he is, his
-odds of getting hungry at the next check, the seeds out, and, caged, his odds of
-escaping and when he'll next try. His fullness, hunger and seeds are remembered
-between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo` on Windows).
+His escape progress is his own, not the cage's: time caged adds up across
+cagings, so letting him out and catching him again later carries on where he
+left off. Only escaping starts it over.
+
+His right-click menu opens with a live panel of all this: a fullness bar with his
+odds of getting hungry at the next check, the seeds out, and his escape bar
+(filling towards his first try, then showing his odds at the next). His fullness,
+hunger, seeds and escape progress are remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo` on Windows).
 
 | Input | Reaction |
 |---|---|

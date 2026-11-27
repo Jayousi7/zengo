@@ -38,51 +38,39 @@ def clock(seconds: float) -> str:
 
 
 def rows(status: Status) -> list[Row]:
-    """What the panel shows, line by line."""
+    """What the panel shows, line by line: one bar each for his hunger, his seeds
+    and his escape."""
     full = status.fullness
-    out = [
+    if status.hungry:
+        hunger = "hungry now!"
+    elif status.hunger_chance <= 0:
+        hunger = "not peckish"
+    else:
+        hunger = f"{status.hunger_chance:.0%} hungry in {clock(status.hunger_check_in)}"
+    where = "Dish" if status.caged else "Seeds"
+    paused = "" if status.caged else " (paused)"
+    if status.escape_started:
+        escape = f"{status.escape_chance:.0%} at next try"
+        escape += f" in {clock(status.escape_try_in)}" if status.caged else " (paused)"
+        escape_share = status.escape_chance
+    else:
+        escape = f"tries after 5:00 caged · {clock(status.escape_try_in)} to go{paused}"
+        escape_share = status.escape_warmup
+    return [
         Row(
             "Fullness",
-            f"{full:.0%}",
+            f"{full:.0%} · {hunger}",
             full,
-            GOOD if full >= 0.7 else FAIR if full >= 0.3 else POOR,
-        )
-    ]
-    if status.hungry:
-        out.append(Row("Hunger", "hungry now!", 1.0, POOR))
-    elif status.hunger_chance <= 0:
-        out.append(
-            Row("Hunger", f"not peckish · check in {clock(status.hunger_check_in)}", 0.0, FAIR)
-        )
-    else:
-        out.append(
-            Row(
-                "Hunger",
-                f"{status.hunger_chance:.0%} chance in {clock(status.hunger_check_in)}",
-                status.hunger_chance,
-                FAIR if status.hunger_chance < 0.5 else POOR,
-            )
-        )
-    where = "Dish" if status.caged else "Seeds"
-    out.append(
+            POOR if status.hungry or full < 0.3 else FAIR if full < 0.7 else GOOD,
+        ),
         Row(
             where,
             f"{status.food_stacks}/{MAX_STACKS} stacks",
             status.food_stacks / MAX_STACKS,
             SEED,
-        )
-    )
-    if status.caged:
-        first = "" if status.escape_started else "first "
-        out.append(
-            Row(
-                "Escape",
-                f"{status.escape_chance:.0%} at {first}try in {clock(status.escape_try_in)}",
-                status.escape_chance,
-                ESCAPE,
-            )
-        )
-    return out
+        ),
+        Row("Escape", escape, escape_share, ESCAPE),
+    ]
 
 
 class StatusPanel(QWidget):
@@ -98,10 +86,10 @@ class StatusPanel(QWidget):
         self._timer = QTimer(self, interval=250)
         self._timer.timeout.connect(self._refresh)
         self._timer.start()
-        self.setMinimumWidth(250)
+        self.setMinimumWidth(290)
 
     def sizeHint(self) -> QSize:
-        return QSize(250, self.PAD * 2 + self.ROW_HEIGHT * len(self._rows))
+        return QSize(290, self.PAD * 2 + self.ROW_HEIGHT * len(self._rows))
 
     def _refresh(self) -> None:
         fresh = rows(self._read())

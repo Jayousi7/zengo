@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 from zengo.animation import Animator
 from zengo.behavior.body import Body
-from zengo.behavior.cage import Cage
+from zengo.behavior.cage import Cage, EscapeProgress
 from zengo.behavior.food import Food, Hunger
 from zengo.behavior.petting import PettingSensor
 from zengo.behavior.scenery import Scenery
@@ -36,6 +36,7 @@ class Context:
     petting: PettingSensor = field(default_factory=PettingSensor)
     speech: Speech | None = None
     cage: Cage | None = None
+    escape: EscapeProgress = field(default_factory=EscapeProgress)
     food: Food | None = None
     hunger: Hunger = field(default_factory=Hunger)
 

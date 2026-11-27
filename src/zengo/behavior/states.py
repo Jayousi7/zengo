@@ -940,11 +940,12 @@ class Caged(State):
         if self.doing == "escape":
             if self.elapsed >= self.door_at:
                 cage.door_open = cage.escaped = True
+                ctx.escape.escaped()  # out by his own wits: start over
             return None
         if (
             cage.mount != "held"
             and self.doing not in ("eat", "sleep", "petted")
-            and cage.tries_to_escape(ctx)
+            and ctx.escape.tries_to_escape(ctx)
         ):
             self._do(ctx, "escape")  # working the latch...
             self.door_at = self.elapsed + 2.2

@@ -1,5 +1,5 @@
-"""What Zengo remembers between runs: how full he is, whether he's hungry, and the
-seeds you've put out.
+"""What Zengo remembers between runs: how full he is, whether he's hungry, the
+seeds you've put out, and how far he's got towards escaping a cage.
 
 Plain data in and out, so the app can keep it in a file. Restoring is forgiving:
 anything missing, of the wrong type or out of range is left at its default, so a
@@ -7,7 +7,7 @@ damaged or old file never stops him starting. Timers pick up where they left off
 rather than counting the time he was closed, so he isn't starving the moment
 he's opened again.
 
-The cage isn't remembered: he always starts free, so seeds in a cage dish go
+The cage itself isn't remembered: he always starts free, so seeds in a cage dish go
 with it.
 """
 
@@ -36,6 +36,11 @@ def snapshot(ctx: Context) -> dict[str, Any]:
             "ask_in": round(max(0.0, hunger._ask_in), 2),
         },
         "food": None if food is None else {"x": round(food.x, 1), "seeds": food.pile.seeds},
+        "escape": {
+            "caged_for": round(ctx.escape.caged_for, 2),
+            "feedings": ctx.escape.feedings,
+            "next_try": None if ctx.escape.next_try is None else round(ctx.escape.next_try, 2),
+        },
     }
 
 
@@ -52,6 +57,13 @@ def restore(ctx: Context, data: object) -> None:
             h.hungry = hunger["hungry"]
         h._check_in = _number(hunger.get("check_in"), 0.0, cfg.hunger_check_every, None)
         h._ask_in = _number(hunger.get("ask_in"), 0.0, cfg.nag_every, 0.0)
+
+    escape = data.get("escape")
+    if isinstance(escape, dict):
+        e = ctx.escape
+        e.caged_for = _number(escape.get("caged_for"), 0.0, math.inf, e.caged_for)
+        e.feedings = int(_number(escape.get("feedings"), 0, 10_000, e.feedings))
+        e.next_try = _number(escape.get("next_try"), 0.0, math.inf, None)
 
     food = data.get("food")
     if isinstance(food, dict):

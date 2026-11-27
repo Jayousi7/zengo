@@ -47,10 +47,6 @@ class Cage:
     """He opened the door himself."""
     dish: Pile = field(default_factory=Pile)
     """Seeds on the tray."""
-    caged_for: float = 0.0
-    feedings: int = 0
-    """Times he's been fed in here: each makes him less keen to escape."""
-    _next_try: float | None = None
     empty_for: float = 0.0
     """Seconds since he left through the open door; the cage goes soon after."""
     events: list[str] = field(default_factory=list)
@@ -151,29 +147,44 @@ class Cage:
         if self.door_open and self.left:
             self.empty_for += dt
         elif not self.door_open:
-            self.caged_for += dt
+            ctx.escape.caged_for += dt
         self.dish.update(dt)
-
-    # --- Escaping ------------------------------------------------------------
-
-    def next_try_at(self, cfg: Config) -> float:
-        """Time caged at which he'll next try the latch."""
-        return cfg.escape_after if self._next_try is None else self._next_try
-
-    def tries_to_escape(self, ctx: Context) -> bool:
-        """Called while he's free to try (awake, not being carried): is this the
-        moment he gets the door open? He tries once a minute after five, with the
-        odds of :func:`escape_chance`."""
-        cfg = ctx.config
-        if self._next_try is None:
-            self._next_try = cfg.escape_after
-        if self.caged_for < self._next_try:
-            return False
-        self._next_try = self.caged_for + cfg.escape_every
-        return ctx.rng.random() < escape_chance(cfg, self.caged_for, self.feedings)
 
     def _area(self, ctx: Context) -> Area:
         return ctx.world.area_at(self.x, self.y - ctx.config.px(4))
+
+
+@dataclass
+class EscapeProgress:
+    """How far he's got towards escaping. It's his, not the cage's: let out and
+    caught again later, he carries on where he left off. Only escaping resets it."""
+
+    caged_for: float = 0.0
+    """Time spent caged, all told, since he last escaped."""
+    feedings: int = 0
+    """Times he's been fed in a cage: each makes him less keen to escape."""
+    next_try: float | None = None
+    """Time caged at which he'll next try the latch."""
+
+    def next_try_at(self, cfg: Config) -> float:
+        return cfg.escape_after if self.next_try is None else self.next_try
+
+    def tries_to_escape(self, ctx: Context) -> bool:
+        """Called while he's caged and free to try (awake, not being carried): is
+        this the moment he gets the door open? He tries once a minute after five,
+        with the odds of :func:`escape_chance`."""
+        cfg = ctx.config
+        if self.caged_for < self.next_try_at(cfg):
+            return False
+        self.next_try = self.caged_for + cfg.escape_every
+        return ctx.rng.random() < escape_chance(cfg, self.caged_for, self.feedings)
+
+    def chance_at_next_try(self, cfg: Config) -> float:
+        return escape_chance(cfg, max(self.next_try_at(cfg), self.caged_for), self.feedings)
+
+    def escaped(self) -> None:
+        """He's out by his own wits: start over."""
+        self.caged_for, self.feedings, self.next_try = 0.0, 0, None
 
 
 def escape_chance(cfg: Config, caged_for: float, feedings: int) -> float:
