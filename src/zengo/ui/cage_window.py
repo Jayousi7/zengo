@@ -27,7 +27,7 @@ from zengo.sprites.cage import (
     build_chain_link,
     build_shelf,
 )
-from zengo.ui.sprites import clip_to, frame_to_image
+from zengo.ui.sprites import clip_to, frame_to_image, mirror
 
 _FLAGS = (
     Qt.WindowType.FramelessWindowHint
@@ -136,7 +136,7 @@ class MountWindow(QWidget):
         shelf = frame_to_image(build_shelf(), config.scale)
         self._shelves = {
             -1: QPixmap.fromImage(shelf),
-            1: QPixmap.fromImage(shelf.mirrored(True, False)),
+            1: QPixmap.fromImage(mirror(shelf)),
         }
         self._draw: tuple = ()
 

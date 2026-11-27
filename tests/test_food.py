@@ -1,6 +1,5 @@
 """Seeds, stacks, hunger, and asking for food."""
 
-
 import pytest
 
 from zengo.behavior.food import STAND_OFF, Pile, hunger_chance

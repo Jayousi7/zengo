@@ -40,7 +40,7 @@ class SpriteSheet:
         for name, frame in frames.items():
             image = frame_to_image(frame, scale)
             self._sprites[name, Facing.RIGHT] = _sprite(image)
-            self._sprites[name, Facing.LEFT] = _sprite(image.mirrored(True, False))
+            self._sprites[name, Facing.LEFT] = _sprite(mirror(image))
 
     def get(self, name: str, facing: Facing) -> Sprite:
         return self._sprites[name, facing]
@@ -64,3 +64,11 @@ def clip_to(full: QRect, bounds: QRect | None) -> tuple[QRect, QPoint]:
     if shown.isEmpty():
         shown = full
     return shown, full.topLeft() - shown.topLeft()
+
+
+def mirror(image: QImage) -> QImage:
+    """Flip an image left to right. ``QImage.flipped`` replaced ``mirrored`` in Qt 6.9;
+    older versions only have the latter."""
+    if hasattr(image, "flipped"):
+        return image.flipped(Qt.Orientation.Horizontal)
+    return image.mirrored(True, False)

@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QWidget
 from zengo.behavior.scenery import Branch
 from zengo.config import Config
 from zengo.sprites.branch import TOP_ROW, build_branch
-from zengo.ui.sprites import frame_to_image
+from zengo.ui.sprites import frame_to_image, mirror
 
 _PADDING = 1
 """The clear border :func:`build_branch` leaves round the art for its outline."""
@@ -39,7 +39,7 @@ class BranchWindow(QWidget):
         image = frame_to_image(build_branch(), config.scale)
         self._pixmaps = {
             -1: QPixmap.fromImage(image),  # grows rightwards from the left edge
-            1: QPixmap.fromImage(image.mirrored(True, False)),
+            1: QPixmap.fromImage(mirror(image)),
         }
         self._side = -1
 

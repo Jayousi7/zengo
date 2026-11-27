@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, QRect, Qt, QTimer
+from PySide6.QtCore import QPoint, QPointF, QRect, Qt, QTimer
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication, QMenu
 
@@ -38,8 +38,12 @@ from zengo.ui.window import PetWindow
 MAX_FRAME_DT = 0.1
 """Cap on simulated time per tick, so a suspended laptop doesn't fling Zengo off-screen."""
 
-FACING_YOU = ("front_", "branch_", "turn_")
-"""Frames drawn facing the viewer, with the head straight above the anchor."""
+SPEECH_HEIGHT = 32
+"""Art px above his feet where a speech cloud's tail points: just over his crest
+at its tallest, so no pose of his pokes into the cloud."""
+
+SPEECH_GLIDE = 0.3
+"""Share of the way a speech cloud moves towards where it belongs each frame."""
 
 
 class Pet:
@@ -82,6 +86,8 @@ class Pet:
         self._dish = FoodWindow(config)
         self._overlay: CatchOverlay | None = None
         self._door_was_open = False
+        self._speech_at: QPointF | None = None
+        self._speech_of: object = None
 
         self._timer = QTimer(timerType=Qt.TimerType.PreciseTimer, interval=1000 // config.fps)
         self._timer.timeout.connect(self._tick)
@@ -160,18 +166,22 @@ class Pet:
         self._overlay.start()
 
     def _show_speech(self) -> None:
+        """Put the cloud above him. One anchor whatever he's doing: centred over his
+        anchor, just clear of his tallest pose (crest up), or above the cage he's in.
+        It glides after him rather than snapping, so turning round, nodding or being
+        swung about doesn't make it jump."""
         ctx = self._brain.ctx
-        if ctx.speech is None:
+        speech = ctx.speech
+        if speech is None:
             self._bubble.say(None, QPoint(), QRect())
+            self._speech_at = None
             return
         body, px = ctx.body, self._config.px
-        # The head is just ahead of the anchor side-on, straight above it facing you.
-        ahead = 0 if ctx.animator.frame.startswith(FACING_YOU) else px(6) * int(body.facing)
-        head_y, keep_clear = body.y - px(30), None
+        target, keep_clear = QPointF(body.x, body.y - px(SPEECH_HEIGHT)), None
         cage = ctx.cage
         if cage is not None and not cage.door_open:
-            head_y = cage.y - px(FLOOR + 1)  # above the cage's hook
-            if cage.pivot is not None:  # hung: keep the cage and its chain in view
+            target = QPointF(cage.shown_x, cage.y - px(FLOOR + 1))  # above the hook
+            if cage.pivot is not None:  # hung: beside it, keeping the chain in view
                 half = px(CAGE_WIDTH / 2)
                 keep_clear = QRect(
                     round(cage.shown_x - half),
@@ -179,12 +189,15 @@ class Pet:
                     round(2 * half),
                     round(cage.y - cage.pivot[1]),
                 )
-                head_y = body.y - px(20)
-        head = QPoint(round(body.x + ahead), round(head_y))
+                target = QPointF(cage.shown_x, cage.y - px(20))
+        if self._speech_at is None or speech is not self._speech_of:
+            self._speech_at = target  # a new cloud appears right where it belongs
+        else:
+            self._speech_at += (target - self._speech_at) * SPEECH_GLIDE
+        self._speech_of = speech
+        head = self._speech_at.toPoint()
         screen = QGuiApplication.screenAt(head) or QGuiApplication.primaryScreen()
-        self._bubble.say(
-            ctx.speech.text, head, screen.availableGeometry(), ctx.speech.mood, keep_clear
-        )
+        self._bubble.say(speech.text, head, screen.availableGeometry(), speech.mood, keep_clear)
 
 
 @dataclass(frozen=True)

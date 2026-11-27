@@ -121,3 +121,48 @@ def test_a_sprite_near_the_desktop_edge_is_trimmed_not_moved():
     assert win.geometry() == QRect(780, 100, 20, 40)
     win.show_sprite(Sprite(pixmap, QRegion(0, 0, 40, 40)), QPoint(300, 100), desktop)
     assert win.geometry() == QRect(300, 100, 40, 40)
+
+
+def test_the_speech_cloud_stays_over_him_whatever_he_is_doing():
+    """Turning round, switching between side and front views or being swung about
+    mustn't throw the cloud around: its tail stays over him."""
+    import random
+
+    from zengo.app import Pet
+    from zengo.behavior.body import Facing
+    from zengo.behavior.states import FrontIdle, Idle
+    from zengo.config import Config
+    from zengo.sprites.frames import build_frames
+
+    pet = Pet(Config(), build_frames(), random.Random(1))
+    pet.start()
+    brain, ctx = pet._brain, pet._brain.ctx
+    ctx.body.x = 600
+
+    def tail_x():
+        return pet._bubble.x() + pet._bubble._tail_x
+
+    def settle(frames=30):
+        for _ in range(frames):
+            brain.tick(1 / 30)
+            ctx.body.x = 600
+            pet._render()
+
+    ctx.say("hello!", 60)
+    settle()
+    where = tail_x()
+    for change in (
+        lambda: setattr(ctx.body, "facing", Facing.LEFT),
+        lambda: brain.transition(FrontIdle()),
+        lambda: setattr(ctx.body, "facing", Facing.RIGHT),
+        lambda: brain.transition(Idle()),
+    ):
+        change()
+        brain.tick(1 / 30)
+        ctx.body.x = 600
+        pet._render()
+        assert abs(tail_x() - where) <= 1  # no jump on the change itself
+        settle()
+        assert abs(tail_x() - where) <= 1
+    pet._bubble.close()
+    pet._window.close()
