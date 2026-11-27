@@ -1,9 +1,11 @@
 """Things in Zengo's surroundings that come and go: for now, the branch.
 
 Every so often a branch grows out from the left or right edge of the screen
-he's on. It stays a few minutes, never retracts while he's sitting on it or
-flying to it, lingers a little after he leaves, then withdraws. All of this is
-plain timing; the Qt side only draws where the branch is and how far it is out.
+he's on. Not while he's caged, though: the wait still runs, and a branch that
+falls due then grows as soon as he's out. It stays a few minutes, never
+retracts while he's sitting on it or flying to it, lingers a little after he
+leaves, then withdraws. All of this is plain timing; the Qt side only draws
+where the branch is and how far it is out.
 """
 
 from __future__ import annotations
@@ -68,8 +70,9 @@ class Scenery:
 
         if self.phase == "waiting":
             self._timer -= dt
-            if self._timer <= 0:
-                self.grow(ctx)
+            caged = ctx.cage is not None and not ctx.cage.door_open
+            if self._timer <= 0 and not caged:
+                self.grow(ctx)  # due while he was caged: it comes as soon as he's out
         elif self.phase == "growing":
             assert self.branch is not None
             self.branch.shown = min(1.0, self.branch.shown + dt / cfg.branch_grow_seconds)

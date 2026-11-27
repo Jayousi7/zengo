@@ -211,3 +211,16 @@ def test_turning_round_on_the_ground_shows_his_front_for_a_moment(ctx):
     assert ctx.animator.frame == "front_perch"
     run(brain, 0.3)
     assert ctx.animator.frame != "front_perch"
+
+
+def test_no_branch_grows_while_he_is_caged_but_it_comes_as_soon_as_he_is_out(ctx):
+    brain = Brain(ctx, Idle())
+    brain.catch_in(ctx.body.x - 40, ctx.body.y - 80, ctx.body.x + 40, ctx.body.y + 5)
+    run(brain, 1)
+    ctx.scenery._timer = 2.0  # due in two seconds
+    run(brain, 10)
+    assert ctx.scenery.branch is None  # held back while he's caged
+    assert ctx.scenery._timer < 0  # but the wait wasn't reset
+    brain.let_out()
+    run(brain, 0.2)
+    assert ctx.scenery.branch is not None  # out he comes, and there it grows
