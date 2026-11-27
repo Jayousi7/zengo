@@ -13,7 +13,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt, QTimer
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import QApplication, QMenu
+from PySide6.QtWidgets import QApplication, QMenu, QWidgetAction
 
 from zengo.animation import Animator
 from zengo.behavior.body import Body, Facing
@@ -35,6 +35,7 @@ from zengo.ui.qt_world import QtWorld
 from zengo.ui.sheet_loader import SheetError, load_sheet
 from zengo.ui.sprites import SpriteSheet
 from zengo.ui.state_file import StateFile
+from zengo.ui.status_panel import StatusPanel
 from zengo.ui.window import PetWindow
 
 MAX_FRAME_DT = 0.1
@@ -165,6 +166,10 @@ class Pet:
 
     def _show_menu(self, where: QPoint) -> None:
         menu = QMenu()
+        panel = QWidgetAction(menu)
+        panel.setDefaultWidget(StatusPanel(self._brain.status))
+        menu.addAction(panel)
+        menu.addSeparator()
         stacks = self._brain.food_stacks
         feed = menu.addAction(f"Feed Zengo ({stacks}/{MAX_STACKS})", self._brain.feed)
         feed.setEnabled(stacks < MAX_STACKS)

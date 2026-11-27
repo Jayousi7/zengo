@@ -156,6 +156,10 @@ class Cage:
 
     # --- Escaping ------------------------------------------------------------
 
+    def next_try_at(self, cfg: Config) -> float:
+        """Time caged at which he'll next try the latch."""
+        return cfg.escape_after if self._next_try is None else self._next_try
+
     def tries_to_escape(self, ctx: Context) -> bool:
         """Called while he's free to try (awake, not being carried): is this the
         moment he gets the door open? He tries once a minute after five, with the

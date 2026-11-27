@@ -13,11 +13,18 @@ flies over and sits on it facing you: looking about, preening, fluffing up,
 napping if it's late, until he flies off and it withdraws. Drop him just above
 it and he grabs it. Now and then he sits facing you on the ground too.
 
-Every 5 minutes there's an even chance he gets hungry. Then he eats a stack of
-seeds if you've put some out; if not, he flies over to your pointer and asks for
-some (from a cage, he just asks), and asks again every couple of minutes till fed.
+He has a fullness meter. It drains with time, faster when he's busy (flying
+burns three times what sitting does, sleeping very little), and every seed fills
+it up a bit. Every 30 s he may get hungry: never when he's well fed, likelier the
+emptier he is. Hungry, he eats a stack of seeds if you've put some out; if not,
+he flies over to your pointer and asks for some (from a cage, he just asks).
 Caged, after 5 minutes he tries the latch once a minute: 15% the first time, 1%
 more each try, 3% less for every time you've fed him in there.
+
+His right-click menu opens with a live panel of all this: how full he is, his
+odds of getting hungry at the next check, the seeds out, and, caged, his odds of
+escaping and when he'll next try. His fullness, hunger and seeds are remembered
+between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo` on Windows).
 
 | Input | Reaction |
 |---|---|
@@ -25,7 +32,7 @@ more each try, 3% less for every time you've fed him in there.
 | Double-click | Bobs his head and whistles; the tune pops up in a cloud |
 | Stroke the mouse gently back and forth over him | Fluffs up, shuts his eyes and leans into it, with hearts; a happy shake when you stop |
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
-| Right click | Menu: *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Quit Zengo* |
+| Right click | Menu: a live panel of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Quit Zengo* |
 | *Feed Zengo (n/3)* | Pours out a stack of sunflower seeds, his favourite: up to three stacks, the pile filling as you add. He eats one stack whenever he gets hungry; caged, they go in his dish |
 | *Catch Zengo*, then drag a box around him | Caged where he is, and furious about it. Drag the cage: let go near the top and it hangs from a chain, near a side and it sits on a shelf, anywhere else it falls to the ground. Petting him through the bars calms him; *Let Zengo out* opens the door |
 
@@ -96,7 +103,9 @@ src/zengo/
     scenery.py      the branch: when it grows, stays and withdraws
     petting.py      tells gentle strokes of the pointer from passing by
     cage.py         the cage: carried, hung on a chain, shelved or dropped
-    food.py         seeds put out for him
+    food.py         seeds put out for him, and his fullness and hunger
+    status.py       a read-out of his needs, for the menu
+    memory.py       what he remembers between runs
     machine.py      Brain: runs states, routes mouse input
   sprites/
     palette.py      Zengo's colours
@@ -117,6 +126,8 @@ src/zengo/
     cage_window.py  the draggable cage, and the chain or shelf under it
     catch_overlay.py the dimmed screen you drag a box on to catch him
     food_window.py  the seed pile's window
+    status_panel.py the live needs panel in his menu
+    state_file.py   the file what he remembers is kept in
 ```
 
 Only `ui/` and `app.py` import Qt. Everything else is plain Python and is

@@ -6,6 +6,8 @@ from zengo.behavior.cage import BELOW_FLOOR, Cage, caught_in
 from zengo.behavior.context import Context
 from zengo.behavior.food import STAND_OFF, Food
 from zengo.behavior.states import Caged, Dragged, Fall, Idle, State
+from zengo.behavior.status import Status
+from zengo.behavior.status import read as read_status
 
 
 class Brain:
@@ -137,6 +139,10 @@ class Brain:
         else:
             ctx.say("for later! ♥", 1.6, mood="love")
         return added
+
+    def status(self) -> Status:
+        """His needs, for showing: fullness, hunger odds, seeds, escape odds."""
+        return read_status(self.ctx, self.food_stacks)
 
     @property
     def food_stacks(self) -> int:
