@@ -1,0 +1,86 @@
+"""The transparent, always-on-top window Zengo lives in."""
+
+from __future__ import annotations
+
+from PySide6.QtCore import QPoint, QPointF, Qt, Signal
+from PySide6.QtGui import QContextMenuEvent, QMouseEvent, QPainter, QPaintEvent
+from PySide6.QtWidgets import QMenu, QWidget
+
+from zengo.ui.sprites import Sprite
+
+
+class PetWindow(QWidget):
+    """Displays one sprite and translates raw mouse input into pet gestures.
+
+    The window knows nothing about behaviour: it reports clicks and drags in
+    screen coordinates and draws whatever it is told to.
+    """
+
+    clicked = Signal()
+    grabbed = Signal(float, float)
+    dragged = Signal(float, float)
+    released = Signal()
+    quit_requested = Signal()
+
+    def __init__(self, drag_threshold: int) -> None:
+        super().__init__(
+            None,
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool  # keeps it out of the taskbar and Alt+Tab
+            | Qt.WindowType.WindowDoesNotAcceptFocus,
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setWindowTitle("Zengo")
+
+        self._drag_threshold = drag_threshold
+        self._sprite: Sprite | None = None
+        self._press: QPointF | None = None
+        self._dragging = False
+
+    def show_sprite(self, sprite: Sprite, top_left: QPoint) -> None:
+        if sprite is not self._sprite:
+            self._sprite = sprite
+            self.resize(sprite.pixmap.size())
+            self.setMask(sprite.mask)
+            self.update()
+        if self.pos() != top_left:
+            self.move(top_left)
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        if self._sprite is not None:
+            QPainter(self).drawPixmap(0, 0, self._sprite.pixmap)
+
+    # --- Gestures ----------------------------------------------------------
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._press = event.globalPosition()
+            self._dragging = False
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if self._press is None:
+            return
+        position = event.globalPosition()
+        if not self._dragging:
+            if (position - self._press).manhattanLength() < self._drag_threshold:
+                return
+            self._dragging = True
+            self.grabbed.emit(self._press.x(), self._press.y())
+        self.dragged.emit(position.x(), position.y())
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() != Qt.MouseButton.LeftButton or self._press is None:
+            return
+        if self._dragging:
+            self.released.emit()
+        else:
+            self.clicked.emit()
+        self._press = None
+        self._dragging = False
+
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
+        menu = QMenu(self)
+        menu.addAction("Quit Zengo", self.quit_requested.emit)
+        menu.exec(event.globalPos())
