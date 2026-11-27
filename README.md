@@ -39,6 +39,28 @@ after ten minutes away he flies over to greet you. Grumpy, he walks off when you
 pointer comes near, ignores your first poke, and sulks with his back to you,
 peeking round now and then to see if you've noticed.
 
+### Life round him
+
+- **His bath**: every half hour to an hour and a half (sooner in summer) a
+  shallow dish of water appears on the ground near him for a few minutes. He
+  hops in, dips his head, splashes with flicking wings (droplets flying), hops
+  out and shakes himself dry in a spray. Then he's damp for a minute, darker
+  and with his crest slicked down, and won't fly till he's dry.
+- **Toys**: put a bell or a mirror out from the *Life* tab of his settings. The
+  bell hangs under the branch's tip, or from his cage roof; he pecks it and it
+  swings and rings. The mirror stands on the ground near him, or hangs on his
+  cage bars; he goes and chats to his reflection. Playing makes him hungrier,
+  and brings him a little closer to you (up to a point each hour).
+- **Moulting**: now and then a feather drifts down from him and lies where it
+  lands until you click it away (at most three at a time). Some days are
+  moulting days: more feathers, more preening.
+- **Seasons**, from your computer's date (and your hemisphere, worked out from
+  your time zone): a scarf and puffing up in winter, with snow drifting past
+  the branch; more song in spring; panting on hot summer afternoons, and more
+  baths; leaves falling from the branch in autumn. Late in the evening he's
+  drawn a little dimmer. All of it can be turned off in the *Life* tab, and
+  nothing is looked up online.
+
 His right-click menu opens with a slim live strip of all this, one coloured
 number each: ♥ his bond, ◐ his fullness, ∴ the seeds out, and ⇥ his escape
 (the time to his first try, then his odds at the next). Hover one for the rest:
@@ -52,7 +74,8 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
 - **Settings** (*Settings…* in his menu or the tray): his size (2× to 5×, changed
   on the spot), sound and volume, how often a branch grows, how fast he gets
   hungry, starting at login, and *Reset Zengo* to start over (your settings and
-  voice files stay). Kept in `settings.json` beside the state file; command-line
+  voice files stay). The *Life* tab puts his toys out, sets how often his bath
+  comes, and turns the seasons on or off (or sets your hemisphere). Kept in `settings.json` beside the state file; command-line
   flags win over it.
 - **Teach him words** (*Teach Zengo…* in the *Words* tab of his settings): type a word or short phrase and choose
   when he'll say it: any time, or at a moment (greeting you, asking for food,
@@ -82,6 +105,7 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
 | Type (anywhere) | Sitting about, he bobs his head along. Only the timing of your input is noticed, never the keys |
 | Stroke the mouse gently back and forth over him | Fluffs up, shuts his eyes and leans into it, with hearts; a happy shake when you stop |
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
+| Click a feather he's dropped | It's cleared away |
 | Right click | Menu: a live strip of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Settings…* and *Quit Zengo*. Sound, starting at login and teaching him words are all in *Settings…* |
 | Click his tray icon | He flies to the middle of your screen: "here I am!" |
 | *Feed Zengo (n/3)* | Pours out a stack of sunflower seeds, his favourite: up to three stacks, the pile filling as you add. He eats one stack whenever he gets hungry; caged, they go in his dish |
@@ -102,7 +126,9 @@ python -m venv .venv
 .venv/bin/zengo --scale 3               # bigger bird (overrides the size in his settings)
 .venv/bin/zengo --sprites art.json      # use hand-drawn frames (see below)
 .venv/bin/zengo --branch-now            # grow a branch straight away
-.venv/bin/zengo --quick                 # short timers: cage escapes in seconds (odds times 1 − bond), hunger every 20 s
+.venv/bin/zengo --bath-now              # put his bath out straight away
+.venv/bin/zengo --season winter         # show a season whatever the date
+.venv/bin/zengo --quick                 # short timers: cage escapes in seconds (odds times 1 − bond), hunger every 20 s, a bath a minute, feathers twice a minute
 ```
 
 Requires Python 3.11+. On Linux, Qt's X11 plugin needs `libxcb-cursor0`
@@ -152,6 +178,12 @@ src/zengo/
     states.py       one class per behaviour
     flight.py       smooth flight paths through waypoints
     scenery.py      the branch: when it grows, stays and withdraws
+    bath.py         his bath dish: when it comes and goes
+    toys.py         his bell and mirror: where they are, the bell's swing
+    moult.py        feathers he drops, and moulting days
+    seasons.py      the season, from the date and your hemisphere
+    weather.py      snow and falling leaves round the branch
+    effects.py      droplets, snowflakes and leaves in the air
     petting.py      tells gentle strokes of the pointer from passing by
     typing.py       notices you're typing (input with the pointer still)
     cage.py         the cage: carried, hung on a chain, shelved or dropped
@@ -173,6 +205,11 @@ src/zengo/
     branch.py       the branch's art and where he can sit on it
     cage.py         the cage, chain and shelf art
     food.py         the seed pile
+    looks.py        damp, a scarf, dimmed: on top of any pose
+    bath.py         his bath dish
+    toys.py         the bell and the mirror
+    feather.py      a dropped feather
+    effects.py      droplets, snowflakes, leaves
   ui/
     qt_world.py     World backed by Qt screens and cursor
     sprites.py      frames -> scaled, mirrored pixmaps and click masks
@@ -183,12 +220,16 @@ src/zengo/
     cage_window.py  the draggable cage, and the chain or shelf under it
     catch_overlay.py the dimmed screen you drag a box on to catch him
     food_window.py  the seed pile's window
+    bath_window.py  his bath dish's window
+    toy_window.py   the bell's and the mirror's windows
+    feather_window.py a dropped feather, clickable
+    effects_window.py one click-through window for every droplet and snowflake
     status_panel.py the live needs strip in his menu
     state_file.py   the file what he remembers is kept in
     input_idle.py   time since any input, from the system (never the keys)
     desktop_windows.py other apps' windows, for perching on their tops
     sound.py        plays his sounds (or your WAV files in their place)
-    settings_window.py the settings window and its General tab
+    settings_window.py the settings window and its General and Life tabs
     voice_tabs.py   the Words and Sounds tabs
     teach_box.py    the "Teach Zengo…" box
     recorder.py     recording a sound from the microphone, only while held
