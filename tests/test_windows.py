@@ -179,6 +179,7 @@ def test_after_a_while_he_flies_off(ctx, world):
 
 
 def test_a_window_top_draws_him_over(ctx, world):
+    ctx.seasons.enabled = False  # the season's own pastimes aside
     window_top(world)
     brain = Brain(ctx, Idle())
     for _ in range(round(120 / DT)):

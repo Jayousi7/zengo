@@ -314,7 +314,7 @@ class SettingsWindow(QWidget):
             "Reset Zengo?",
             "Zengo will forget everything he remembers: his bond with you, his "
             "hunger, the seeds out, his cage and escape progress, and the words "
-            "he's learned or is learning.\n\n"
+            "he's learned or is learning. Dropped feathers and his bath go too.\n\n"
             "Your settings, his phrase and sound files, and your recordings are kept.",
             QMessageBox.StandardButton.Reset | QMessageBox.StandardButton.Cancel,
             QMessageBox.StandardButton.Cancel,

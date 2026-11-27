@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import random
+import time
 from dataclasses import dataclass, field
 
 import pytest
@@ -69,6 +70,16 @@ def world() -> FakeWorld:
     return FakeWorld()
 
 
+FIXED_DATE = tuple(int(n) for n in os.environ.get("ZENGO_TEST_DATE", "2026-11-15").split("-"))
+"""The date the tests run on, whatever today is: seasons change what he does.
+(Set ``ZENGO_TEST_DATE=2027-01-15`` to run them all in another season.)"""
+
+
+def fixed_clock() -> float:
+    year, month, day = FIXED_DATE
+    return time.mktime((year, month, day, 12, 0, 0, 0, 0, -1))
+
+
 @pytest.fixture
 def ctx(world: FakeWorld) -> Context:
     return Context(
@@ -77,6 +88,7 @@ def ctx(world: FakeWorld) -> Context:
         animator=Animator(CLIPS, initial="idle"),
         config=Config(),
         rng=random.Random(1234),
+        clock=fixed_clock,
     )
 
 
@@ -102,6 +114,7 @@ def make_pet(tmp_path):
             flags=flags,
             **extra,
         )
+        pet._brain.ctx.clock = fixed_clock
         pet.start()
         made.append(pet)
         return pet

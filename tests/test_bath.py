@@ -17,6 +17,7 @@ def _run(brain, seconds, dt=0.1):
 
 def test_a_dish_appears_after_a_while_near_him_and_fades_in(ctx):
     ctx.config = replace(ctx.config, bath_every=(10.0, 10.0))
+    ctx.seasons.enabled = False  # no summer hurry
     cycle = BathCycle()
     for _ in range(90):
         cycle.update(ctx, 0.1, occupied=False, free=True)
