@@ -22,6 +22,7 @@ FAIR = QColor("#e0bc6e")
 POOR = QColor("#e07a5f")
 SEED = QColor("#b08d74")
 ESCAPE = QColor("#c9a45a")
+HEART = QColor("#e58fa3")
 
 
 @dataclass(frozen=True)
@@ -39,8 +40,8 @@ def clock(seconds: float) -> str:
 
 
 def rows(status: Status) -> list[Row]:
-    """What the panel shows, line by line: one bar each for his hunger, his seeds
-    and his escape."""
+    """What the panel shows, line by line: one bar each for how close he feels to
+    you, his hunger, his seeds and his escape."""
     full = status.fullness
     if status.hungry:
         hunger = "hungry now!"
@@ -58,6 +59,7 @@ def rows(status: Status) -> list[Row]:
         escape = f"tries after 5:00 caged · {clock(status.escape_try_in)} to go{paused}"
         escape_share = status.escape_warmup
     return [
+        Row("Bond ♥", f"{status.bond:.0%} · {status.bond_mood}", status.bond, HEART),
         Row(
             "Fullness",
             f"{full:.0%} · {hunger}",

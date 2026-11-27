@@ -29,6 +29,10 @@ class Status:
     """Has he been caged long enough, all told, to start trying?"""
     escape_warmup: float
     """Before he starts trying: how far towards it, 0 to 1."""
+    bond: float = 0.5
+    """How close he feels to you, 0 (grumpy) to 1 (devoted)."""
+    bond_mood: str = "content"
+    """``"devoted"``, ``"content"`` or ``"grumpy"``."""
 
 
 def read(ctx: Context, food_stacks: int) -> Status:
@@ -45,4 +49,10 @@ def read(ctx: Context, food_stacks: int) -> Status:
         escape_try_in=max(0.0, next_try - escape.caged_for),
         escape_started=escape.caged_for >= cfg.escape_after,
         escape_warmup=min(1.0, escape.caged_for / cfg.escape_after) if cfg.escape_after else 1.0,
+        bond=ctx.bond.level,
+        bond_mood="devoted"
+        if ctx.bond.close(cfg)
+        else "grumpy"
+        if ctx.bond.grumpy(cfg)
+        else "content",
     )

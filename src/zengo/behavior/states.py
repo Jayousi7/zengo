@@ -96,6 +96,11 @@ class Idle(State):
         cx, cy = ctx.world.cursor()
         reach = ctx.config.px(ctx.config.watch_radius)
         if abs(cx - ctx.body.x) < reach and abs(cy - ctx.body.y) < 2 * reach:
+            if ctx.bond.grumpy(ctx.config) and self.elapsed > 0.5:
+                # Grumpy: he'd rather not. Off he waddles, the other way.
+                away = -1 if cx > ctx.body.x else 1
+                ctx.say("hmph", 1.2, mood="angry")
+                return Walk(ctx.body.x + away * ctx.config.px(ctx.rng.uniform(70, 120)))
             ctx.body.face_towards(cx)
         return choose_activity(ctx) if self.elapsed >= self.duration else None
 
@@ -109,15 +114,19 @@ def choose_activity(ctx: Context) -> State:
     """Weighted pick of what to do after idling."""
     if is_sleepy(ctx) and ctx.rng.random() < 0.6:
         return Sleep()
+    # Devoted, he seeks you out; grumpy, he keeps away.
+    bond, cfg = ctx.bond, ctx.config
+    fondness = 2.2 if bond.close(cfg) else 0.0 if bond.grumpy(cfg) else 1.0
     options: list[tuple[Callable[[Context], State], float]] = [
         (lambda _: Idle(), 1.0),
         (lambda _: Walk(), 4.0),
         (lambda _: Preen(), 2.0),
         (Fly.hop, 0.6),
         (Fly.tour, 0.8),
-        (lambda _: Follow(), 1.5 if _cursor_on_same_screen(ctx) else 0.0),
+        (lambda _: Follow(), 1.5 * fondness if _cursor_on_same_screen(ctx) else 0.0),
         (lambda _: FrontIdle(), 1.2),
-        (Fly.to_cursor, 3.0 if cursor_is_inviting(ctx) else 0.0),
+        (Fly.to_cursor, 3.0 * fondness if cursor_is_inviting(ctx) else 0.0),
+        (lambda _: Sulk(), 3.0 if ctx.bond.grumpy(ctx.config) else 0.0),
         (Fly.to_branch, 6.0 if branch_is_inviting(ctx) else 0.0),  # he loves the branch
         (Fly.to_window, 2.5 if perchable_ledges(ctx) else 0.0),
     ]
@@ -160,6 +169,30 @@ def branch_is_inviting(ctx: Context) -> bool:
     return ctx.world.area_at((lo + hi) / 2, branch.top) == ctx.area()
 
 
+class Sulk(State):
+    """Grumpy: sitting with his back to you, peeking round now and then to see if
+    you've noticed. Petting brings him round."""
+
+    clip = "sulk"
+    effort = 0.6
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        self.duration = ctx.rng.uniform(8.0, 16.0)
+        if ctx.rng.random() < 0.5:
+            ctx.say("hmph", 1.5, mood="angry")
+
+    def clicked(self, ctx: Context) -> State | None:
+        ctx.say("...", 1.0)
+        return None
+
+    def double_clicked(self, ctx: Context) -> State | None:
+        return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        return Idle() if self.elapsed >= self.duration else None
+
+
 class FrontIdle(State):
     """Sitting facing you for a while, looking about."""
 
@@ -200,8 +233,17 @@ class Walk(State):
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
         if self.target is None:
-            distance = ctx.config.px(ctx.rng.uniform(25, 130)) * ctx.rng.choice((-1, 1))
-            self.target = ctx.body.x + distance
+            if (
+                ctx.bond.close(ctx.config)
+                and _cursor_on_same_screen(ctx)
+                and ctx.rng.random() < 0.5
+            ):
+                # Devoted: he potters over to settle near where you're working.
+                cx = ctx.world.cursor()[0]
+                self.target = cx + ctx.config.px(ctx.rng.uniform(30, 60)) * ctx.rng.choice((-1, 1))
+            else:
+                distance = ctx.config.px(ctx.rng.uniform(25, 130)) * ctx.rng.choice((-1, 1))
+                self.target = ctx.body.x + distance
         self.target = ctx.area().clamp_x(self.target, ctx.margin)
         ctx.body.face_towards(self.target)
 

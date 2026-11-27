@@ -604,3 +604,66 @@ FRONT_BEAK_OPEN = _layer(
     x=29,
     y=13,
 )
+
+
+# --- From behind: sulking with his back to you ----------------------------------
+
+# The back of his head: fawn, paler where the crest springs from.
+BACK_HEAD = _layer(
+    """
+    .LLWWWLL
+    LLLWWWLLL
+    LBLLWLLBL
+    BBLLLLLBB
+    BBBLLLBBB
+    SBBBLBBBS
+    .SBBBBBS
+    .SBBBBBS
+    """,
+    x=26,
+    y=8,
+)
+
+
+# His back: the folded wings meeting down the middle, white patches at the shoulders.
+BACK_BODY = _layer(
+    """
+    .SBBBBBBBBBS
+    SCCBBBBBBBCCS
+    SCPCBBBBBCPCS
+    SCPCCBBBCCPCS
+    SDCPCCBCCPCDS
+    SDCCCCDCCCCDS
+    SDDCCCDCCCDDS
+    .SDDCCDCCDDS
+    .SDDDCDCDDDS
+    ..SDDDTDDDS
+    ...SDTTTDS
+    """,
+    x=24,
+    y=16,
+)
+
+
+# The tail, coming towards you along the ground.
+BACK_TAIL = _layer(
+    """
+    tTTt
+    tTTt
+    .tt
+    """,
+    x=28,
+    y=26,
+)
+
+
+# Peeking round over a shoulder: a sliver of white face and one eye.
+BACK_PEEK = _layer(
+    """
+    WW
+    KW
+    WQ
+    """,
+    x=25,
+    y=10,
+)

@@ -132,6 +132,33 @@ class Config:
     begging: tuple[str, ...] = ("feed me!!", "seeds pls? ♥", "hungryyy...", "*stares*")
     """What he says asking for food."""
 
+    # --- Bond: how close he feels to you, 0 to 1 (see behavior.bond) -----------
+    bond_petting: float = 0.01
+    """Gained per second of petting..."""
+    bond_petting_per_hour: float = 0.15
+    """...up to this much an hour, so it can't be farmed."""
+    bond_fed: float = 0.03
+    bond_fed_hungry: float = 0.06
+    """Gained for a stack of seeds, and for one when he was hungry."""
+    bond_let_out: float = 0.04
+    bond_company: float = 0.004
+    """Gained per minute with your pointer near him, while he's free."""
+    bond_caught: float = 0.08
+    bond_caged: float = 0.01
+    """Lost when caught in the cage, and per minute spent in it."""
+    bond_ignored: float = 0.02
+    """Lost each time he has to ask again for food."""
+    bond_dropped: float = 0.03
+    drop_height: float = 120.0
+    """Lost when let go of from higher than this (art px) above the ground."""
+    bond_drift: float = 0.02
+    """Per hour, how far he drifts back towards the middle when nothing happens."""
+    bond_close: float = 0.7
+    bond_grumpy: float = 0.3
+    """Above ``bond_close`` he's devoted; below ``bond_grumpy``, grumpy."""
+    away_for: float = 600.0
+    """Seconds without any input that count as you being away; he greets you back."""
+
     window_visit: tuple[float, float] = (30.0, 120.0)
     """Seconds he sits on top of a window before flying off."""
 

@@ -150,6 +150,13 @@ FRONT_CLIPS: dict[str, Clip] = {
     "front_whistle": Clip(("front_whistle_a", "front_alert") * 7, (0.16,) * 14, loop=False),
 }
 
+# Sulking with his back to you: long stretches of cold shoulder, a peek round to
+# see if you've noticed, and a huffy puff.
+CLIPS["sulk"] = Clip(
+    ("sulk", "sulk_peek", "sulk", "sulk_huff", "sulk", "sulk_peek"),
+    (2.4, 0.7, 1.8, 0.5, 2.0, 0.4),
+)
+
 
 def _on_branch(clip: Clip) -> Clip:
     names = tuple(name.replace("front_", "branch_") for name in clip.frames)

@@ -5,7 +5,17 @@ from __future__ import annotations
 from zengo.behavior.cage import BELOW_FLOOR, Cage, caught_in
 from zengo.behavior.context import Context
 from zengo.behavior.food import STAND_OFF, Food
-from zengo.behavior.states import Caged, Dragged, Fall, Idle, State
+from zengo.behavior.states import (
+    Alert,
+    Caged,
+    Dragged,
+    Fall,
+    Fly,
+    Follow,
+    Idle,
+    State,
+    cursor_is_inviting,
+)
 from zengo.behavior.status import Status
 from zengo.behavior.status import read as read_status
 from zengo.sounds import CHIRPS
@@ -18,6 +28,9 @@ class Brain:
         self._state: State = initial or Idle()
         self._state.enter(ctx)
         self._facing = ctx.body.facing
+        self._asks = 0
+        """Times he's asked for food since he got hungry."""
+        self._welcome_wait = 0.0
 
     @property
     def state(self) -> State:
@@ -48,6 +61,8 @@ class Brain:
         if (following := self._state.update(ctx, dt)) is not None:
             self.transition(following)
         ctx.hunger.update(ctx, dt, self._state.effort)
+        ctx.bond.update(ctx, dt, caged=self.caged, petted=ctx.petting.active)
+        self._welcome_back(dt)
         if ctx.food is not None:
             ctx.food.pile.update(dt)
         self._mind_the_food()
@@ -59,12 +74,45 @@ class Brain:
                 ctx.animator.interject("ground_turn")
         self._facing = ctx.body.facing
 
+    def _welcome_back(self, dt: float) -> None:
+        """You're back after being away. Devoted, he flies to you with a song;
+        grumpy, he gives you one look; otherwise a cheerful chirp. If he's busy
+        (asleep, mid-flight), he gets round to it within half a minute."""
+        ctx, cfg = self.ctx, self.ctx.config
+        if ctx.bond.welcome_due:
+            ctx.bond.welcome_due, self._welcome_wait = False, 30.0
+        if self._welcome_wait <= 0:
+            return
+        self._welcome_wait -= dt
+        if self.caged or not self._state.chirpy:
+            return
+        self._welcome_wait = 0.0
+        if ctx.bond.grumpy(cfg):
+            ctx.body.face_towards(ctx.world.cursor()[0])
+            if self._state.grounded:
+                self.transition(Alert())
+            return
+        if not ctx.bond.close(cfg):
+            ctx.say("oh, hi! ♪", 1.8)
+            ctx.play("chirp_a")
+            return
+        ctx.say("you're back! ♪", 2.2, mood="love")
+        ctx.play("trill")
+        if cursor_is_inviting(ctx):
+            self.transition(Fly.to_cursor(ctx))
+        elif self._state.grounded:
+            self.transition(Follow())
+
     def _maybe_chirp(self, dt: float) -> None:
-        """Now and then, pottering about, a little chirp."""
-        ctx = self.ctx
+        """Now and then, pottering about, a little chirp: more often when he's
+        devoted to you, less when he's grumpy."""
+        ctx, cfg = self.ctx, self.ctx.config
         if not self._state.chirpy or ctx.speech is not None:
             return
-        if ctx.rng.random() < dt / ctx.config.chirp_every:
+        every = cfg.chirp_every * (
+            0.6 if ctx.bond.close(cfg) else 2.0 if ctx.bond.grumpy(cfg) else 1.0
+        )
+        if ctx.rng.random() < dt / every:
             ctx.play(ctx.rng.choice(CHIRPS))
             ctx.say("♪", 0.9)
 
@@ -75,6 +123,7 @@ class Brain:
         if food is not None and food.pile.seeds <= 0 and food.pile.shown <= 0:
             ctx.food = food = None  # all eaten
         if not ctx.hunger.hungry:
+            self._asks = 0
             return
         following = None
         if food is not None and food.pile.seeds > 0:
@@ -83,6 +132,9 @@ class Brain:
             following = self._state.ask_for_food(ctx)
             if following is not None:
                 ctx.hunger.asked(ctx)
+                self._asks += 1
+                if self._asks > 1:  # you didn't answer last time
+                    ctx.bond.ignored(ctx.config)
         if following is not None:
             self.transition(following)
 
@@ -99,7 +151,11 @@ class Brain:
     # --- Input -------------------------------------------------------------
 
     def click(self) -> None:
-        """A poke: what it does depends on what he's doing (see :meth:`State.clicked`)."""
+        """A poke: what it does depends on what he's doing (see :meth:`State.clicked`).
+        Grumpy, he ignores the first one."""
+        if not self.caged and self.ctx.bond.snubs(self.ctx.config):
+            self.ctx.say("hmph", 1.2, mood="angry")
+            return
         if (following := self._state.clicked(self.ctx)) is not None:
             self.transition(following)
 
@@ -132,6 +188,7 @@ class Brain:
         if ctx.body.y >= area.bottom - 1:  # caught on the ground: the cage stands there
             ctx.cage.mount = "ground"
             ctx.cage.y = area.bottom - ctx.config.px(BELOW_FLOOR)
+        ctx.bond.caught(ctx.config)
         self.transition(Caged())
         return True
 
@@ -152,6 +209,8 @@ class Brain:
                 lo, hi = area.left + ctx.margin + reach, area.right - ctx.margin - reach
                 ctx.food = Food(min(max(x, lo), hi), area.bottom)
             added = ctx.food.pile.add_stack()
+        if added:
+            ctx.bond.fed(cfg, hungry=ctx.hunger.hungry)
         if not added:
             ctx.say("that's plenty! ♥", 1.8, mood="love")
         elif ctx.hunger.hungry:
@@ -174,8 +233,10 @@ class Brain:
 
     def let_out(self) -> None:
         """Open the cage door; he flies out and the cage goes."""
-        if self.ctx.cage is not None:
-            self.ctx.cage.door_open = True
+        cage = self.ctx.cage
+        if cage is not None and not cage.door_open:
+            cage.door_open = True
+            self.ctx.bond.let_out(self.ctx.config)
 
     def cage_grab(self, x: float, y: float) -> None:
         self.ctx.petting.suppress()
@@ -210,5 +271,8 @@ class Brain:
     def release(self) -> None:
         """Let go: he keeps the speed the drag gave him (see :class:`Fall`)."""
         if isinstance(self._state, Dragged):
-            self.ctx.petting.suppress()
+            ctx = self.ctx
+            ctx.petting.suppress()
+            if ctx.area().bottom - ctx.body.y > ctx.config.px(ctx.config.drop_height):
+                ctx.bond.dropped(ctx.config)  # that was a long way down
             self.transition(Fall())

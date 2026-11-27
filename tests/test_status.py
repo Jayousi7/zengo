@@ -11,9 +11,18 @@ def by_title(status):
     return {row.title: row for row in rows(status)}
 
 
-def test_one_bar_each_for_hunger_seeds_and_escape(ctx):
+def test_one_bar_each_for_bond_hunger_seeds_and_escape(ctx):
     status = Brain(ctx, Idle()).status()
-    assert [row.title for row in rows(status)] == ["Fullness", "Seeds", "Escape"]
+    assert [row.title for row in rows(status)] == ["Bond ♥", "Fullness", "Seeds", "Escape"]
+
+
+def test_the_bond_bar_shows_how_close_he_feels(ctx):
+    brain = Brain(ctx, Idle())
+    ctx.bond.level = 0.85
+    row = by_title(brain.status())["Bond ♥"]
+    assert row.share == pytest.approx(0.85) and row.value == "85% · devoted"
+    ctx.bond.level = 0.2
+    assert by_title(brain.status())["Bond ♥"].value == "20% · grumpy"
 
 
 def test_the_hunger_bar_is_his_fullness_with_his_odds_beside_it(ctx):

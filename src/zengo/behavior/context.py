@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 from zengo.animation import Animator
 from zengo.behavior.body import Body
+from zengo.behavior.bond import Bond
 from zengo.behavior.cage import Cage, EscapeProgress
 from zengo.behavior.food import Food, Hunger
 from zengo.behavior.petting import PettingSensor
@@ -46,6 +47,7 @@ class Context:
     escape: EscapeProgress = field(default_factory=EscapeProgress)
     food: Food | None = None
     hunger: Hunger = field(default_factory=Hunger)
+    bond: Bond = field(default_factory=Bond)
 
     def say(self, text: str, seconds: float, mood: str = "plain") -> None:
         self.speech = Speech(text, seconds, mood)
@@ -57,7 +59,10 @@ class Context:
     def whistle(self) -> None:
         """A whistle: one of his phrases in a cloud, and its tune."""
         phrase = self.rng.randrange(len(self.config.whistles))
-        self.say(self.config.whistles[phrase], self.config.speech_seconds)
+        if self.bond.close(self.config) and self.rng.random() < 0.25:
+            self.say("♥", self.config.speech_seconds, mood="love")  # devoted
+        else:
+            self.say(self.config.whistles[phrase], self.config.speech_seconds)
         self.play(whistle_for(phrase))
 
     def area(self) -> Area:

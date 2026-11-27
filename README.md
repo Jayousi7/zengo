@@ -27,11 +27,21 @@ His escape progress is his own, not the cage's: time caged adds up across
 cagings, so letting him out and catching him again later carries on where he
 left off. Only escaping starts it over.
 
-His right-click menu opens with a live panel of all this: a fullness bar with his
+He also grows fond of you, or not. Petting (up to a point each hour), feeding
+him (more so when he's hungry), letting him out of the cage and simply having your
+pointer near him bring him closer; catching him, every minute caged, making him ask
+twice for food and dropping him from high up push him away. Left alone he drifts
+back to the middle. Devoted, he follows your pointer, potters over to sit near
+where you work, chirps more, sometimes whistles a heart, and when you come back
+after ten minutes away he flies over to greet you. Grumpy, he walks off when your
+pointer comes near, ignores your first poke, and sulks with his back to you,
+peeking round now and then to see if you've noticed.
+
+His right-click menu opens with a live panel of all this: a bond bar, a fullness bar with his
 odds of getting hungry at the next check, the seeds out, and his escape bar
 (filling towards his first try, then showing his odds at the next). Where he was
 and which way he faced, whether he was caged (and where the cage hung or stood,
-with its dish), his fullness, hunger, seeds and escape progress are all
+with its dish), his bond, fullness, hunger, seeds and escape progress are all
 remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo` on Windows).
 
 | Input | Reaction |
@@ -114,6 +124,7 @@ src/zengo/
     typing.py       notices you're typing (input with the pointer still)
     cage.py         the cage: carried, hung on a chain, shelved or dropped
     food.py         seeds put out for him, and his fullness and hunger
+    bond.py         how close he feels to you, and noticing you come back
     status.py       a read-out of his needs, for the menu
     memory.py       what he remembers between runs
     machine.py      Brain: runs states, routes mouse input

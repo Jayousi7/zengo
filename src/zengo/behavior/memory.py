@@ -45,6 +45,7 @@ def snapshot(ctx: Context) -> dict[str, Any]:
         "zengo": {"x": round(ctx.body.x, 1), "facing": int(ctx.body.facing)},
         "settings": {"sound": ctx.sound_on},
         "cage": _cage_snapshot(ctx.cage),
+        "bond": round(ctx.bond.level, 4),
         "escape": {
             "caged_for": round(ctx.escape.caged_for, 2),
             "feedings": ctx.escape.feedings,
@@ -58,6 +59,7 @@ def restore(ctx: Context, data: object) -> None:
     if not isinstance(data, dict) or data.get("version") != VERSION:
         return
     cfg = ctx.config
+    ctx.bond.level = _number(data.get("bond"), 0.0, 1.0, ctx.bond.level)
     hunger = data.get("hunger")
     if isinstance(hunger, dict):
         h = ctx.hunger

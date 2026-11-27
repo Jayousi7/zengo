@@ -216,13 +216,21 @@ FRONT_LAYERS: Mapping[str, tuple[Layer, ...]] = {
 }
 """Facing you. On the ground the tail is hidden behind him."""
 
+_BACK = (art.FRONT_FEET, art.BACK_BODY, art.BACK_TAIL)
+BACK_LAYERS: Mapping[str, tuple[Layer, ...]] = {
+    # Sulking with his back to you, now and then glancing over a shoulder.
+    "sulk": (*_BACK, art.FRONT_CREST, art.BACK_HEAD),
+    "sulk_peek": (*_BACK, *_shifted(-1, 0, art.FRONT_CREST, art.BACK_HEAD, art.BACK_PEEK)),
+    "sulk_huff": (*_BACK, art.FRONT_PUFF, art.FRONT_CREST_RAISED, art.BACK_HEAD),
+}
+
 BRANCH_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     name.replace("front_", "branch_"): (art.FRONT_TAIL, *layers)
     for name, layers in FRONT_LAYERS.items()
 }
 """The same poses sitting on the branch, the tail hanging down behind it."""
 
-FRAME_LAYERS = {**FRAME_LAYERS, **FRONT_LAYERS, **BRANCH_LAYERS}
+FRAME_LAYERS = {**FRAME_LAYERS, **FRONT_LAYERS, **BRANCH_LAYERS, **BACK_LAYERS}
 
 
 def build_frames(
