@@ -51,6 +51,7 @@ class Brain:
         self._break_due = 0.0
         self._ask_back_in = 0.0
         self._nudge_due = 0.0
+        self._screens: tuple | None = None
 
     @property
     def state(self) -> State:
@@ -63,6 +64,7 @@ class Brain:
     def tick(self, dt: float) -> None:
         ctx = self.ctx
         ctx.animator.update(dt)
+        self._mind_the_screens()
         ctx.scenery.update(ctx, dt, occupied=self._state.holds_branch)
         ctx.effects.update(dt, ctx.config.scale)
         self._mind_the_focus(dt)
@@ -110,6 +112,45 @@ class Brain:
                 # Turning round on the ground: a glimpse of his front, not a flip.
                 ctx.animator.interject("ground_turn")
         self._facing = ctx.body.facing
+
+    def _mind_the_screens(self) -> None:
+        """A screen unplugged (or the screens rearranged): anything left off them
+        all comes onto the nearest one. He flies in; his cage, seeds, bath and
+        mirror are moved over; feathers lying there are gone, and so is the branch
+        if its screen is."""
+        ctx = self.ctx
+        areas = tuple(ctx.world.areas())
+        if areas == self._screens:
+            return
+        first, self._screens = self._screens is None, areas
+        if first or not areas:
+            return
+
+        def on_screen(x: float, y: float) -> bool:
+            return any(a.contains(x, y) for a in areas)
+
+        cfg = ctx.config
+        cage = ctx.cage
+        if cage is not None and not on_screen(cage.x, cage.y - cfg.px(4)):
+            area = ctx.world.area_at(cage.x, cage.y)
+            cage.x = area.clamp_x(cage.x, cfg.px(16))
+            cage.y, cage.mount = area.bottom - cfg.px(BELOW_FLOOR), "ground"
+            cage.pivot, cage.sway, cage.sway_speed = None, 0.0, 0.0
+        for thing in (ctx.food, ctx.bath.dish):
+            if thing is not None and not on_screen(thing.x, thing.y - 1):
+                area = ctx.world.area_at(thing.x, thing.y)
+                thing.x = area.clamp_x(thing.x, ctx.margin + cfg.px(STAND_OFF))
+                thing.y = area.bottom
+        ctx.moult.feathers = [f for f in ctx.moult.feathers if on_screen(f.x, f.y - 1)]
+        branch = ctx.scenery.branch
+        if branch is not None and not on_screen(branch.edge - branch.side, branch.top):
+            if isinstance(self._state, OnBranch):
+                self.transition(Fall())
+            ctx.scenery.branch, ctx.scenery.phase = None, "waiting"
+        body = ctx.body
+        lost = not on_screen(body.x, body.y - cfg.px(4))
+        if lost and not (self.caged or self.away or isinstance(self._state, Dragged)):
+            self.transition(Fly.home(ctx))
 
     def _welcome_back(self, dt: float) -> None:
         """You're back after being away. Devoted, he flies to you with a song;

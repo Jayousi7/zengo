@@ -10,7 +10,7 @@ from PySide6.QtGui import QCursor, QGuiApplication
 
 from zengo.ui.desktop_windows import windows_reader
 from zengo.ui.input_idle import InputIdle
-from zengo.world import Area, Ledge, Window, visible_ledges
+from zengo.world import Area, Ledge, Window, nearest, visible_ledges
 
 LEDGES_EVERY = 0.25
 """Seconds between looks at where the other windows are."""
@@ -44,11 +44,23 @@ class QtWorld:
             self._last_cursor = position
             self._last_activity = time.monotonic()
 
+    def areas(self) -> list[Area]:
+        # QRect.right()/bottom() are inclusive; Area edges are exclusive.
+        return [
+            Area(g.left(), g.top(), g.right() + 1, g.bottom() + 1)
+            for g in (screen.availableGeometry() for screen in QGuiApplication.screens())
+        ]
+
     def area_at(self, x: float, y: float) -> Area:
         screen = QGuiApplication.screenAt(QPoint(round(x), round(y)))
-        geometry = (screen or QGuiApplication.primaryScreen()).availableGeometry()
-        # QRect.right()/bottom() are inclusive; Area edges are exclusive.
-        return Area(geometry.left(), geometry.top(), geometry.right() + 1, geometry.bottom() + 1)
+        if screen is not None:
+            g = screen.availableGeometry()
+            return Area(g.left(), g.top(), g.right() + 1, g.bottom() + 1)
+        areas = self.areas()
+        if not areas:  # (no screens at all, for a moment, as they're rearranged)
+            g = QGuiApplication.primaryScreen().availableGeometry()
+            return Area(g.left(), g.top(), g.right() + 1, g.bottom() + 1)
+        return nearest(areas, x, y)
 
     def cursor(self) -> tuple[float, float]:
         position = QCursor.pos()

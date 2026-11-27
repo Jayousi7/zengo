@@ -546,12 +546,22 @@ class Fly(State):
         """In from the side he left by, to land a little way in."""
         cfg = ctx.config
         area = away.area or ctx.area()
+        if area not in ctx.world.areas():  # its screen's gone since: the nearest one
+            area = ctx.world.area_at((area.left + area.right) / 2, (area.top + area.bottom) / 2)
         edge = area.left if away.side < 0 else area.right
         height = area.bottom - area.top
         ctx.body.x, ctx.body.y = edge + away.side * cfg.px(OFF_SCREEN), area.top + 0.3 * height
         x = edge - away.side * ctx.rng.uniform(cfg.px(120), cfg.px(260))
         x = area.clamp_x(x, ctx.margin)
         return cls(_landing(ctx, x, coming_from=ctx.body.x))
+
+    @classmethod
+    def home(cls, ctx: Context) -> Fly:
+        """His screen's gone from under him: in to land on the nearest one."""
+        cfg, body = ctx.config, ctx.body
+        area = ctx.world.area_at(body.x, body.y)
+        x = area.clamp_x(body.x, ctx.margin + cfg.px(40))
+        return cls(_landing(ctx, x, coming_from=body.x), onto="ground")
 
     @classmethod
     def down(cls, ctx: Context) -> Fly:

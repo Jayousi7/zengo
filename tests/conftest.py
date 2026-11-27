@@ -43,8 +43,18 @@ class FakeWorld:
     """Where windows are this instant, when that's newer than ``windows_on_top``."""
     """Seconds since any input; None: the system won't say."""
 
+    screens: list[Area] | None = None
+    """Several screens, when a test wants them; otherwise just ``area``."""
+
+    def areas(self) -> list[Area]:
+        return list(self.screens) if self.screens else [self.area]
+
     def area_at(self, x: float, y: float) -> Area:
-        return self.area
+        if not self.screens:
+            return self.area
+        from zengo.world import nearest
+
+        return nearest(self.screens, x, y)
 
     def cursor(self) -> tuple[float, float]:
         return self.cursor_pos

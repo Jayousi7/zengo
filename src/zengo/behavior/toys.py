@@ -77,6 +77,8 @@ class Toys:
     """Where the bell is now, if it's out and has somewhere to hang."""
     mirror: Mirror | None = None
     _ground_x: float | None = None
+    _ground_y: float = 0.0
+    """...and the ground it stands on: it stays on that screen when he leaves it."""
     """Where the mirror stands on the ground, once put there."""
     _swing: Bell = field(default_factory=Bell)
     rest: float = 0.0
@@ -129,10 +131,12 @@ class Toys:
                     reflecting,
                 )
             elif not away:
-                area = ctx.area()
                 if self._ground_x is None:
-                    self._ground_x = self._spot(ctx)
+                    self._ground_x, self._ground_y = self._spot(ctx), ctx.area().bottom
+                # Its own screen (or the nearest, if that one's been unplugged).
+                area = ctx.world.area_at(self._ground_x, self._ground_y - 1)
                 self._ground_x = area.clamp_x(self._ground_x, ctx.margin)
+                self._ground_y = area.bottom
                 self.mirror = Mirror(self._ground_x, area.bottom, "ground", reflecting)
 
     def _spot(self, ctx: Context) -> float:
