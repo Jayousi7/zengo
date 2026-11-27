@@ -37,7 +37,7 @@ after ten minutes away he flies over to greet you. Grumpy, he walks off when you
 pointer comes near, ignores your first poke, and sulks with his back to you,
 peeking round now and then to see if you've noticed.
 
-His right-click menu opens with a live panel of all this: a bond bar, a fullness bar with his
+His right-click menu opens with a live panel of all this, as four small cards: his bond, his fullness with his
 odds of getting hungry at the next check, the seeds out, and his escape bar
 (filling towards his first try, then showing his odds at the next). Where he was
 and which way he faced, whether he was caged (and where the cage hung or stood,

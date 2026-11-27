@@ -66,6 +66,14 @@ SPEECH_GLIDE = 0.3
 """Share of the way a speech cloud moves towards where it belongs each frame."""
 
 
+def _open_menus() -> list[QMenu]:
+    return [w for w in QApplication.topLevelWidgets() if isinstance(w, QMenu) and w.isVisible()]
+
+
+def _menu_open() -> bool:
+    return bool(_open_menus())
+
+
 class Pet:
     def __init__(
         self,
@@ -183,7 +191,9 @@ class Pet:
         self._show_speech()
         self._play_sounds()
         showing = tuple(w.isVisible() for w in self._layers())
-        if showing != self._showing or time.monotonic() - self._restacked >= RESTACK_EVERY:
+        if _menu_open():
+            pass  # leave the order alone while his menu is up: it stays on top
+        elif showing != self._showing or time.monotonic() - self._restacked >= RESTACK_EVERY:
             self._showing = showing  # one has just come or gone: order them at once
             self.restack()
 
@@ -217,6 +227,8 @@ class Pet:
         for window in back_to_front:
             if window.isVisible():
                 window.raise_()
+        for menu in _open_menus():  # his menu, if it's open, above them all
+            menu.raise_()
 
     def _play_sounds(self) -> None:
         ctx = self._brain.ctx
@@ -255,6 +267,7 @@ class Pet:
         sound.setChecked(self._brain.ctx.sound_on)
         menu.addSeparator()
         menu.addAction("Quit Zengo", QApplication.quit)
+        menu.aboutToShow.connect(menu.raise_)
         menu.exec(where)
 
     def _toggle_sound(self) -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPaintEvent, QPixmap
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QApplication, QWidget
 
 from zengo.ui.layering import bypass_window_manager
 
@@ -77,7 +77,8 @@ class BubbleWindow(QWidget):
             self.move(left, top)
         if not self.isVisible():
             self.show()
-        self.raise_()
+            if QApplication.activePopupWidget() is None:  # never over an open menu
+                self.raise_()  # once, as it appears: after that the app keeps the order
 
     def _draw(self, text: str, mood: str) -> QPixmap:
         s = self._scale
