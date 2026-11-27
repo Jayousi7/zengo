@@ -190,9 +190,9 @@ LEGS_STEP_FRONT = _layer(
 # Feathers fluffed out by a pixel around the chest and back.
 PUFF = _layer(
     """
-    ........S...........L
-    ......S.............L
-    ....S...............L
+    ........S
+    ......S
+    ....S
     ..S.................L
     S...................L
     ...................L
@@ -673,18 +673,18 @@ BACK_PEEK = _layer(
 # A head moves by turning on its neck, not by sliding across the body: these are
 # the same head seen at other angles, in the same place as HEAD / FRONT_HEAD.
 
-# Tilted down, beak tucked: nodding, pecking, looking at the ground.
+# Tilted down: nodding, pecking, looking at the ground. The face comes forward as
+# it tips, so the beak points down in front of the chest, never into it.
 HEAD_DOWN = _layer(
     """
     .....LWWW
     ...LLWWWWW
     ..BLWWWWWW
-    ..BLLWWWWW
-    ..BLLWWKWWW
-    ..BBLWWWWWQ
-    .SBBLWWWWQQ
-    SBBBLLWWWQq
-    ........qq
+    ..BLLWWWWWW
+    ..BLLWWKWWWQ
+    ..BBLWWWWWQQ
+    .SBBLWWWWWQq
+    SBBBLLWWWW.q
     """,
     x=30,
     y=8,
