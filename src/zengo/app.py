@@ -37,6 +37,7 @@ from zengo.ui.branch_window import BranchWindow
 from zengo.ui.bubble_window import BubbleWindow
 from zengo.ui.cage_window import CageWindow, MountWindow
 from zengo.ui.catch_overlay import CatchOverlay
+from zengo.ui.effects_window import EffectsWindow
 from zengo.ui.food_window import FoodWindow
 from zengo.ui.qt_world import QtWorld, time_zone
 from zengo.ui.recorder import RecorderBox, microphone
@@ -201,11 +202,24 @@ class Pet:
         self._mount = MountWindow(config)
         self._food = FoodWindow(config)
         self._dish = FoodWindow(config, in_front_of=self._window)
+        self._effects = EffectsWindow(config.scale, in_front_of=self._window)
+
+    def _scaled_windows(self) -> list:
+        """The windows drawn at his size, made again when it changes."""
+        return [
+            self._branch,
+            self._bubble,
+            self._cage,
+            self._mount,
+            self._food,
+            self._dish,
+            self._effects,
+        ]
 
     def _resize(self) -> None:
         """He's changed size: redraw everything at the new scale and put him and
         his cage where they belong at it."""
-        for window in (self._branch, self._bubble, self._cage, self._mount, self._food, self._dish):
+        for window in self._scaled_windows():
             window.hide()
             window.deleteLater()
         self._build_windows()
@@ -274,6 +288,7 @@ class Pet:
         else:
             self._dish.show_pile(cage.dish, cage.shown_x, cage.y)
         self._show_cage()
+        self._effects.show_particles(ctx.effects.particles)
         self._show_speech()
         self._play_sounds()
         showing = tuple(w.isVisible() for w in self._layers())
@@ -302,6 +317,7 @@ class Pet:
             self._branch,
             self._dish,
             self._cage,
+            self._effects,
             self._bubble,
         ]
 

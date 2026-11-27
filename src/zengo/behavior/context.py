@@ -11,6 +11,7 @@ from zengo.animation import Animator
 from zengo.behavior.body import Body
 from zengo.behavior.bond import Bond
 from zengo.behavior.cage import Cage, EscapeProgress
+from zengo.behavior.effects import Effects
 from zengo.behavior.food import Food, Hunger
 from zengo.behavior.petting import PettingSensor
 from zengo.behavior.scenery import Scenery
@@ -62,6 +63,8 @@ class Context:
     talking: bool = False
     """He's just said one of your words: the app shows his beak working."""
     seasons: Seasons = field(default_factory=Seasons)
+    effects: Effects = field(default_factory=Effects)
+    """Droplets, snowflakes and leaves in the air."""
     damp: float = 0.0
     """Seconds until he's dry after a bath."""
 

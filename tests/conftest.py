@@ -78,3 +78,38 @@ def ctx(world: FakeWorld) -> Context:
         config=Config(),
         rng=random.Random(1234),
     )
+
+
+@pytest.fixture
+def make_pet(tmp_path):
+    """Makes a started Pet with its files in a temporary folder; closed afterwards."""
+    from zengo.app import Pet
+    from zengo.settings import Flags, Settings, build_config
+    from zengo.sprites.frames import build_frames
+    from zengo.ui.state_file import StateFile
+
+    made = []
+
+    def make(flags=None, settings=None, **extra):
+        flags, settings = flags or Flags(), settings or Settings()
+        pet = Pet(
+            build_config(settings, flags),
+            build_frames(),
+            random.Random(1),
+            memory=StateFile(tmp_path / "state.json"),
+            settings=settings,
+            settings_file=StateFile(tmp_path / "settings.json"),
+            flags=flags,
+            **extra,
+        )
+        pet.start()
+        made.append(pet)
+        return pet
+
+    yield make
+    for pet in made:
+        pet._timer.stop()
+        for window in (pet._window, *pet._scaled_windows()):
+            window.close()
+        if pet._settings_window is not None:
+            pet._settings_window.close()
