@@ -859,6 +859,8 @@ class Caged(State):
         return None
 
     def petted(self, ctx: Context) -> State | None:
+        if ctx.cage is not None and ctx.cage.mount == "held":
+            return None  # being carried about is no time for a cuddle
         if self.doing not in ("petted", "eat"):
             self._do(ctx, "petted")
             self.contentment = _Contentment()

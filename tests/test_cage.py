@@ -231,3 +231,37 @@ def test_shelf_bracket_braces_up_from_the_wall():
     arm_end = len(arm.rstrip(".")) - 1
     assert arm_end - 1 <= ends[0] <= arm_end  # meets the end of the arm, diagonally
     assert ends[-1] <= 2  # and comes down to the wall
+
+
+def test_carrying_the_cage_never_sets_off_his_petting(ctx, world):
+    """A real drag wobbles the pointer back and forth over him, just like a stroke."""
+    brain = Brain(ctx, Idle())
+    cage = catch(ctx, brain)
+    run(brain, 1)
+    gx, gy = cage.x, cage.y - 30
+    brain.cage_grab(gx, gy)
+    clouds, last = [], None
+    for i in range(round(10 / DT)):
+        x, y = gx + 25 * math.sin(i / 8), gy - 200 * min(1, i / 60)
+        world.cursor_pos = (x, y)
+        brain.cage_drag(x, y)
+        brain.tick(DT)
+        if ctx.speech is not None and ctx.speech is not last:
+            clouds.append(ctx.speech.text)
+        last = ctx.speech
+    assert "♥" not in clouds
+    assert len(clouds) <= 10 / ctx.config.complaint_every[0] + 1
+
+
+@pytest.mark.parametrize(
+    "to", [(-500, -500), (5000, -500), (5000, 5000), (-500, 5000), (960, -900)]
+)
+def test_the_cage_stops_at_the_screen_edges_and_corners(ctx, to):
+    brain = Brain(ctx, Idle())
+    cage = catch(ctx, brain)
+    brain.cage_grab(cage.x, cage.y - 30)
+    brain.cage_drag(*to)
+    brain.tick(DT)
+    area, px = ctx.world.area, ctx.config.px
+    assert area.left <= cage.x - px(CAGE_WIDTH / 2) and cage.x + px(CAGE_WIDTH / 2) <= area.right
+    assert area.top <= cage.top(ctx) and cage.y + px(BELOW_FLOOR) <= area.bottom

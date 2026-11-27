@@ -69,10 +69,18 @@ class Cage:
         self.vx = self.vy = 0.0
         self._last_held = None
 
-    def drag(self, x: float, y: float) -> None:
-        if self.mount == "held":
-            dx, dy = self._grab
-            self.x, self.y = x + dx, y + dy
+    def drag(self, x: float, y: float, ctx: Context) -> None:
+        """Follow the mouse, but stay whole on the screen: it stops at the edges
+        rather than sliding off them."""
+        if self.mount != "held":
+            return
+        dx, dy = self._grab
+        x, y = x + dx, y + dy
+        cfg = ctx.config
+        area = ctx.world.area_at(x, y - cfg.px(FLOOR / 2))
+        half = cfg.px(CAGE_WIDTH / 2)
+        self.x = min(max(x, area.left + half), area.right - half)
+        self.y = min(max(y, area.top + cfg.px(FLOOR)), area.bottom - cfg.px(BELOW_FLOOR))
 
     def release(self, ctx: Context) -> None:
         """Let go: hang it from the top, stand it on a side shelf, or let it fall."""

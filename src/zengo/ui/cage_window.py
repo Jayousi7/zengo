@@ -86,12 +86,12 @@ class CageWindow(QWidget):
         left = round(cage.shown_x - px(CENTRE + 1 + 0.5))
         top = round(cage.y - px(FLOOR + 1))
         shown, offset = clip_to(QRect(QPoint(left, top), self._pixmaps[False].size()), bounds)
+        if self.geometry() != shown:
+            self.setGeometry(shown)
         if cage.door_open != self._door or offset != self._offset:
             self._door, self._offset = cage.door_open, offset
             self.setMask(self._mask.translated(offset))
             self.update()
-        if self.geometry() != shown:
-            self.setGeometry(shown)
         if not self.isVisible():
             self.show()
             self.raise_()  # in front of him: he's behind the bars

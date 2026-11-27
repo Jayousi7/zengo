@@ -52,12 +52,12 @@ class PetWindow(QWidget):
         """Show ``sprite`` with its top-left corner at ``top_left``, trimmed to ``bounds``
         (the desktop) so no window manager moves it."""
         shown, offset = clip_to(QRect(top_left, sprite.pixmap.size()), bounds)
+        if self.geometry() != shown:
+            self.setGeometry(shown)
         if sprite is not self._sprite or offset != self._offset:
             self._sprite, self._offset = sprite, offset
             self.setMask(sprite.mask.translated(offset))
             self.update()
-        if self.geometry() != shown:
-            self.setGeometry(shown)
 
     def paintEvent(self, event: QPaintEvent) -> None:
         if self._sprite is not None:

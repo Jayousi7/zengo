@@ -126,14 +126,17 @@ class Brain:
             self.ctx.cage.door_open = True
 
     def cage_grab(self, x: float, y: float) -> None:
+        self.ctx.petting.suppress()
         if self.ctx.cage is not None and not self.ctx.cage.door_open:
             self.ctx.cage.grab(x, y)
 
     def cage_drag(self, x: float, y: float) -> None:
+        self.ctx.petting.suppress()
         if self.ctx.cage is not None:
-            self.ctx.cage.drag(x, y)
+            self.ctx.cage.drag(x, y, self.ctx)
 
     def cage_release(self) -> None:
+        self.ctx.petting.suppress()
         if self.ctx.cage is not None:
             self.ctx.cage.release(self.ctx)
 
@@ -141,16 +144,19 @@ class Brain:
         """Mouse pressed on Zengo at screen ``(x, y)`` and started moving."""
         if self.caged:
             return  # behind bars: the cage is what gets dragged
+        self.ctx.petting.suppress()
         body = self.ctx.body
         self._grab_offset = (body.x - x, body.y - y)
         self.transition(Dragged(target=(body.x, body.y)))
 
     def drag(self, x: float, y: float) -> None:
         if isinstance(self._state, Dragged):
+            self.ctx.petting.suppress()
             dx, dy = self._grab_offset
             self._state.target = (x + dx, y + dy)
 
     def release(self) -> None:
         """Let go: he keeps the speed the drag gave him (see :class:`Fall`)."""
         if isinstance(self._state, Dragged):
+            self.ctx.petting.suppress()
             self.transition(Fall())

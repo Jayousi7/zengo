@@ -31,11 +31,22 @@ class PettingSensor:
 
     active: bool = False
     _time: float = 0.0
+    _quiet_until: float = -math.inf
     _last_stroke: float = -math.inf
     _samples: deque[tuple[float, float, float, bool]] = field(default_factory=deque)
 
+    def suppress(self, seconds: float = 1.0) -> None:
+        """Ignore the pointer for a while: it's busy dragging him or his cage, which
+        moves it back and forth over him just like a stroke would."""
+        self._quiet_until = self._time + seconds
+        self._samples.clear()
+        self._last_stroke = -math.inf
+        self.active = False
+
     def update(self, ctx: Context, dt: float) -> None:
         self._time += dt
+        if self._time < self._quiet_until:
+            return
         x, y = ctx.world.cursor()
         self._samples.append((self._time, x, y, _over_him(ctx, x, y)))
         while self._samples and self._samples[0][0] < self._time - self.window:
