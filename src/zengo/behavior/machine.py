@@ -16,6 +16,7 @@ from zengo.behavior.states import (
     Follow,
     Idle,
     Listen,
+    OnBranch,
     State,
     Walk,
     can_fly,
@@ -56,6 +57,12 @@ class Brain:
             ctx, dt, occupied=self._state.holds_bath, free=not (self.caged or self.away)
         )
         ctx.damp = max(0.0, ctx.damp - dt)
+        ctx.moult.update(
+            ctx,
+            dt,
+            free=not (self.caged or self.away),
+            on_branch=isinstance(self._state, OnBranch),
+        )
         if ctx.speech is not None:
             ctx.speech.remaining -= dt
             if ctx.speech.remaining <= 0:
@@ -360,6 +367,10 @@ class Brain:
         if ctx.cage is not None and not ctx.cage.door_open:
             return ctx.cage.dish.stacks
         return ctx.food.pile.stacks if ctx.food is not None else 0
+
+    def pick_feather(self, index: int) -> None:
+        """You clicked one of the feathers he's dropped: it goes."""
+        self.ctx.moult.pick_up(index)
 
     def let_out(self) -> None:
         """Open the cage door; he flies out and the cage goes."""

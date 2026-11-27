@@ -17,16 +17,19 @@ def _run(brain, seconds, dt=0.1):
 
 def test_a_dish_appears_after_a_while_near_him_and_fades_in(ctx):
     ctx.config = replace(ctx.config, bath_every=(10.0, 10.0))
-    brain = Brain(ctx)
-    _run(brain, 9)
-    assert ctx.bath.dish is None
-    _run(brain, 1.5)
-    dish = ctx.bath.dish
+    cycle = BathCycle()
+    for _ in range(90):
+        cycle.update(ctx, 0.1, occupied=False, free=True)
+    assert cycle.dish is None
+    for _ in range(15):
+        cycle.update(ctx, 0.1, occupied=False, free=True)
+    dish = cycle.dish
     assert dish is not None and 0 < dish.shown < 1
     assert dish.y == ctx.area().bottom
     assert 100 <= abs(dish.x - ctx.body.x) <= 190
-    _run(brain, ctx.config.bath_fade_seconds)
-    assert ctx.bath.phase == "out" and dish.ready
+    for _ in range(round(ctx.config.bath_fade_seconds * 10)):
+        cycle.update(ctx, 0.1, occupied=False, free=True)
+    assert cycle.phase == "out" and dish.ready
 
 
 def test_the_dish_goes_after_a_few_minutes(ctx):

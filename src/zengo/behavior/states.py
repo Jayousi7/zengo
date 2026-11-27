@@ -132,7 +132,7 @@ def choose_activity(ctx: Context) -> State:
     options: list[tuple[Callable[[Context], State], float]] = [
         (lambda _: Idle(), 1.0),
         (lambda _: Walk(), 4.0),
-        (lambda _: Preen(), 2.0),
+        (lambda _: Preen(), 5.0 if ctx.moult.moulting_day(ctx) else 2.0),
         (Fly.hop, 0.6 if flies else 0.0),
         (Fly.tour, 0.8 if flies else 0.0),
         (lambda _: Follow(), 1.5 * fondness if _cursor_on_same_screen(ctx) else 0.0),

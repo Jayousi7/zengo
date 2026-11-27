@@ -73,6 +73,9 @@ class Config:
     bath_fade_seconds: float = 1.5
     """Time for a dish to fade in, and out."""
 
+    moult_every: tuple[float, float] = (3600.0, 7200.0)
+    """Seconds between feathers falling (less in spring and autumn, and on moulting days)."""
+
     damp_seconds: float = 60.0
     """How long he's damp after a bath: he won't fly till he's dry."""
 
@@ -198,7 +201,8 @@ def _within(hours: tuple[int, int], hour: int) -> bool:
 
 def quick(config: Config) -> Config:
     """Timers shortened for trying things out: he escapes a cage within seconds,
-    gets hungry ten times as fast, and gets a bath every minute or so."""
+    gets hungry ten times as fast, gets a bath every minute or so, and drops
+    a feather twice a minute."""
     from dataclasses import replace
 
     return replace(
@@ -210,5 +214,6 @@ def quick(config: Config) -> Config:
         hunger_check_every=5.0,
         nag_every=20.0,
         bath_every=(30.0, 60.0),
+        moult_every=(20.0, 40.0),
         damp_seconds=20.0,
     )

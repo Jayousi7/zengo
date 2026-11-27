@@ -14,6 +14,7 @@ from zengo.behavior.bond import Bond
 from zengo.behavior.cage import Cage, EscapeProgress
 from zengo.behavior.effects import Effects
 from zengo.behavior.food import Food, Hunger
+from zengo.behavior.moult import Moult
 from zengo.behavior.petting import PettingSensor
 from zengo.behavior.scenery import Scenery
 from zengo.behavior.seasons import Seasons
@@ -65,6 +66,7 @@ class Context:
     """He's just said one of your words: the app shows his beak working."""
     seasons: Seasons = field(default_factory=Seasons)
     bath: BathCycle = field(default_factory=BathCycle)
+    moult: Moult = field(default_factory=Moult)
     effects: Effects = field(default_factory=Effects)
     """Droplets, snowflakes and leaves in the air."""
     damp: float = 0.0

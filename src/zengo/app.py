@@ -21,6 +21,7 @@ from zengo.behavior.body import Body, Facing
 from zengo.behavior.context import Context
 from zengo.behavior.machine import Brain
 from zengo.behavior.memory import restore, snapshot
+from zengo.behavior.moult import MAX_FEATHERS
 from zengo.behavior.seasons import SEASONS, hemisphere_of
 from zengo.behavior.states import Away
 from zengo.behavior.vocabulary import Lesson
@@ -39,6 +40,7 @@ from zengo.ui.bubble_window import BubbleWindow
 from zengo.ui.cage_window import CageWindow, MountWindow
 from zengo.ui.catch_overlay import CatchOverlay
 from zengo.ui.effects_window import EffectsWindow
+from zengo.ui.feather_window import FeatherWindow
 from zengo.ui.food_window import FoodWindow
 from zengo.ui.qt_world import QtWorld, time_zone
 from zengo.ui.recorder import RecorderBox, microphone
@@ -208,6 +210,10 @@ class Pet:
         self._dish = FoodWindow(config, in_front_of=self._window)
         self._effects = EffectsWindow(config.scale, in_front_of=self._window)
         self._bath = BathWindow(config, in_front_of=self._window)
+        # One more than can lie about: the oldest fades as a new one falls.
+        self._feathers = [FeatherWindow(config.scale) for _ in range(MAX_FEATHERS + 1)]
+        for index, feather in enumerate(self._feathers):
+            feather.clicked.connect(lambda i=index: self._brain.pick_feather(i))
 
     def _scaled_windows(self) -> list:
         """The windows drawn at his size, made again when it changes."""
@@ -220,6 +226,7 @@ class Pet:
             self._dish,
             self._effects,
             self._bath,
+            *self._feathers,
         ]
 
     def _resize(self) -> None:
@@ -294,6 +301,9 @@ class Pet:
         else:
             self._dish.show_pile(cage.dish, cage.shown_x, cage.y)
         self._bath.show_dish(ctx.bath.dish, time.monotonic())
+        feathers = ctx.moult.feathers
+        for index, window in enumerate(self._feathers):
+            window.show_feather(feathers[index] if index < len(feathers) else None)
         self._show_cage()
         self._effects.show_particles(ctx.effects.particles)
         self._show_speech()
@@ -319,6 +329,7 @@ class Pet:
     def _layers(self) -> list:
         return [
             self._mount,
+            *self._feathers,
             self._food,
             self._window,
             self._bath,
@@ -332,11 +343,11 @@ class Pet:
     def restack(self) -> None:
         """Put the windows in their proper order, back to front.
 
-        Behind Zengo: the chain or shelf and the seed pile. In front of him: his
-        bath (so the rim hides his feet as he stands in it), the branch (so his
-        tail hangs behind it), the dish and the cage (so he's behind the bars;
-        once the door's open he comes out in front), the droplets and snow, and
-        the speech cloud.
+        Behind Zengo: the chain or shelf, feathers he's dropped and the seed
+        pile. In front of him: his bath (so the rim hides his feet as he stands
+        in it), the branch (so his tail hangs behind it), the dish and the cage
+        (so he's behind the bars; once the door's open he comes out in front),
+        the droplets and snow, and the speech cloud.
         Window managers reorder windows on clicks and when new ones appear, so this
         is done at start, after any click or drag on him, and every so often.
         """
