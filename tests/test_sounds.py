@@ -3,6 +3,7 @@
 import io
 import wave
 from dataclasses import replace
+from pathlib import Path
 
 from zengo import sounds
 from zengo.behavior.machine import Brain
@@ -105,7 +106,7 @@ def test_a_replaced_sound_plays_your_file_and_a_missing_one_his_own(tmp_path, ca
     if player._folder is None:
         return  # no Qt multimedia here
     try:
-        assert player._effects["trill"].source().toLocalFile() == str(mine)
+        assert Path(player._effects["trill"].source().toLocalFile()) == mine
         assert player._effects["ask"].source().toLocalFile().endswith("ask.wav")
         assert "gone.wav" in capsys.readouterr().err
     finally:

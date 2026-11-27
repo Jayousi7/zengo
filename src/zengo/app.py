@@ -391,7 +391,9 @@ class Pet:
                 self._resize()
         if keep and self._settings_file is not None:
             self._settings_file.save(settings.to_json())
-        if self._settings_window is not None:
+        if keep and self._settings_window is not None:
+            # (Not while the volume is being dragged: the window's own copy has to
+            # stay as it was, so letting go is seen as a change and kept.)
             self._settings_window.show_settings(settings, self._settings_window_autostart())
 
     def _settings_window_autostart(self) -> bool | None:
@@ -608,6 +610,9 @@ def main(argv: list[str] | None = None) -> int:
     quiet_bundled_libraries()
     app = QApplication(sys.argv[:1])
     app.setApplicationName("Zengo")
+    # Closing his settings (or the teach or record box) must not end him: he quits
+    # only from his menu, the tray, or the session ending.
+    app.setQuitOnLastWindowClosed(False)
 
     frames = build_frames()
     if options.sprites is not None:

@@ -125,3 +125,15 @@ def test_reset_forgets_him_but_keeps_your_settings(pet):
     saved = pet._memory.load()
     assert saved["bond"] == 0.5 and saved["cage"] is None
     assert pet.settings.appetite == "fast"
+
+
+def test_a_volume_dragged_with_the_slider_is_kept_when_let_go(pet):
+    pet = pet()
+    pet.open_settings()
+    volume = pet._settings_window.general.volume
+    volume.setSliderDown(True)
+    volume.setValue(80)
+    assert pet.settings.volume == 0.8  # heard at once
+    assert pet._settings_file.load() is None  # not saved mid-drag
+    volume.setSliderDown(False)  # let go
+    assert Settings.from_json(pet._settings_file.load()).volume == 0.8

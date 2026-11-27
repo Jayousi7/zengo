@@ -3,7 +3,7 @@
 Click it and he flies to the middle of your screen. Its menu shows or hides him,
 feeds him, opens the settings or quits. A small dot on the icon says he needs
 you: hungry, or caged and wanting out. Where the desktop has no tray it's simply
-not there.
+not there (and appears later if a tray does, as when he starts before the panel).
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 
 from PySide6.QtCore import QObject, QRect, Qt
-from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QColor, QGuiApplication, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 from zengo.sprites.compose import Frame
@@ -68,7 +68,10 @@ class Tray(QObject):
 
     @staticmethod
     def available() -> bool:
-        return QSystemTrayIcon.isSystemTrayAvailable()
+        """Whether to make one at all. Started at login he may come up before the
+        desktop's panel does, and Qt shows the icon once a tray appears, so it's
+        made wherever there's a real screen (not for headless tests)."""
+        return QGuiApplication.platformName() != "offscreen"
 
     def show(self) -> None:
         self._icon.show()

@@ -166,7 +166,7 @@ class SettingsWindow(QWidget):
             combo.currentIndexChanged.connect(self._edited)
         g.sound.toggled.connect(self._edited)
         g.volume.valueChanged.connect(self._volume_moved)
-        g.volume.sliderReleased.connect(self._edited)
+        g.volume.sliderReleased.connect(self._volume_let_go)
         g.autostart.toggled.connect(self._autostart_toggled)
         g.reset.clicked.connect(self._ask_reset)
 
@@ -206,6 +206,14 @@ class SettingsWindow(QWidget):
             self.previewed.emit(replace(self._settings, volume=value / 100))
         else:
             self._edited()  # keyboard or a click on the track: keep it at once
+
+    def _volume_let_go(self) -> None:
+        """Let go of the volume: keep where it ended up, even though it's already
+        been heard there while dragging."""
+        if self._showing:
+            return
+        self._settings = self.general.read(self._settings)
+        self.changed.emit(self._settings)
 
     def _autostart_toggled(self, on: bool) -> None:
         if not self._showing and on != self._autostart:

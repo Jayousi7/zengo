@@ -123,6 +123,7 @@ class RecorderBox(QWidget):
         self._format: tuple[int, int, str] | None = None
         self.samples: list[int] = []
         self.rate = 0
+        self._previews = 0
 
         self.cue = QComboBox()
         for name, what in CUES.items():
@@ -215,10 +216,17 @@ class RecorderBox(QWidget):
         return self._folder / "recordings" / f"{self.cue.currentData()}.wav"
 
     def _play(self) -> None:
-        if self.samples:
-            preview = self._folder / "recordings" / ".preview.wav"
-            write_wav(preview, self.samples, self.rate)
-            self._preview(preview)
+        if not self.samples:
+            return
+        # A new file for each take: a sound player may keep playing a file it
+        # has already loaded, which would replay the last take.
+        folder = self._folder / "recordings"
+        for old in folder.glob(".preview-*.wav"):
+            old.unlink(missing_ok=True)
+        self._previews += 1
+        preview = folder / f".preview-{self._previews}.wav"
+        write_wav(preview, self.samples, self.rate)
+        self._preview(preview)
 
     def _save(self) -> None:
         if not self.samples:
