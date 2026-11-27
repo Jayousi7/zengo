@@ -24,6 +24,11 @@ _HELD_FIDGETS = (
     ("held", 0.8),
 )
 
+RING_TIMES = (0.5, 0.25, 0.35, 0.25, 0.6)
+"""Pecking the bell: the pecks land at the start of the second and fourth frames."""
+RING_PECKS = (0.5, 1.1)
+"""Seconds into the ring clips when his beak strikes the bell."""
+
 CLIPS: dict[str, Clip] = {
     # Irregular gaps and an occasional double blink keep idling from looking mechanical.
     "idle": Clip(
@@ -94,6 +99,35 @@ CLIPS: dict[str, Clip] = {
         loop=False,
     ),
     "bath_splash": Clip(("splash_a", "splash_b"), (0.09, 0.09)),
+    # His toys: chatting to his reflection side on (bobbing, crest up, a little
+    # song), and from the front in his cage; pecking his bell on the branch or
+    # in the cage (the bell's to his right: he's turned to face it).
+    "mirror_chat": Clip(
+        ("bob_fwd", "bob") * 3
+        + ("alert", "whistle_a", "whistle_b", "whistle_a", "perch")
+        + ("bob_fwd", "bob") * 2
+        + ("alert",),
+        (0.18, 0.18) * 3 + (0.6, 0.25, 0.2, 0.25, 0.5) + (0.18, 0.18) * 2 + (0.6,),
+        loop=False,
+    ),
+    "front_chat": Clip(
+        (
+            *("front_look_r", "front_bob", "front_look_r", "front_bob", "front_look_r"),
+            *("front_whistle_a", "front_look_r"),
+        ),
+        (0.6, 0.3, 0.3, 0.3, 0.5, 0.5, 0.6),
+        loop=False,
+    ),
+    "front_ring": Clip(
+        ("front_look_r", "front_peck", "front_look_r", "front_peck", "front_look_r"),
+        RING_TIMES,
+        loop=False,
+    ),
+    "branch_ring": Clip(
+        ("branch_look_r", "branch_peck", "branch_look_r", "branch_peck", "branch_look_r"),
+        RING_TIMES,
+        loop=False,
+    ),
     "shake": Clip(
         ("shake_mid",) + ("shake_a", "shake_mid", "shake_b", "shake_mid") * 2 + ("perch",),
         (0.12,) + (0.07, 0.05, 0.07, 0.05) * 2 + (0.25,),

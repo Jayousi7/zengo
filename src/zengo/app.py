@@ -51,6 +51,7 @@ from zengo.ui.sprites import SpriteSheet
 from zengo.ui.state_file import StateFile
 from zengo.ui.status_panel import StatusPanel
 from zengo.ui.teach_box import TeachBox
+from zengo.ui.toy_window import BellWindow, MirrorWindow
 from zengo.ui.tray import Tray
 from zengo.ui.voice_tabs import SoundsTab, WordsTab, voice_with
 from zengo.ui.window import PetWindow
@@ -145,7 +146,7 @@ class Pet:
         self._brain.ctx.sound_on = self._settings.sound
         self._brain.ctx.seasons.zone_hemisphere = hemisphere_of(time_zone())
         self._brain.ctx.seasons.forced = self._flags.season
-        self._apply_seasons()
+        self._apply_life()
         self._window = PetWindow(config.drag_threshold)
         self._window.clicked.connect(self._brain.click)
         self._window.double_clicked.connect(self._brain.double_click)
@@ -210,6 +211,8 @@ class Pet:
         self._dish = FoodWindow(config, in_front_of=self._window)
         self._effects = EffectsWindow(config.scale, in_front_of=self._window)
         self._bath = BathWindow(config, in_front_of=self._window)
+        self._bell = BellWindow(config, in_front_of=self._window)
+        self._mirror = MirrorWindow(config, in_front_of=self._window)
         # One more than can lie about: the oldest fades as a new one falls.
         self._feathers = [FeatherWindow(config.scale) for _ in range(MAX_FEATHERS + 1)]
         for index, feather in enumerate(self._feathers):
@@ -226,6 +229,8 @@ class Pet:
             self._dish,
             self._effects,
             self._bath,
+            self._bell,
+            self._mirror,
             *self._feathers,
         ]
 
@@ -301,6 +306,8 @@ class Pet:
         else:
             self._dish.show_pile(cage.dish, cage.shown_x, cage.y)
         self._bath.show_dish(ctx.bath.dish, time.monotonic())
+        self._bell.show_bell(ctx.toys.bell)
+        self._mirror.show_mirror(ctx.toys.mirror)
         feathers = ctx.moult.feathers
         for index, window in enumerate(self._feathers):
             window.show_feather(feathers[index] if index < len(feathers) else None)
@@ -334,6 +341,8 @@ class Pet:
             self._window,
             self._bath,
             self._branch,
+            self._bell,
+            self._mirror,
             self._dish,
             self._cage,
             self._effects,
@@ -347,7 +356,7 @@ class Pet:
         pile. In front of him: his bath (so the rim hides his feet as he stands
         in it), the branch (so his tail hangs behind it), the dish and the cage
         (so he's behind the bars; once the door's open he comes out in front),
-        the droplets and snow, and the speech cloud.
+        his toys, the droplets and snow, and the speech cloud.
         Window managers reorder windows on clicks and when new ones appear, so this
         is done at start, after any click or drag on him, and every so often.
         """
@@ -418,7 +427,7 @@ class Pet:
                 self._brain.ctx.play("chirp_a")  # a little hello, so you know it's on
             self._brain.ctx.sound_on = settings.sound
             self._sound.set_volume(settings.volume)
-            self._apply_seasons()
+            self._apply_life()
             if self._config.scale != old_scale:
                 self._resize()
         if keep and self._settings_file is not None:
@@ -428,9 +437,11 @@ class Pet:
             # stay as it was, so letting go is seen as a change and kept.)
             self._settings_window.show_settings(settings, self._settings_window_autostart())
 
-    def _apply_seasons(self) -> None:
+    def _apply_life(self) -> None:
+        """Seasons and toys, as your settings have them."""
         seasons = self._brain.ctx.seasons
         seasons.enabled, seasons.setting = self._settings.seasons, self._settings.hemisphere
+        self._brain.ctx.toys.put_out(frozenset(self._settings.toys))
 
     def _settings_window_autostart(self) -> bool | None:
         return self._autostart.enabled()

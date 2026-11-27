@@ -76,6 +76,9 @@ class Config:
     moult_every: tuple[float, float] = (3600.0, 7200.0)
     """Seconds between feathers falling (less in spring and autumn, and on moulting days)."""
 
+    toy_every: tuple[float, float] = (60.0, 180.0)
+    """Seconds, at least, between one game with a toy and the next."""
+
     damp_seconds: float = 60.0
     """How long he's damp after a bath: he won't fly till he's dry."""
 
@@ -150,6 +153,9 @@ class Config:
     bond_caught: float = 0.12
     bond_caged: float = 0.002
     """Lost when caught in the cage, and per minute spent in it."""
+    bond_toy: float = 0.004
+    bond_toy_per_hour: float = 0.012
+    """Gained each time he plays with a toy you gave him, up to so much an hour."""
     bond_ignored: float = 0.04
     """Lost each time he has to ask again for food."""
     bond_dropped: float = 0.05

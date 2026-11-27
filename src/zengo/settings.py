@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 from zengo.behavior.seasons import HEMISPHERES, SEASONS
+from zengo.behavior.toys import TOYS
 from zengo.config import Config, quick
 
 MIN_SCALE, MAX_SCALE = 2, 5
@@ -48,9 +49,13 @@ class Settings:
     """Seasonal outfits and effects: the scarf, snow, falling leaves."""
     hemisphere: str = "auto"
     """A key of :data:`zengo.behavior.seasons.HEMISPHERES`."""
+    toys: tuple[str, ...] = ()
+    """The toys you've put out for him: keys of :data:`zengo.behavior.toys.TOYS`."""
 
     def to_json(self) -> dict[str, Any]:
-        return asdict(self)
+        data = asdict(self)
+        data["toys"] = list(self.toys)
+        return data
 
     @classmethod
     def from_json(cls, data: object) -> Settings:
@@ -65,6 +70,7 @@ class Settings:
         appetite = data.get("appetite")
         seasons = data.get("seasons")
         hemisphere = data.get("hemisphere")
+        toys = data.get("toys")
         return cls(
             scale=_whole(scale, MIN_SCALE, MAX_SCALE, default.scale),
             sound=sound if isinstance(sound, bool) else default.sound,
@@ -73,6 +79,7 @@ class Settings:
             appetite=appetite if appetite in APPETITE else default.appetite,
             seasons=seasons if isinstance(seasons, bool) else default.seasons,
             hemisphere=hemisphere if hemisphere in HEMISPHERES else default.hemisphere,
+            toys=tuple(t for t in TOYS if t in toys) if isinstance(toys, list) else default.toys,
         )
 
 

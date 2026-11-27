@@ -57,6 +57,7 @@ class Brain:
             ctx, dt, occupied=self._state.holds_bath, free=not (self.caged or self.away)
         )
         ctx.damp = max(0.0, ctx.damp - dt)
+        ctx.toys.update(ctx, dt, caged=self.caged, away=self.away, at_mirror=self._state.at_mirror)
         ctx.moult.update(
             ctx,
             dt,

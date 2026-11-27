@@ -18,6 +18,7 @@ from zengo.behavior.moult import Moult
 from zengo.behavior.petting import PettingSensor
 from zengo.behavior.scenery import Scenery
 from zengo.behavior.seasons import Seasons
+from zengo.behavior.toys import Toys
 from zengo.behavior.typing import TypingSensor
 from zengo.behavior.vocabulary import Vocabulary, garble, lessons_needed
 from zengo.behavior.voice import Voice
@@ -67,6 +68,7 @@ class Context:
     seasons: Seasons = field(default_factory=Seasons)
     bath: BathCycle = field(default_factory=BathCycle)
     moult: Moult = field(default_factory=Moult)
+    toys: Toys = field(default_factory=Toys)
     effects: Effects = field(default_factory=Effects)
     """Droplets, snowflakes and leaves in the air."""
     damp: float = 0.0

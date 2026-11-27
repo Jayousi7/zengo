@@ -29,6 +29,8 @@ class Bond:
     petting_left: float = -1.0
     """What petting can still add this hour (negative: not started yet)."""
     petting_refill: float = 0.0
+    toys_left: float = -1.0
+    """What playing with toys can still add this hour (negative: not started yet)."""
     away: bool = False
     welcome_due: bool = False
     """You've just come back after being away: he means to greet you."""
@@ -55,6 +57,11 @@ class Bond:
         # The petting allowance refills over the hour.
         self.petting_left = min(
             cfg.bond_petting_per_hour, self.petting_left + cfg.bond_petting_per_hour * dt / 3600
+        )
+        if self.toys_left < 0:
+            self.toys_left = cfg.bond_toy_per_hour
+        self.toys_left = min(
+            cfg.bond_toy_per_hour, self.toys_left + cfg.bond_toy_per_hour * dt / 3600
         )
         if petted:
             gain = min(self.petting_left, cfg.bond_petting * dt)
@@ -85,6 +92,14 @@ class Bond:
 
     def fed(self, cfg: Config, *, hungry: bool) -> None:
         self.change(cfg.bond_fed_hungry if hungry else cfg.bond_fed)
+
+    def played(self, cfg: Config) -> None:
+        """He's played with a toy you gave him."""
+        if self.toys_left < 0:
+            self.toys_left = cfg.bond_toy_per_hour
+        gain = min(self.toys_left, cfg.bond_toy)
+        self.toys_left -= gain
+        self.change(gain)
 
     def let_out(self, cfg: Config) -> None:
         self.change(cfg.bond_let_out)

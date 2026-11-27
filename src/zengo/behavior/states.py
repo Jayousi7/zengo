@@ -18,7 +18,9 @@ from zengo.behavior.body import Facing
 from zengo.behavior.context import Context
 from zengo.behavior.flight import FlightPath, Point, ease
 from zengo.behavior.food import SECONDS_PER_SEED, SEEDS_PER_STACK, STAND_OFF
+from zengo.sounds import CHIRPS, whistle_for
 from zengo.sprites.bath import DISH_WIDTH
+from zengo.sprites.clips import RING_PECKS
 from zengo.world import Area, Ledge
 
 
@@ -83,6 +85,11 @@ class State:
         """He's in his bath or on his way to it, so it mustn't go yet."""
         return False
 
+    @property
+    def at_mirror(self) -> bool:
+        """He's in front of his mirror: his reflection shows in it."""
+        return False
+
     def __repr__(self) -> str:
         return type(self).__name__
 
@@ -142,6 +149,7 @@ def choose_activity(ctx: Context) -> State:
         (Fly.to_branch, 6.0 if flies and branch_is_inviting(ctx) else 0.0),  # he loves it
         (Fly.to_window, 2.5 if flies and perchable_ledges(ctx) else 0.0),
         (go_to_bath, 8.0 if ctx.bath.usable else 0.0),  # and he loves a bath
+        (go_to_mirror, 1.5 if mirror_is_inviting(ctx) else 0.0),
     ]
     makers, weights = zip(*options, strict=True)
     return ctx.rng.choices(makers, weights)[0](ctx)
@@ -235,7 +243,8 @@ class Walk(State):
         super().__init__()
         self.target = target
         self.then = then
-        """On arrival: ``"eat"`` the seeds, ``"ask"`` you for some, or ``"bathe"``."""
+        """On arrival: ``"eat"`` the seeds, ``"ask"`` you for some, ``"bathe"``, or
+        chat to his ``"mirror"``."""
 
     @property
     def holds_bath(self) -> bool:
@@ -272,6 +281,8 @@ class Walk(State):
             return Eat()
         if self.then == "bathe":
             return Bathe() if ctx.bath.usable else Idle()
+        if self.then == "mirror":
+            return PlayMirror() if ctx.toys.mirror is not None else Idle()
         return Ask() if self.then == "ask" else Idle()
 
 
@@ -433,6 +444,10 @@ class Fly(State):
         assert branch is not None
         lo, hi = branch.perch_span(cfg)
         x = ctx.rng.uniform(lo, hi)
+        bell = ctx.toys.bell
+        if bell is not None and bell.where == "branch" and ctx.rng.random() < 0.7:
+            # His bell's out: he likes to sit where he can reach it.
+            x = min(max(bell.x, lo), hi)
         approach_x = ctx.area().clamp_x(x + branch.inward * cfg.px(55), ctx.margin)
         approach = (approach_x, branch.top - cfg.px(18))
         return cls([*_takeoff(ctx, towards=approach_x), approach, (x, branch.top)], onto="branch")
@@ -546,6 +561,8 @@ class Fly(State):
                 return Ask()
             if self.onto == "bath":
                 return Bathe() if ctx.bath.usable else Idle()
+            if self.onto == "mirror":
+                return PlayMirror() if ctx.toys.mirror is not None else Idle()
             if self.onto == "window":
                 return OnWindow(self.window, self.offset)
             if self.onto == "away":
@@ -997,6 +1014,8 @@ class _Perched(State):
         return None
 
     def step(self, ctx: Context, dt: float) -> State | None:
+        if self.doing == "ring":
+            _ring_bell(ctx, self.elapsed - self.did_at, dt)
         if not self.settle(ctx):  # it's gone: startled, he flaps off and glides down
             ctx.body.vx, ctx.body.vy = 0.0, -ctx.config.px(40)
             ctx.animator.interject("startle")
@@ -1024,12 +1043,19 @@ class _Perched(State):
             return self.fly_off(ctx)
         if is_sleepy(ctx) and ctx.rng.random() < 0.6:
             self._do(ctx, "sleep")
+        elif "ring" in self.clips and bell_in_reach(ctx, "branch"):
+            self._do(ctx, "ring")
         else:
             self._do(ctx, ctx.rng.choices(("preen", "fluff", "sit"), (0.4, 0.2, 0.4))[0])
         return None
 
     def _do(self, ctx: Context, what: str) -> None:
+        if what == "ring" and ctx.toys.bell is not None:
+            ctx.body.face_towards(ctx.toys.bell.x)
+        if getattr(self, "doing", "") == "ring":
+            ctx.toys.played(ctx)
         self.doing = what
+        self.did_at = self.elapsed
         ctx.animator.play(self.clips[what], restart=True)
         self.until = self.elapsed + ctx.rng.uniform(*self.sit_for)
 
@@ -1047,6 +1073,7 @@ class OnBranch(_Perched):
         "whistle": "branch_whistle",
         "petted": "branch_petted",
         "bob": "branch_bob",
+        "ring": "branch_ring",
     }
 
     @property
@@ -1184,7 +1211,13 @@ class Caged(State):
         "eat": "front_eat",
         "escape": "front_pick",
         "bob": "front_bob",
+        "ring": "front_ring",
+        "chat": "front_chat",
     }
+
+    @property
+    def at_mirror(self) -> bool:
+        return getattr(self, "doing", "") == "chat"
 
     def __init__(self, *, just_caught: bool = True) -> None:
         super().__init__()
@@ -1310,6 +1343,12 @@ class Caged(State):
             if not is_sleepy(ctx):
                 self._do(ctx, "sit")
             return None
+        into = self.elapsed - self.did_at
+        if self.doing == "ring":
+            _ring_bell(ctx, into, dt)
+        if self.doing == "chat" and into - dt < PlayMirror.chat_at <= into:
+            ctx.say(ctx.phrase("toy"), 1.8)
+            ctx.play(ctx.rng.choice(CHIRPS))
         if self.doing != "sit":
             if ctx.animator.finished:
                 self._do(ctx, "sit")
@@ -1318,6 +1357,13 @@ class Caged(State):
             return None
         if is_sleepy(ctx) and ctx.rng.random() < 0.6:
             self._do(ctx, "sleep")
+            return None
+        games = [
+            *(["ring"] if bell_in_reach(ctx, "cage") else []),
+            *(["chat"] if ctx.toys.ready() and ctx.toys.mirror is not None else []),
+        ]
+        if games and ctx.rng.random() < 0.6:
+            self._do(ctx, ctx.rng.choice(games))
             return None
         pick = ctx.rng.choices(("preen", "fluff", "sit", "grumble"), (0.3, 0.2, 0.3, 0.2))[0]
         if pick == "grumble":
@@ -1357,7 +1403,13 @@ class Caged(State):
         return Fly([hop, *_landing(ctx, x1, coming_from=body.x)])
 
     def _do(self, ctx: Context, what: str) -> None:
+        toy = {"ring": ctx.toys.bell, "chat": ctx.toys.mirror}.get(what)
+        if toy is not None:
+            ctx.body.face_towards(toy.x)
+        if getattr(self, "doing", "") in ("ring", "chat"):
+            ctx.toys.played(ctx)
         self.doing = what
+        self.did_at = self.elapsed
         ctx.animator.play(self.clips[what], restart=True)
         self.until = self.elapsed + ctx.rng.uniform(*self.sit_for)
 
@@ -1556,6 +1608,90 @@ class Bathe(State):
             ctx.play("trill")
             return Preen()
         self._next(ctx)
+        return None
+
+
+# --- Toys -----------------------------------------------------------------------
+
+MIRROR_STAND_OFF = 15
+"""Art px from his mirror to where he stands to chat to it."""
+BELL_REACH = 16
+"""Art px from the bell he may be, on the branch, and still peck it."""
+
+
+def bell_in_reach(ctx: Context, where: str) -> bool:
+    """His bell's hanging ``where`` (``"branch"`` or ``"cage"``), he can reach it,
+    and he's in the mood for a game."""
+    bell = ctx.toys.bell
+    if bell is None or bell.where != where or not ctx.toys.ready():
+        return False
+    return where == "cage" or abs(bell.x - ctx.body.x) <= ctx.config.px(BELL_REACH)
+
+
+def _ring_bell(ctx: Context, into: float, dt: float) -> None:
+    """Pecking his bell, ``into`` seconds into it: each peck swings and rings it."""
+    bell = ctx.toys.bell
+    if bell is None:
+        return
+    for peck in RING_PECKS:
+        if into - dt < peck <= into:
+            bell.strike(1 if bell.x >= ctx.body.x else -1)
+            ctx.play("ting")
+
+
+def mirror_is_inviting(ctx: Context) -> bool:
+    mirror = ctx.toys.mirror
+    return (
+        mirror is not None
+        and mirror.where == "ground"
+        and ctx.toys.ready()
+        and ctx.world.area_at(mirror.x, mirror.y - 1) == ctx.area()
+    )
+
+
+def go_to_mirror(ctx: Context) -> State:
+    """Over to his mirror, to stand beside it facing it: walk if it's near (or
+    he's damp), fly if not."""
+    mirror, cfg, body, area = ctx.toys.mirror, ctx.config, ctx.body, ctx.area()
+    assert mirror is not None
+    side = -1 if body.x > mirror.x else 1
+    spot = area.clamp_x(mirror.x - side * cfg.px(MIRROR_STAND_OFF), ctx.margin)
+    on_ground = body.y >= area.bottom - 1
+    if on_ground and (abs(spot - body.x) <= cfg.px(160) or not can_fly(ctx)):
+        return Walk(spot, then="mirror")
+    return Fly(
+        [*_takeoff(ctx, towards=spot), *_landing(ctx, spot, coming_from=body.x)], onto="mirror"
+    )
+
+
+class PlayMirror(State):
+    """Chatting to his reflection: bobbing at it, crest up, a little song."""
+
+    clip = "mirror_chat"
+    effort = 1.5
+    chat_at: ClassVar[float] = 1.4
+
+    @property
+    def at_mirror(self) -> bool:
+        return True
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        if ctx.toys.mirror is not None:
+            ctx.body.face_towards(ctx.toys.mirror.x)
+
+    def typing(self, ctx: Context) -> State | None:
+        return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        if ctx.toys.mirror is None:
+            return Idle()  # put away
+        if self.elapsed - dt < self.chat_at <= self.elapsed:
+            ctx.say(ctx.phrase("toy"), 1.8)
+            ctx.play(whistle_for(ctx.rng.randrange(6)))
+        if ctx.animator.finished:
+            ctx.toys.played(ctx)
+            return Idle()
         return None
 
 

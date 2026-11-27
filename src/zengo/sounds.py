@@ -48,6 +48,17 @@ def _rest(seconds: float) -> Note:
     return (seconds, 0.0, 0.0)
 
 
+def _bell(pitch: float = 2350.0, seconds: float = 0.7) -> list[float]:
+    """A small brass bell: a struck tone with a bright overtone, dying away."""
+    out = []
+    for i in range(int(seconds * RATE)):
+        t = i / RATE
+        ring = math.sin(2 * math.pi * pitch * t) + 0.35 * math.sin(2 * math.pi * pitch * 2.76 * t)
+        strike = min(1.0, i / (0.002 * RATE))
+        out.append(ring / 1.35 * strike * math.exp(-t * 7.0))
+    return out
+
+
 SOUNDS: dict[str, list[float]] = {}
 """Every sound by name, rendered on first use (see :func:`sound`)."""
 
@@ -77,6 +88,8 @@ _RECIPES = {
     "greeting": lambda: _notes([(0.1, 2600, 3400), _rest(0.05), (0.18, 2800, 3900)]),
     # Content (a meal, freedom): a quick trill.
     "trill": lambda: _notes([(0.32, 3000, 3300)], warble=320),
+    # His bell, pecked: a soft ting.
+    "ting": lambda: _bell(),
 }
 CHIRPS = ("chirp_a", "chirp_b", "chirp_c")
 WHISTLE_TUNES = 6
