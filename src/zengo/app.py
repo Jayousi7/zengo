@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import random
 import signal
 import sys
@@ -274,8 +275,23 @@ def parse_args(argv: list[str]) -> Options:
     return Options(quick(config) if args.quick else config, args.sprites, args.branch_now)
 
 
+def quiet_bundled_libraries() -> None:
+    """In the standalone Linux build, keep the desktop's own add-ons out.
+
+    The binary carries older GTK and GLib than most desktops. At start-up Qt's GTK
+    theme would load the desktop's GTK modules (Linux Mint's xapp module) and GLib
+    its gvfs modules, which don't fit the older libraries and print warnings. Zengo
+    needs neither: his menu is styled by hand and he opens no files over the
+    network. ``setdefault`` leaves any value the user set alone.
+    """
+    if getattr(sys, "frozen", False) and sys.platform.startswith("linux"):
+        os.environ.setdefault("QT_QPA_PLATFORMTHEME", "generic")
+        os.environ.setdefault("GIO_MODULE_DIR", "/nonexistent")
+
+
 def main(argv: list[str] | None = None) -> int:
     options = parse_args(sys.argv[1:] if argv is None else argv)
+    quiet_bundled_libraries()
     app = QApplication(sys.argv[:1])
     app.setApplicationName("Zengo")
 
