@@ -95,18 +95,19 @@ tested headless against a fake `World`.
 
 ### Editing the art
 
-Frames are text in `sprites/art.py`, drawn facing right on a 42x34 grid. Each
+Frames are text in `sprites/art.py`, drawn facing right on a 52x34 grid. Each
 character is a palette key from `sprites/palette.py`; `.` leaves the pixel
 below untouched and `_` erases it. Don't draw outlines: they are generated,
 each edge taking a dark shade of the colour it borders.
 
 Zengo is drawn to a real cockatiel's proportions: a small white-faced head with
 a tall crest, a slim body sloping back and a tail as long as the rest of him.
-Perched poses are the base drawing (`BODY`, `WING_FOLDED`, `HEAD`, `CREST`,
+Perched poses are the base drawing (`TAIL`, `BODY`, `WING_FOLDED`, `HEAD`, `CREST`,
 `LEGS`) plus small overlays: a shifted head, another crest, closed eyes. Flight
 has its own level body with the head moved forward and a long pointed wing in
 one of four beat positions (up, level, down, recover); the glide holds the wing
-level and the landing flares it up. The rows below the ground row are only used
+level and the landing flares it up. Turning round in the air, he banks through a
+front view with both wings spread (`turn_up`, `turn_down`). The rows below the ground row are only used
 by the downstroke. `frames.py` stacks layers into named frames and `clips.py`
 sequences them. `tests/test_sprites.py` checks that frames line up with the
 ground row and that every clip refers to a real frame.
@@ -114,12 +115,12 @@ ground row and that every clip refers to a real frame.
 ### Hand-drawn frames
 
 Any frame can be replaced by art from a pixel editor. In Aseprite (or
-LibreSprite), draw on a 44x36 canvas facing right, with the feet's lowest
+LibreSprite), draw on a 54x36 canvas facing right, with the feet's lowest
 pixel on row 29 and the gap between the feet on column 31 (zero-based). Name
 each frame after the one it replaces (`perch`, `blink`, `alert`, `step_back`,
 `step_front`, `preen_a`, `preen_b`, `sleep`, `wings_up`, `wings_level`,
 `wings_down`, `wings_recover`, `held`, `held_blink`, `held_kick_a`, `held_kick_b`,
-`held_look`, `held_flick`, `shake_a`, `shake_b`) and export a sprite sheet with JSON data, hash or array layout.
+`held_look`, `held_flick`, `shake_a`, `shake_b`, `turn_up`, `turn_down`) and export a sprite sheet with JSON data, hash or array layout.
 Frames not in the sheet keep the built-in art. Run with
 `zengo --sprites sheet.json`. Draw your own outline here; generated outlines
 only apply to the built-in art.

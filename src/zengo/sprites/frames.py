@@ -8,7 +8,7 @@ from zengo.sprites import art
 from zengo.sprites.compose import Frame, Layer, compose
 from zengo.sprites.palette import PALETTE, RGBA, outline_for
 
-ART_WIDTH = 42
+ART_WIDTH = 52
 ART_HEIGHT = 34
 """Size of the grid the art in :mod:`zengo.sprites.art` is drawn on."""
 
@@ -29,29 +29,37 @@ def _shifted(dx: int, dy: int, *layers: Layer) -> tuple[Layer, ...]:
     return tuple(layer.shifted(dx, dy) for layer in layers)
 
 
-_UPPER = (art.BODY, art.WING_FOLDED, art.HEAD, art.CREST)
+_UPPER = (art.TAIL, art.BODY, art.WING_FOLDED, art.HEAD, art.CREST)
 _FLYING_HEAD = _shifted(0, 9, art.CREST_FLAT, art.HEAD)
 """Head lowered to lead the level flying body, crest laid back in the airflow."""
 
-_HELD_BODY = (art.BODY, art.WING_FOLDED)
+_HELD_BODY = (art.TAIL_HANGING, art.BODY, art.WING_FOLDED)
 _HELD_HEAD = (art.HEAD, art.CREST_RAISED)
 
 FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     "perch": (art.LEGS, *_UPPER),
     "blink": (art.LEGS, *_UPPER, art.EYE_CLOSED),
-    "alert": (art.LEGS, art.BODY, art.WING_FOLDED, art.HEAD, art.CREST_RAISED),
+    "alert": (art.LEGS, art.TAIL, art.BODY, art.WING_FOLDED, art.HEAD, art.CREST_RAISED),
     "step_back": (art.LEGS_STEP_BACK, *_shifted(0, -1, *_UPPER)),
     "step_front": (art.LEGS_STEP_FRONT, *_shifted(0, -1, *_UPPER)),
     # Head dips down and back towards the wing, eyes shutting on the nibble.
-    "preen_a": (art.LEGS, art.BODY, art.WING_FOLDED, *_shifted(-1, 2, art.CREST, art.HEAD)),
+    "preen_a": (
+        art.LEGS,
+        art.TAIL,
+        art.BODY,
+        art.WING_FOLDED,
+        *_shifted(-1, 2, art.CREST, art.HEAD),
+    ),
     "preen_b": (
         art.LEGS,
+        art.TAIL,
         art.BODY,
         art.WING_FOLDED,
         *_shifted(-3, 3, art.CREST, art.HEAD, art.EYE_CLOSED),
     ),
     "sleep": (
         art.LEGS,
+        art.TAIL,
         art.BODY,
         art.PUFF,
         art.WING_FOLDED,
@@ -64,10 +72,11 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     "held_kick_a": (art.LEGS_KICK_FRONT, *_HELD_BODY, *_HELD_HEAD),
     "held_kick_b": (art.LEGS_KICK_BACK, *_HELD_BODY, *_HELD_HEAD),
     "held_look": (art.LEGS_DANGLE, *_HELD_BODY, *_shifted(1, 2, *_HELD_HEAD)),
-    "held_flick": (art.LEGS_DANGLE, art.BODY, art.WING_HALF, *_HELD_HEAD),
+    "held_flick": (art.LEGS_DANGLE, art.TAIL_HANGING, art.BODY, art.WING_HALF, *_HELD_HEAD),
     # Feathers puffed and the head shaken side to side, settling after a landing.
     "shake_a": (
         art.LEGS,
+        art.TAIL,
         art.BODY,
         art.PUFF,
         art.WING_FOLDED,
@@ -75,6 +84,7 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     ),
     "shake_b": (
         art.LEGS,
+        art.TAIL,
         art.BODY,
         art.PUFF,
         art.WING_FOLDED,
@@ -85,6 +95,8 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     "wings_level": (art.FLIGHT_BODY, art.WING_LEVEL, *_FLYING_HEAD),
     "wings_down": _shifted(0, -1, art.FLIGHT_BODY, art.WING_DOWN, *_FLYING_HEAD),
     "wings_recover": (art.FLIGHT_BODY, art.WING_RECOVER, *_FLYING_HEAD),
+    "turn_up": (art.TURN_WINGS_UP, art.FRONT_FLY_BODY),
+    "turn_down": (art.TURN_WINGS_DOWN, art.FRONT_FLY_BODY),
 }
 
 

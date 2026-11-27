@@ -342,3 +342,20 @@ def test_hanging_still_is_never_a_frozen_frame(ctx):
         xs.append(ctx.body.x)
     assert {"held", "held_blink", "held_kick_a", "held_look", "held_flick"} <= seen
     assert max(xs) - min(xs) >= ctx.config.px(1)  # a gentle sway
+
+
+def test_turning_round_in_the_air_banks_through_a_front_view(ctx):
+    x, y = ctx.body.x, ctx.body.y
+    out_and_back = [(x + 300, y - 200), (x + 500, y - 260), (x + 250, y - 320), (x - 150, y)]
+    brain = Brain(ctx, Fly(out_and_back))
+    _, clips = fly_and_record(brain, ctx)
+    assert clips[0] == "fly"
+    assert "turn" in clips
+    assert clips.index("turn") > 0 and clips[-1] == "flare"
+    assert ctx.body.facing is Facing.LEFT  # came home the other way
+
+
+def test_a_straight_flight_never_turns(ctx):
+    brain = Brain(ctx, Fly())
+    _, clips = fly_and_record(brain, ctx)
+    assert "turn" not in clips

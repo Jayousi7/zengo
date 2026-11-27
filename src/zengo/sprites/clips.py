@@ -42,6 +42,8 @@ CLIPS: dict[str, Clip] = {
     "glide": Clip(("wings_level",), (1.0,)),
     "flare": Clip(("wings_up",), (1.0,)),
     "flutter": Clip.even("wings_up", "wings_level", "wings_down", "wings_recover", fps=13),
+    # Front view, banking round to fly the other way.
+    "turn": Clip(("turn_up", "turn_down"), (0.12, 0.12)),
     "held": Clip(*zip(*_HELD_FIDGETS, strict=True)),
     # A quick ruffle after landing, then settle.
     "shake": Clip(

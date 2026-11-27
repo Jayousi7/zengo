@@ -14,6 +14,7 @@ import math
 from collections.abc import Callable, Sequence
 from typing import ClassVar
 
+from zengo.behavior.body import Facing
 from zengo.behavior.context import Context
 from zengo.behavior.flight import FlightPath, Point, ease
 
@@ -165,6 +166,11 @@ class Fly(State):
     """Descent (sine of the angle below level) at which he starts gliding, and
     below which he flaps again. The gap stops the wings flickering between the two."""
     flare_seconds: ClassVar[float] = 0.45
+    turn_seconds: ClassVar[float] = 0.24
+    """How long he shows his front, wings spread, when banking round to fly the other way."""
+    turn_heading: ClassVar[float] = 0.2
+    """How firmly the path must head the other way (share of the motion that is
+    sideways) before he turns, so a near-vertical stretch doesn't set off a turn."""
 
     def __init__(self, waypoints: Sequence[Point] | None = None, *, onto: str = "ground") -> None:
         super().__init__()
@@ -237,6 +243,10 @@ class Fly(State):
         )
         self.duration = max(1.0, self.path.length / cfg.px(cfg.fly_speed))
         self.gliding = False
+        self.turning = 0.0
+        dx, _ = self.path.heading(0.0, cfg.px(12))
+        if dx:  # still on the ground or the perch: just turn to face the way out
+            ctx.body.face_towards(ctx.body.x + dx)
 
     def step(self, ctx: Context, dt: float) -> State | None:
         cfg, body = ctx.config, ctx.body
@@ -246,8 +256,15 @@ class Fly(State):
         s = self.path.length * ease(p)
         body.x, body.y = self.path.at(s)
         dx, dy = self.path.heading(s, cfg.px(12))
-        if abs(dx) > 0.5:
-            body.face_towards(body.x + dx)
+
+        # Turning round in the air: bank, showing his front for a moment, rather
+        # than flipping from one side view to the other.
+        self.turning = max(0.0, self.turning - dt)
+        if abs(dx) > self.turn_heading * (math.hypot(dx, dy) or 1.0):
+            want = Facing.RIGHT if dx > 0 else Facing.LEFT
+            if want is not body.facing and not self.turning:
+                self.turning = self.turn_seconds
+                body.facing = want
 
         if self.onto == "cursor" and math.dist(ctx.world.cursor(), landing_spot) > cfg.px(12):
             # The perch moved away: carry on with the speed he has and glide down.
@@ -265,6 +282,8 @@ class Fly(State):
             self.gliding = True
         if p >= 1.0 - self.flare_seconds / self.duration:
             ctx.animator.play("flare")
+        elif self.turning:
+            ctx.animator.play("turn")
         else:
             ctx.animator.play("glide" if self.gliding else "fly")
         return None

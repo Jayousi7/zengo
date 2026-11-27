@@ -1,4 +1,4 @@
-"""Zengo's pixel art, facing right, on a 42x34 grid.
+"""Zengo's pixel art, facing right, on a 52x34 grid.
 
 Proportions follow a real cockatiel in side view: a small white-faced head with
 a tall crest, a slim body sloping back, and a tail as long as the rest of him.
@@ -45,11 +45,11 @@ BODY = _layer(
     .........................SCCCCBBBBBLLLLL
     .......................SCCCCCBBBBBBLLLLL
     .....................SCCCCCCBBBBBBBLLLLL
-    ..............TTTTTTTSCCCBBBBBBBBBLLLLL
-    ......ttTTTTTTTTTTTTSSCBBBBBBBBBBBLLLL
-    ttttttTTTTTTTTTTTTTTSSBBBBBBBBBBBLLL
-    ....ttttttttttttttttSSSBBBBBBBBBBBBB
-    ............tttttttttSSSSSBBBBBBBB
+    .....................SCCCBBBBBBBBBLLLLL
+    ....................SSCBBBBBBBBBBBLLLL
+    ....................SSBBBBBBBBBBBLLL
+    ....................SSSBBBBBBBBBBBBB
+    .....................SSSSSBBBBBBBB
     ..........................SSSSSSS
     """,
     x=0,
@@ -72,6 +72,24 @@ WING_FOLDED = _layer(
     x=13,
     y=15,
 )
+
+# The tail is its own layer so it can hang differently by pose. Standing, it
+# carries on the line of the back with a gentle droop, held clear of the ground.
+
+TAIL = _layer(
+    """
+    ...................TT
+    ................TTTTT
+    ............TTTTTTTTT
+    .........TTTTTTTTTttt
+    .....TTTTTTTttttttttt
+    ..tttTttttttttttttttt
+    tttttttttt
+    """,
+    x=0,
+    y=20,
+)
+
 
 LEGS = _layer(
     """
@@ -179,6 +197,28 @@ PUFF = _layer(
 
 # --- Held and shaking -----------------------------------------------------
 # Picked up: legs hang free and kick now and then; the near wing flicks half open.
+
+# Held: the tail hangs down under its own weight.
+
+TAIL_HANGING = _layer(
+    """
+    ...........T
+    .........TTTT
+    ........TTTTt
+    .......TTTTttt
+    ......TTTTtttt
+    .....TTTtttt
+    ....TTTtttt
+    ...TTTttt
+    ..TTttt
+    .tTtt
+    ttt
+    t
+    """,
+    x=8,
+    y=21,
+)
+
 
 LEGS_DANGLE = _layer(
     """
@@ -323,4 +363,79 @@ WING_RECOVER = _layer(
     """,
     x=16,
     y=11,
+)
+
+
+# --- Turning in the air ------------------------------------------------------
+# Banking round, he shows his front for a moment with both wings spread. Drawn
+# symmetric about the anchor column, so it looks the same facing either way and
+# bridges the side views without a jump.
+
+# Face, tucked feet and the tail tip showing below.
+FRONT_FLY_BODY = _layer(
+    """
+    ...B.B
+    ..LLLLL
+    .LWWWWWL
+    .WWWWWWW
+    .WKWWWKW
+    .WWWQWWW
+    .LWQQqWL
+    .BLWqWLB
+    SBLLLLLBS
+    SBLLLLLBS
+    SBBLLLBBS
+    .SBBLBBS
+    .SSBBBSS
+    ..tTTTt
+    ...F.F
+    ...F.F
+    """,
+    x=26,
+    y=13,
+)
+
+
+# Both wings raised in a V.
+TURN_WINGS_UP = _layer(
+    """
+    D.....................................D
+    DDD.................................DDD
+    .DDD...............................DDD
+    ..DDDD...........................DDDD
+    ...DDDD.........................DDDD
+    ....S.CCC.....................CCC.S
+    .....SCCCCC.................CCCCCS
+    .....SSCCCPP...............PPCCCSS
+    ......SSCCPPPP...........PPPPCCSS
+    .......SSCCPPPP.........PPPPCCSS
+    ........SSCCCPPPP.....PPPPCCCSS
+    ..........SCBBPPPP...PPPPBBCS
+    ...........SBBBPP.....PPBBBS
+    ............SBBB.......BBBS
+    .............SB.........BS
+    """,
+    x=11,
+    y=8,
+)
+
+
+# Both wings swept down.
+TURN_WINGS_DOWN = _layer(
+    """
+    ...........PP.........PP
+    ..........PPPP.......PPPP
+    .........PPPPB.......BPPPP
+    ........PPPBBBB.....BBBBPPP
+    .......CPPCCBBSS...SSBBCCPPC
+    .....CCCCCCCSS.......SSCCCCCCC
+    ....CCCCCCSS...........SSCCCCCC
+    ...DDCCCSS...............SSCCCDD
+    ..DDD.SS...................SS.DDD
+    .DDD.S.......................S.DDD
+    D.S.............................S.D
+    SS...............................SS
+    """,
+    x=13,
+    y=19,
 )
