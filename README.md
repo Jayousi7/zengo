@@ -39,6 +39,26 @@ after ten minutes away he flies over to greet you. Grumpy, he walks off when you
 pointer comes near, ignores your first poke, and sulks with his back to you,
 peeking round now and then to see if you've noticed.
 
+### Helping you work
+
+- **Focus timer** (*Focus…* in the tray menu, or the *Focus* tab of his
+  settings): 25 minutes' focus and a 5-minute break to begin with, a long break
+  after every few sessions, all adjustable. While you focus he settles by the
+  side of the screen, dozes and preens, and doesn't make a sound: no chirps, no
+  asking for food. At the break he stretches, comes to your pointer and calls
+  you ("break! ♪"); now and then he suggests a bath or a game. When it's over
+  he asks "back to it?", with a Start button by his head (or carries on by
+  himself, if you chose). The time left shows in his needs strip and as a ring
+  round his tray icon. Pause and Stop are in the tray menu. A session in
+  progress carries on across a restart.
+- **Break reminders**: not using the timer, after a long stretch at the
+  computer (50 minutes to begin with, or off) he comes over to suggest a
+  break: "stretch?" Once more ten minutes later, then he lets it go.
+- **The chasing game**: wiggle the pointer quickly near him. He crouches, then
+  chases it in hops and short flights, pouncing when it stops and trilling
+  when he catches it. Rest the pointer and he gives up; after about a minute
+  he's tired and pants.
+
 ### Life round him
 
 - **His bath**: every half hour to an hour and a half (sooner in summer) a
@@ -106,6 +126,7 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
 | Stroke the mouse gently back and forth over him | Fluffs up, shuts his eyes and leans into it, with hearts; a happy shake when you stop |
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
 | Click a feather he's dropped | It's cleared away |
+| Wiggle the pointer quickly near him | A game of chase |
 | Right click | Menu: a live strip of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Settings…* and *Quit Zengo*. Sound, starting at login and teaching him words are all in *Settings…* |
 | Click his tray icon | He flies to the middle of your screen: "here I am!" |
 | *Feed Zengo (n/3)* | Pours out a stack of sunflower seeds, his favourite: up to three stacks, the pile filling as you add. He eats one stack whenever he gets hungry; caged, they go in his dish |
@@ -180,6 +201,9 @@ src/zengo/
     scenery.py      the branch: when it grows, stays and withdraws
     bath.py         his bath dish: when it comes and goes
     toys.py         his bell and mirror: where they are, the bell's swing
+    focus.py        the focus timer: sessions, breaks, pausing
+    reminders.py    break reminders, when you're not using the timer
+    chase.py        noticing a wiggle of the pointer: a game of chase
     moult.py        feathers he drops, and moulting days
     seasons.py      the season, from the date and your hemisphere
     weather.py      snow and falling leaves round the branch
@@ -222,6 +246,8 @@ src/zengo/
     food_window.py  the seed pile's window
     bath_window.py  his bath dish's window
     toy_window.py   the bell's and the mirror's windows
+    focus_tab.py    the Focus tab: the timer's lengths, Start, Pause and Stop
+    start_button.py "▶ Start" by his head when the break's over
     feather_window.py a dropped feather, clickable
     effects_window.py one click-through window for every droplet and snowflake
     status_panel.py the live needs strip in his menu
@@ -229,7 +255,7 @@ src/zengo/
     input_idle.py   time since any input, from the system (never the keys)
     desktop_windows.py other apps' windows, for perching on their tops
     sound.py        plays his sounds (or your WAV files in their place)
-    settings_window.py the settings window and its General and Life tabs
+    settings_window.py the settings window and its General, Life and Focus tabs
     voice_tabs.py   the Words and Sounds tabs
     teach_box.py    the "Teach Zengo…" box
     recorder.py     recording a sound from the microphone, only while held
