@@ -2,6 +2,26 @@
 
 A desktop pet of Zengo, a cinnamon white-face cockatiel. Pixel art, Windows and Linux.
 
+![Zengo pottering about: walking, whistling, preening, bobbing to your typing](docs/zengo.gif)
+
+![Some of his poses: sitting, facing you, flying, petted, in his winter scarf, damp from a bath, crouched to pounce, sulking](docs/poses.png)
+
+## Install
+
+From the [latest release](../../releases/latest):
+
+- **Windows**: `zengo-<version>-setup.exe` installs him for you alone (no admin
+  rights needed), with a Start-menu entry, start at login if you like, and an
+  uninstaller in *Settings > Apps*. Or just run `zengo-windows-x86_64.exe`.
+- **Debian, Ubuntu, Mint**: `sudo apt install ./zengo_<version>_amd64.deb`, then
+  find *Zengo* in your applications menu.
+- **Any Linux**: `Zengo-<version>-x86_64.AppImage`: `chmod +x` it and run it.
+  The first time, it adds itself to your applications menu.
+- Or the plain Linux binary, `zengo-linux-x86_64` (`chmod +x` it first).
+
+On Linux he needs X11, or XWayland under Wayland (see below), and Qt's
+`libxcb-cursor0` (the .deb installs it).
+
 Zengo perches on the bottom edge of the screen (above the taskbar), idles and
 blinks, waddles about, preens, takes flights around the screen, watches and
 follows the cursor, and falls asleep when you're away or late at night. Rest the
@@ -14,6 +34,10 @@ napping if it's late, until he flies off and it withdraws. Drop him just above
 it and he grabs it. He also flies up onto the tops of your windows (ones that
 aren't maximized) and sits there; move the window and he rides along, close,
 minimize, maximize or cover it and he flutters down. Now and then he sits facing you on the ground too.
+
+With more than one screen he flies across to the one beside his now and then
+(and, devoted, follows your pointer there); unplug the screen he's on and he
+comes over to another, cage, seeds and all.
 
 He has a fullness meter. It drains with time, faster when he's busy (flying
 burns three times what sitting does, sleeping very little), and every seed fills
@@ -132,12 +156,6 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
 | *Feed Zengo (n/3)* | Pours out a stack of sunflower seeds, his favourite: up to three stacks, the pile filling as you add. He eats one stack whenever he gets hungry; caged, they go in his dish |
 | *Catch Zengo*, then drag a box around him | Caged where he is, and furious about it. Drag the cage: let go near the top and it hangs from a chain, near a side and it sits on a shelf (unless that's too near the floor for one), anywhere else it falls to the ground. Petting him through the bars calms him; *Let Zengo out* opens the door |
 
-## Download
-
-Prebuilt executables for Linux and Windows are attached to each
-[GitHub release](../../releases/latest): download `zengo-linux-x86_64` or
-`zengo-windows-x86_64.exe` and run it. On Linux, `chmod +x` it first.
-
 ## Run from source
 
 ```sh
@@ -156,12 +174,15 @@ Requires Python 3.11+. On Linux, Qt's X11 plugin needs `libxcb-cursor0`
 (`sudo apt install libxcb-cursor0` on Debian/Ubuntu/Mint), including for the
 built binary. X11 is fully supported. Under Wayland, Qt
 cannot place windows at absolute positions, so force XWayland:
-`QT_QPA_PLATFORM=xcb zengo`.
+`QT_QPA_PLATFORM=xcb zengo`. (Native Wayland, through the layer-shell protocol,
+is planned for 1.1.)
 
 ## Build a standalone executable
 
 ```sh
-python scripts/build.py    # -> dist/zengo (Linux) or dist/zengo.exe (Windows)
+python scripts/build.py           # -> dist/zengo (Linux) or dist/zengo.exe (Windows)
+python scripts/package_linux.py   # -> a .deb (and an AppImage, given --appimagetool)
+iscc packaging/windows/zengo.iss  # -> the Windows installer (Inno Setup 6)
 ```
 
 PyInstaller does not cross-compile; build on each target OS.
@@ -261,6 +282,7 @@ src/zengo/
     recorder.py     recording a sound from the microphone, only while held
     tray.py         his head in the system tray, and its menu
     autostart.py    starting at login (freedesktop autostart, Windows Run key)
+    menu_entry.py   run as an AppImage, putting himself in the applications menu
 ```
 
 Only `ui/` and `app.py` import Qt. Everything else is plain Python and is
