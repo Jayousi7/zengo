@@ -21,6 +21,7 @@ from zengo.behavior.food import SECONDS_PER_SEED, SEEDS_PER_STACK, STAND_OFF
 from zengo.sounds import CHIRPS, whistle_for
 from zengo.sprites.bath import DISH_WIDTH
 from zengo.sprites.clips import RING_PECKS
+from zengo.sprites.toys import STANDING_WIDTH
 from zengo.world import Area, Ledge
 
 
@@ -1640,8 +1641,9 @@ class Bathe(State):
 
 # --- Toys -----------------------------------------------------------------------
 
-MIRROR_STAND_OFF = 15
-"""Art px from his mirror to where he stands to chat to it."""
+MIRROR_STAND_OFF = STANDING_WIDTH / 2 + 12
+"""Art px from the middle of his mirror to where he stands to chat to it: his
+beak just short of the glass."""
 BELL_REACH = 16
 """Art px from the bell he may be, on the branch, and still peck it."""
 

@@ -123,6 +123,62 @@ def test_a_sprite_near_the_desktop_edge_is_trimmed_not_moved():
     assert win.geometry() == QRect(300, 100, 40, 40)
 
 
+def test_wholly_off_the_desktop_his_window_hides_rather_than_being_pulled_back():
+    """Flying off the side (Hide) and back in: once the sprite's entirely off the
+    desktop, a window there would be pushed back on screen by the window manager,
+    so he'd flash up at the edge. It's hidden instead, and shown again on the way in."""
+    from PySide6.QtCore import QRect
+
+    pixmap = QPixmap(40, 40)
+    sprite = Sprite(pixmap, QRegion(0, 0, 40, 40))
+    win = PetWindow(drag_threshold=4)
+    desktop = QRect(0, 0, 800, 600)
+    win.show_sprite(sprite, QPoint(790, 100), desktop)
+    assert win.isVisible() and win.geometry() == QRect(790, 100, 10, 40)
+    win.show_sprite(sprite, QPoint(801, 100), desktop)
+    assert not win.isVisible()
+    win.show_sprite(sprite, QPoint(-60, 100), desktop)
+    assert not win.isVisible()
+    win.show_sprite(sprite, QPoint(-30, 100), desktop, show=False)
+    assert not win.isVisible()  # not until the app says so
+    win.show_sprite(sprite, QPoint(-30, 100), desktop)
+    assert win.isVisible() and win.geometry() == QRect(0, 100, 10, 40)
+    win.close()
+
+
+def test_hiding_he_never_shows_off_the_desktop(make_pet):
+    """The whole flight off the side and back: his window is either hidden or on
+    the desktop, never pulled back to the edge."""
+    from PySide6.QtGui import QGuiApplication
+
+    pet = make_pet()
+    brain, desktop = pet._brain, QGuiApplication.primaryScreen().virtualGeometry()
+    assert brain.hide()
+
+    def fly(seconds):
+        for _ in range(round(seconds / 0.05)):
+            brain.tick(0.05)
+            pet._render()
+            body = brain.ctx.body
+            if pet._window.isVisible():
+                assert pet._window.geometry().intersects(desktop)
+                # Drawn where he is, not pushed back: his anchor is within the window.
+                assert (
+                    pet._window.geometry()
+                    .adjusted(-2, 0, 2, 0)
+                    .contains(
+                        round(min(max(body.x, desktop.left()), desktop.right())),
+                        pet._window.geometry().center().y(),
+                    )
+                )
+
+    fly(8)
+    assert brain.away and not pet._window.isVisible()
+    brain.show()
+    fly(8)
+    assert not brain.away and pet._window.isVisible()
+
+
 def test_the_speech_cloud_stays_over_him_whatever_he_is_doing():
     """Turning round, switching between side and front views or being swung about
     mustn't throw the cloud around: its tail stays over him."""

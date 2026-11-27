@@ -282,10 +282,6 @@ class Pet:
     def _render(self) -> None:
         ctx = self._brain.ctx
         self._update_tray()
-        if isinstance(self._brain.state, Away):
-            self._window.hide()  # out of sight; the rest follows as it would
-        elif not self._window.isVisible() and self._timer.isActive():
-            self._window.show()
         body = ctx.body
         sprite = self._sheet.get(ctx.animator.frame, body.facing, self._brain.look)
         # Mirroring flips the anchor column too; +0.5 centres on the column.
@@ -293,7 +289,11 @@ class Pet:
         left = body.x - self._config.px(anchor + 0.5)
         top = body.y - self._config.px(GROUND_ROW + 1)
         desktop = QGuiApplication.primaryScreen().virtualGeometry()
-        self._window.show_sprite(sprite, QPoint(round(left), round(top)), desktop)
+        if isinstance(self._brain.state, Away):
+            self._window.hide()  # out of sight; the rest follows as it would
+        else:
+            at = QPoint(round(left), round(top))
+            self._window.show_sprite(sprite, at, desktop, show=self._timer.isActive())
         self._branch.show_branch(ctx.scenery.branch)
         food = ctx.food
         if food is None:

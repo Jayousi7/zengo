@@ -29,7 +29,47 @@ CAGE_BELL = (7, 11)
 """Where it hangs in the cage: art px right of the middle, and the row (from
 the top of the cage art) just under the roof bar."""
 
-MIRROR = (
+STANDING_MIRROR = (
+    "...NNOOONN...",
+    "..NAAAAAAAN..",
+    ".NAAWWAAAAaN.",
+    "NAAWAAAAAAAaN",
+    "NAWAAAAAAAAaN",
+    "NAAAAAAAAAAaN",
+    "NAAAAAAAAAaaN",
+    "NAAAAAAAAAaaN",
+    "NAAAAAAAAAaaN",
+    "NAAAAAAAAaaaN",
+    "NAAAAAAAAaaaN",
+    "NAAAAAAAaaaaN",
+    ".NAAAAAaaaaN.",
+    "..NaaaaaaaN..",
+    "...NNNNNNN...",
+    "......n......",
+    "......n......",
+    "....nnnnn....",
+    "..nnnnnnnnn..",
+)
+"""His mirror on the ground: an oval glass in a wooden frame, on a stand, about
+two thirds his height, so he can see himself in it."""
+
+STANDING_REFLECTION = Layer.parse(
+    """
+    .B.B.B.
+    ..LLL..
+    .WWWWW.
+    WKWWWKW
+    WWWQWWW
+    .WQqWW.
+    ..WWW..
+    """,
+    x=3,
+    y=3,
+)
+"""His own face looking back, when he's in front of it."""
+
+HANGING_MIRROR = (
+    "....m....",
     "..NOOON..",
     ".NAAAAAN.",
     "NAAWAAAaN",
@@ -40,22 +80,21 @@ MIRROR = (
     ".NaaaaaN.",
     "..NNNNN..",
 )
-MIRROR_STAND = ("....n....", "..nnnnn..")
-MIRROR_HOOK = ("....m....",)
-REFLECTION = Layer.parse(
+"""The small one that hangs on his cage bars (a big one wouldn't fit in)."""
+
+HANGING_REFLECTION = Layer.parse(
     """
     .WW
     WKW
     WWQ
     """,
     x=3,
-    y=3,
+    y=4,
 )
-"""His own face looking back, when he's in front of it."""
 
-MIRROR_WIDTH = len(MIRROR[0])
+STANDING_WIDTH = len(STANDING_MIRROR[0])
 
-CAGE_MIRROR = (-8, 30)
+CAGE_MIRROR = (-8, 31)
 """Where it hangs in the cage: art px left of the middle, and the row (from the
 top of the cage art) of its bottom edge, about his head's height."""
 
@@ -68,12 +107,12 @@ def build_bell(swing: int) -> Frame:
 
 
 def build_mirror(hanging: bool, reflecting: bool) -> Frame:
-    """The mirror on its stand (or on a hook), with his reflection if he's at it.
-    Its bottom row stands on (or hangs to) the point given; clear border round."""
-    top = MIRROR_HOOK if hanging else ()
-    bottom = () if hanging else MIRROR_STAND
-    rows = (*top, *MIRROR, *bottom)
+    """The mirror on its stand (or the small one on a hook), with his reflection
+    if he's at it. Its bottom row stands on (or hangs to) the point given, with a
+    clear border round it."""
+    rows = HANGING_MIRROR if hanging else STANDING_MIRROR
     layers = [Layer(rows, 1, 1)]
     if reflecting:
-        layers.append(REFLECTION.shifted(1, 1 + len(top)))
-    return compose(layers, MIRROR_WIDTH + 2, len(rows) + 2, PALETTE, outline_for)
+        layers.append((HANGING_REFLECTION if hanging else STANDING_REFLECTION).shifted(1, 1))
+    width = max(len(row) for row in rows)
+    return compose(layers, width + 2, len(rows) + 2, PALETTE, outline_for)

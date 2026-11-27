@@ -48,10 +48,20 @@ class PetWindow(QWidget):
         self._pending_click.setInterval(QApplication.styleHints().mouseDoubleClickInterval())
         self._pending_click.timeout.connect(self.clicked.emit)
 
-    def show_sprite(self, sprite: Sprite, top_left: QPoint, bounds: QRect | None = None) -> None:
+    def show_sprite(
+        self, sprite: Sprite, top_left: QPoint, bounds: QRect | None = None, *, show: bool = True
+    ) -> None:
         """Show ``sprite`` with its top-left corner at ``top_left``, trimmed to ``bounds``
-        (the desktop) so no window manager moves it."""
-        shown, offset = clip_to(QRect(top_left, sprite.pixmap.size()), bounds)
+        (the desktop) so no window manager moves it. Wholly off the desktop (flying
+        off the side, or back in) the window is hidden: a window manager would pull
+        it back on screen. ``show``: show the window if it's hidden."""
+        full = QRect(top_left, sprite.pixmap.size())
+        if bounds is not None and not full.intersects(bounds):
+            self.hide()
+            return
+        if show and not self.isVisible():
+            self.show()
+        shown, offset = clip_to(full, bounds)
         if self.geometry() != shown:
             self.setGeometry(shown)
         if sprite is not self._sprite or offset != self._offset:

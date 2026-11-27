@@ -205,3 +205,20 @@ def test_toys_put_out_from_settings_show_up(make_pet):
     assert not pet._mirror.isVisible()
     layers = pet._layers()
     assert layers.index(pet._branch) < layers.index(pet._bell) < layers.index(pet._cage)
+
+
+def test_the_standing_mirror_is_sized_to_him_and_grows_with_him(make_pet):
+    from zengo.sprites.frames import GROUND_ROW
+
+    pet = make_pet()
+    pet.change_settings(replace(pet.settings, toys=("mirror",)))
+    pet._brain.tick(0.1)
+    pet._render()
+    height = pet._mirror.height()
+    scale = pet._config.scale
+    # About three quarters his height, crest and all.
+    assert 0.6 < height / scale / GROUND_ROW < 0.9
+    pet.change_settings(replace(pet.settings, scale=4))
+    pet._brain.tick(0.1)
+    pet._render()
+    assert pet._mirror.height() == height * 4 // scale
