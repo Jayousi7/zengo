@@ -45,6 +45,13 @@ class Config:
     watch_radius: float = 140.0
     """Within this horizontal distance of the cursor, Zengo turns to look at it."""
 
+    cursor_rest: tuple[float, float] = (2.0, 90.0)
+    """Seconds the mouse must have rested (at least, at most) before Zengo may fly
+    up to perch on the pointer. Past the upper bound you've probably left the desk."""
+
+    cursor_reach: float = 400.0
+    """Art pixels: how far away a resting pointer can be for him to fly over to it."""
+
     sleep_after: float = 300.0
     """Seconds of user inactivity after which Zengo becomes sleepy."""
 

@@ -11,9 +11,11 @@ Input-driven transitions (click, drag, drop) are owned by
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Sequence
 from typing import ClassVar
 
 from zengo.behavior.context import Context
+from zengo.behavior.flight import FlightPath, Point, ease
 
 
 class State:
@@ -63,15 +65,17 @@ def choose_activity(ctx: Context) -> State:
     """Weighted pick of what to do after idling."""
     if is_sleepy(ctx) and ctx.rng.random() < 0.6:
         return Sleep()
-    options: list[tuple[type[State], float]] = [
-        (Idle, 1.0),
-        (Walk, 4.0),
-        (Preen, 2.0),
-        (Fly, 1.0),
-        (Follow, 1.5 if _cursor_on_same_screen(ctx) else 0.0),
+    options: list[tuple[Callable[[Context], State], float]] = [
+        (lambda _: Idle(), 1.0),
+        (lambda _: Walk(), 4.0),
+        (lambda _: Preen(), 2.0),
+        (Fly.hop, 0.6),
+        (Fly.tour, 0.8),
+        (lambda _: Follow(), 1.5 if _cursor_on_same_screen(ctx) else 0.0),
+        (Fly.to_cursor, 3.0 if cursor_is_inviting(ctx) else 0.0),
     ]
-    kinds, weights = zip(*options, strict=True)
-    return ctx.rng.choices(kinds, weights)[0]()
+    makers, weights = zip(*options, strict=True)
+    return ctx.rng.choices(makers, weights)[0](ctx)
 
 
 def _cursor_on_same_screen(ctx: Context) -> bool:
@@ -141,61 +145,188 @@ def _walk_towards(ctx: Context, target: float, dt: float) -> bool:
     return False
 
 
-def flight_profile(p: float) -> tuple[float, float]:
-    """Horizontal progress and height (both 0..1) at flight fraction ``p``.
-
-    A powered climb peaks a third of the way, then a long glide flattens out so
-    the landing comes in shallow rather than dropping straight down. Horizontal
-    speed eases only slightly, so takeoff and landing never look vertical.
-    """
-    progress = 0.6 * p + 0.4 * p * p * (3 - 2 * p)
-    peak = 0.35
-    if p < peak:
-        height = math.sin(math.pi / 2 * p / peak) ** 0.8
-    else:
-        height = math.cos(math.pi / 2 * (p - peak) / (1 - peak)) ** 1.3
-    return progress, height
-
-
 class Fly(State):
-    """Take off, climb, glide in and land somewhere else along the bottom edge.
+    """Fly a curved path through ``waypoints`` and land on the last one.
 
-    The clip follows the phase of the flight: flapping on the climb, wings held
-    level on the glide, wings flared for touchdown.
+    Flights come from the planners: :meth:`hop` to another spot on the ground,
+    :meth:`tour` around the screen, :meth:`to_cursor` to perch on a resting
+    mouse pointer, and :meth:`down` back to the ground from a perch. A bare
+    ``Fly()`` is a hop.
+
+    The wings follow the path: flapping while climbing or flying level, held out
+    in a glide on the way down, and flared for the last moment before touchdown.
     """
 
     clip = "fly"
     grounded = False
 
-    glide_from: ClassVar[float] = 0.5
-    flare_from: ClassVar[float] = 0.9
-    """Fractions of the flight at which gliding and the landing flare begin."""
+    glide_above: ClassVar[float] = 0.3
+    flap_below: ClassVar[float] = 0.05
+    """Descent (sine of the angle below level) at which he starts gliding, and
+    below which he flaps again. The gap stops the wings flickering between the two."""
+    flare_seconds: ClassVar[float] = 0.45
+
+    def __init__(self, waypoints: Sequence[Point] | None = None, *, onto: str = "ground") -> None:
+        super().__init__()
+        self.waypoints = None if waypoints is None else tuple(waypoints)
+        self.onto = onto
+        """What he lands on: ``"ground"`` or ``"cursor"``."""
+
+    # --- Planners -----------------------------------------------------------
+
+    @classmethod
+    def hop(cls, ctx: Context) -> Fly:
+        """Climb steeply, then come in on a long shallow glide to another spot."""
+        area, cfg, (x0, g) = ctx.area(), ctx.config, (ctx.body.x, ctx.area().bottom)
+        lo, hi = area.left + ctx.margin, area.right - ctx.margin
+        x1 = ctx.rng.uniform(lo, hi)
+        if abs(x1 - x0) < cfg.px(60):  # too short to be worth flying
+            x1 = hi if x0 - lo < hi - x0 else lo
+        d, run = math.copysign(1.0, x1 - x0), abs(x1 - x0)
+        height = min(cfg.px(70), 0.35 * run) + cfg.px(12)
+        return cls(
+            [(x0 + d * 0.35 * run, g - height), (x0 + d * 0.7 * run, g - 0.25 * height), (x1, g)]
+        )
+
+    @classmethod
+    def tour(cls, ctx: Context) -> Fly:
+        """Loop through two to four random points across the screen, then land."""
+        area, cfg, rng = ctx.area(), ctx.config, ctx.rng
+        lo, hi = area.left + ctx.margin, area.right - ctx.margin
+        height = area.bottom - area.top
+        y_lo, y_hi = area.top + max(0.12 * height, cfg.px(50)), area.bottom - 0.3 * height
+        points, last_x = [], ctx.body.x
+        for _ in range(rng.randint(2, 4)):
+            x = rng.uniform(lo, hi)
+            for _retry in range(8):  # keep each leg long enough to read as travel
+                if abs(x - last_x) >= cfg.px(80):
+                    break
+                x = rng.uniform(lo, hi)
+            points.append((x, rng.uniform(y_lo, max(y_lo, y_hi))))
+            last_x = x
+        landing = _landing(ctx, rng.uniform(lo, hi), coming_from=points[-1][0])
+        return cls([*_takeoff(ctx, towards=points[0][0]), *points, *landing])
+
+    @classmethod
+    def to_cursor(cls, ctx: Context) -> Fly:
+        """Fly up and land on the tip of the resting mouse pointer."""
+        cfg, (cx, cy) = ctx.config, ctx.world.cursor()
+        d = math.copysign(1.0, cx - ctx.body.x) if cx != ctx.body.x else float(ctx.body.facing)
+        approach = (cx - d * min(cfg.px(45), abs(cx - ctx.body.x) / 2), cy - cfg.px(16))
+        return cls([*_takeoff(ctx, towards=cx), approach, (cx, cy)], onto="cursor")
+
+    @classmethod
+    def down(cls, ctx: Context) -> Fly:
+        """Glide down from a perch to the ground a little way ahead."""
+        cfg = ctx.config
+        x1 = ctx.body.x + int(ctx.body.facing) * ctx.rng.uniform(cfg.px(60), cfg.px(150))
+        x1 = ctx.area().clamp_x(x1, ctx.margin)
+        return cls(_landing(ctx, x1, coming_from=ctx.body.x))
+
+    # --- Flying -------------------------------------------------------------
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
-        area, cfg = ctx.area(), ctx.config
-        self.start = (ctx.body.x, ctx.body.y)
-        lo, hi = area.left + ctx.margin, area.right - ctx.margin
-        target = ctx.rng.uniform(lo, hi)
-        if abs(target - ctx.body.x) < cfg.px(60):  # too short to be worth flying
-            target = hi if ctx.body.x - lo < hi - ctx.body.x else lo
-        self.end = (target, area.bottom)
-        distance = abs(target - ctx.body.x)
-        self.duration = max(1.0, distance / cfg.px(cfg.fly_speed))
-        self.height = min(cfg.px(70), 0.35 * distance) + cfg.px(12)
-        ctx.body.face_towards(target)
+        cfg, area = ctx.config, ctx.area()
+        if self.waypoints is None:
+            self.waypoints = Fly.hop(ctx).waypoints
+        assert self.waypoints is not None
+        top = area.top + cfg.px(34)  # room for the raised wing above him
+        self.path = FlightPath.through(
+            [(ctx.body.x, ctx.body.y), *self.waypoints], top=top, bottom=area.bottom
+        )
+        self.duration = max(1.0, self.path.length / cfg.px(cfg.fly_speed))
+        self.gliding = False
 
     def step(self, ctx: Context, dt: float) -> State | None:
+        cfg, body = ctx.config, ctx.body
+        assert self.waypoints is not None
+        landing_spot = self.waypoints[-1]
         p = min(self.elapsed / self.duration, 1.0)
-        (x0, y0), (x1, y1) = self.start, self.end
-        progress, height = flight_profile(p)
-        ctx.body.x = x0 + (x1 - x0) * progress
-        ctx.body.y = y0 + (y1 - y0) * progress - self.height * height
+        s = self.path.length * ease(p)
+        body.x, body.y = self.path.at(s)
+        dx, dy = self.path.heading(s, cfg.px(12))
+        if abs(dx) > 0.5:
+            body.face_towards(body.x + dx)
+
+        if self.onto == "cursor" and math.dist(ctx.world.cursor(), landing_spot) > cfg.px(12):
+            # The perch moved away: carry on with the speed he has and glide down.
+            speed, norm = self.path.length / self.duration, math.hypot(dx, dy) or 1.0
+            body.vx, body.vy = dx / norm * speed, dy / norm * speed
+            return Glide.from_fall(ctx)
         if p >= 1.0:
-            ctx.body.y = y1
-            return Idle()
-        phase = "fly" if p < self.glide_from else "glide" if p < self.flare_from else "flare"
-        ctx.animator.play(phase)
+            body.x, body.y = landing_spot
+            return CursorPerch() if self.onto == "cursor" else Idle()
+
+        descent = dy / (math.hypot(dx, dy) or 1.0)
+        if self.gliding and descent < self.flap_below:
+            self.gliding = False
+        elif not self.gliding and descent > self.glide_above:
+            self.gliding = True
+        if p >= 1.0 - self.flare_seconds / self.duration:
+            ctx.animator.play("flare")
+        else:
+            ctx.animator.play("glide" if self.gliding else "fly")
+        return None
+
+
+def _takeoff(ctx: Context, towards: float) -> list[Point]:
+    """From the ground, lift off at an angle rather than straight up."""
+    if ctx.body.y < ctx.area().bottom - 1:
+        return []  # already airborne or on a perch
+    cfg = ctx.config
+    d = math.copysign(1.0, towards - ctx.body.x) if towards != ctx.body.x else int(ctx.body.facing)
+    x = ctx.area().clamp_x(ctx.body.x + d * cfg.px(35), ctx.margin)
+    return [(x, ctx.body.y - cfg.px(22))]
+
+
+def _landing(ctx: Context, x: float, coming_from: float) -> list[Point]:
+    """Come in low and shallow from the side, then touch down at ``x`` on the ground."""
+    cfg, area = ctx.config, ctx.area()
+    d = math.copysign(1.0, x - coming_from) if x != coming_from else int(ctx.body.facing)
+    approach = area.clamp_x(x - d * cfg.px(60), ctx.margin)
+    return [(approach, area.bottom - cfg.px(20)), (x, area.bottom)]
+
+
+def cursor_is_inviting(ctx: Context) -> bool:
+    """The pointer has been resting a while above the ground, within reach on his screen."""
+    cfg, area = ctx.config, ctx.area()
+    cx, cy = ctx.world.cursor()
+    rest_from, rest_until = cfg.cursor_rest
+    return (
+        rest_from <= ctx.world.user_idle_seconds() <= rest_until
+        and ctx.world.area_at(cx, cy) == area
+        and area.left + ctx.margin <= cx <= area.right - ctx.margin
+        and area.top + cfg.px(60) <= cy <= area.bottom - cfg.px(40)
+        and abs(cx - ctx.body.x) <= cfg.px(cfg.cursor_reach)
+    )
+
+
+class CursorPerch(State):
+    """Sitting on the tip of the resting mouse pointer.
+
+    Moving the mouse startles him off (a hop up, then he flutters and glides
+    down). Left alone, he flies back down to the ground after a while.
+    """
+
+    clip = "idle"
+    grounded = False
+    stay: ClassVar[tuple[float, float]] = (6.0, 20.0)
+    startle_hop: ClassVar[float] = 60.0
+    """Art px/s upwards when the pointer moves out from under him."""
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        self.spot = ctx.world.cursor()
+        self.duration = ctx.rng.uniform(*self.stay)
+        ctx.body.x, ctx.body.y = self.spot
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        if math.dist(ctx.world.cursor(), self.spot) > ctx.config.px(3):
+            ctx.body.vx, ctx.body.vy = 0.0, -ctx.config.px(self.startle_hop)
+            return Fall()
+        if self.elapsed >= self.duration:
+            return Fly.down(ctx)
         return None
 
 

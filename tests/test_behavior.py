@@ -5,6 +5,7 @@ from zengo.behavior.machine import Brain
 from zengo.behavior.states import (
     STEPPING_FRAMES,
     Alert,
+    CursorPerch,
     Dragged,
     Fall,
     Fly,
@@ -14,7 +15,7 @@ from zengo.behavior.states import (
     Shake,
     Sleep,
     Walk,
-    flight_profile,
+    cursor_is_inviting,
 )
 from zengo.world import Area
 
@@ -213,31 +214,112 @@ def test_grounded_pet_follows_ground_when_desktop_changes(ctx, world):
     assert ctx.body.x == 800 - ctx.margin
 
 
-def test_flight_profile_starts_and_ends_on_the_ground():
-    assert flight_profile(0.0) == (0.0, 0.0)
-    progress, height = flight_profile(1.0)
-    assert progress == pytest.approx(1.0) and height == pytest.approx(0.0, abs=1e-9)
+def fly_and_record(brain: Brain, ctx, limit: float = 60.0):
+    """Run a flight to its end; return the positions and the clips it showed, in order."""
+    path, clips = [], []
+    for _ in range(round(limit / DT)):
+        brain.tick(DT)
+        if not isinstance(brain.state, Fly):
+            return path, clips
+        path.append((ctx.body.x, ctx.body.y))
+        if not clips or clips[-1] != ctx.animator.clip_name:
+            clips.append(ctx.animator.clip_name)
+    raise AssertionError("the flight never ended")
 
 
-def test_flight_climbs_fast_and_lands_shallow():
-    heights = [flight_profile(i / 100)[1] for i in range(101)]
-    assert max(heights) == pytest.approx(1.0)
-    assert heights.index(max(heights)) < 50  # peak in the first half: powered climb
-    climb = heights[5] - heights[0]
-    landing = heights[95] - heights[100]
+def test_hop_climbs_steeply_and_lands_shallow(ctx):
+    brain = Brain(ctx, Fly())
+    path, _ = fly_and_record(brain, ctx)
+    (x0, y0), (x1, y1) = path[0], path[3]
+    (xa, ya), (xb, yb) = path[-4], path[-1]
+    climb = abs(y1 - y0) / max(abs(x1 - x0), 1e-6)
+    landing = abs(yb - ya) / max(abs(xb - xa), 1e-6)
     assert climb > 3 * landing  # leaves steeply, arrives at a glide
 
 
-def test_flight_clip_follows_phase(ctx):
+def test_flight_clips_follow_the_path(ctx):
     brain = Brain(ctx, Fly())
-    seen = []
-    for _ in range(400):
-        brain.tick(DT)
-        if not isinstance(brain.state, Fly):
-            break
-        if not seen or seen[-1] != ctx.animator.clip_name:
-            seen.append(ctx.animator.clip_name)
-    assert seen == ["fly", "glide", "flare"]
+    _, clips = fly_and_record(brain, ctx)
+    assert clips[0] == "fly"  # flapping to climb
+    assert "glide" in clips
+    assert clips[-1] == "flare"  # wings flared to land
+
+
+def test_tour_crosses_the_screen_high_up_and_lands_back_on_the_ground(ctx):
+    area = ctx.world.area
+    brain = Brain(ctx, Fly.tour(ctx))
+    path, _ = fly_and_record(brain, ctx)
+    xs, ys = [x for x, _ in path], [y for _, y in path]
+    assert min(ys) < area.bottom - 0.3 * (area.bottom - area.top)  # well up the screen
+    assert max(xs) - min(xs) > ctx.config.px(80)
+    assert min(xs) >= area.left + ctx.margin - 1 and max(xs) <= area.right - ctx.margin + 1
+    assert min(ys) >= area.top and max(ys) <= area.bottom
+    assert isinstance(brain.state, Idle)
+    assert ctx.body.y == area.bottom
+
+
+def test_flight_turns_to_face_where_it_is_going(ctx):
+    ctx.body.facing = Facing.LEFT
+    brain = Brain(ctx, Fly([(ctx.body.x + 300, ctx.body.y - 200), (ctx.body.x + 600, ctx.body.y)]))
+    run(brain, 0.5)
+    assert ctx.body.facing is Facing.RIGHT
+
+
+def rest_cursor(ctx, world, dx: float = 150, height: float = 200):
+    """Leave the mouse resting above the ground near Zengo."""
+    world.cursor_pos = (ctx.body.x + dx, ctx.world.area.bottom - height)
+    world.idle = 5.0
+
+
+def test_resting_cursor_invites_a_visit_but_a_moving_or_far_one_does_not(ctx, world):
+    rest_cursor(ctx, world)
+    assert cursor_is_inviting(ctx)
+    world.idle = 0.5  # still moving
+    assert not cursor_is_inviting(ctx)
+    rest_cursor(ctx, world, dx=ctx.config.px(ctx.config.cursor_reach) + 50)
+    assert not cursor_is_inviting(ctx)
+    rest_cursor(ctx, world, height=10)  # down at ground level: he'd just walk
+    assert not cursor_is_inviting(ctx)
+
+
+def test_flies_up_and_perches_on_the_resting_cursor(ctx, world):
+    rest_cursor(ctx, world)
+    brain = Brain(ctx, Fly.to_cursor(ctx))
+    run_until(brain, CursorPerch, limit=10)
+    assert (ctx.body.x, ctx.body.y) == world.cursor_pos
+    run(brain, 2)
+    assert (ctx.body.x, ctx.body.y) == world.cursor_pos
+
+
+def test_moving_the_cursor_startles_him_off_and_he_glides_down(ctx, world):
+    rest_cursor(ctx, world)
+    brain = Brain(ctx, Fly.to_cursor(ctx))
+    run_until(brain, CursorPerch, limit=10)
+    x, y = world.cursor_pos
+    world.cursor_pos = (x + 40, y)
+    brain.tick(DT)
+    assert isinstance(brain.state, Fall)
+    run_until(brain, Shake, limit=10)
+    assert ctx.body.y == ctx.world.area.bottom
+
+
+def test_left_alone_on_the_cursor_he_flies_back_down(ctx, world):
+    rest_cursor(ctx, world)
+    brain = Brain(ctx, Fly.to_cursor(ctx))
+    run_until(brain, CursorPerch, limit=10)
+    run_until(brain, Fly, limit=CursorPerch.stay[1] + 1)
+    run_until(brain, Idle, limit=10)
+    assert ctx.body.y == ctx.world.area.bottom
+
+
+def test_cursor_moving_away_mid_flight_turns_it_into_a_glide_down(ctx, world):
+    rest_cursor(ctx, world)
+    brain = Brain(ctx, Fly.to_cursor(ctx))
+    run(brain, 0.4)
+    world.cursor_pos = (5000.0, 5000.0)
+    brain.tick(DT)
+    assert isinstance(brain.state, Glide)
+    run_until(brain, Shake, limit=10)
 
 
 def test_walking_moves_only_while_a_foot_is_lifted(ctx):

@@ -3,8 +3,10 @@
 A desktop pet of Zengo, a cinnamon white-face cockatiel. Pixel art, Windows and Linux.
 
 Zengo perches on the bottom edge of the screen (above the taskbar), idles and
-blinks, waddles about, preens, flies to other spots, watches and follows the
-cursor, and falls asleep when you're away or late at night.
+blinks, waddles about, preens, takes flights around the screen, watches and
+follows the cursor, and falls asleep when you're away or late at night. Rest the
+mouse still above the ground near him and he may fly up and perch on the pointer;
+move it and he flutters off.
 
 | Input | Reaction |
 |---|---|
@@ -73,6 +75,7 @@ src/zengo/
     body.py         position and facing
     context.py      what states may read and mutate
     states.py       one class per behaviour
+    flight.py       smooth flight paths through waypoints
     machine.py      Brain: runs states, routes mouse input
   sprites/
     palette.py      Zengo's colours
