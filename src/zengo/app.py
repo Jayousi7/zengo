@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt, QTimer
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QIcon, QPixmap
 from PySide6.QtWidgets import QApplication, QMenu, QWidgetAction
 
 from zengo.animation import Animator
@@ -43,6 +43,7 @@ from zengo.ui.effects_window import EffectsWindow
 from zengo.ui.feather_window import FeatherWindow
 from zengo.ui.focus_tab import describe
 from zengo.ui.food_window import FoodWindow
+from zengo.ui.menu_entry import ensure_menu_entry
 from zengo.ui.qt_world import QtWorld, time_zone
 from zengo.ui.recorder import RecorderBox, microphone
 from zengo.ui.settings_window import SettingsWindow
@@ -54,7 +55,7 @@ from zengo.ui.state_file import StateFile
 from zengo.ui.status_panel import StatusPanel
 from zengo.ui.teach_box import TeachBox
 from zengo.ui.toy_window import BellWindow, MirrorWindow
-from zengo.ui.tray import Tray
+from zengo.ui.tray import Tray, head_icon
 from zengo.ui.voice_tabs import SoundsTab, WordsTab, voice_with
 from zengo.ui.window import PetWindow
 
@@ -721,6 +722,16 @@ def parse_args(argv: list[str]) -> Options:
     return Options(flags, args.sprites, args.branch_now, args.bath_now)
 
 
+def _png(pixmap: QPixmap) -> bytes:
+    from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+
+    data = QByteArray()
+    buffer = QBuffer(data)
+    buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+    pixmap.save(buffer, "PNG")
+    return bytes(data.data())
+
+
 def quiet_bundled_libraries() -> None:
     """In the standalone Linux build, keep the desktop's own add-ons out.
 
@@ -771,6 +782,10 @@ def main(argv: list[str] | None = None) -> int:
         settings = carried
         settings_file.save(settings.to_json())  # sound on/off moved over from the state file
     config = build_config(settings, options.flags)
+    icon = head_icon(frames["perch"], 256)
+    app.setWindowIcon(QIcon(icon))  # his settings and the other boxes
+    if sys.platform.startswith("linux"):
+        ensure_menu_entry(_png(icon))
     autostart = Autostart.for_this_system()
     autostart.refresh()
     pet = Pet(

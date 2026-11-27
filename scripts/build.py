@@ -20,6 +20,7 @@ def main() -> None:
             "--name=zengo",
             "--onefile",
             "--windowed",  # no console window on Windows
+            f"--icon={ROOT / 'packaging' / 'icons' / 'zengo.ico'}",  # (Windows only)
             "--noconfirm",
             "--clean",
             f"--paths={ROOT / 'src'}",

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Zengo
+GenericName=Desktop pet
+Comment=Zengo the desktop cockatiel
+Exec=zengo
+Icon=zengo
+Terminal=false
+Categories=Game;Amusement;
+StartupNotify=false

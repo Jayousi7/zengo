@@ -28,7 +28,11 @@ RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 
 def own_command() -> list[str]:
-    """How to start him as he's running now."""
+    """How to start him as he's running now. From an AppImage, that's the
+    AppImage file itself: what's running is a copy unpacked for the while."""
+    appimage = os.environ.get("APPIMAGE")
+    if appimage and Path(appimage).is_file():
+        return [appimage]
     if getattr(sys, "frozen", False):
         return [sys.executable]
     return [sys.executable, "-m", "zengo"]
