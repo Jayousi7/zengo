@@ -21,7 +21,9 @@ it up a bit. Every 30 s he may get hungry: never when he's well fed, likelier th
 emptier he is. Hungry, he eats a stack of seeds if you've put some out; if not,
 he flies over to your pointer and asks for some (from a cage, he just asks).
 Caged, after 5 minutes he tries the latch once a minute: 15% the first time, 1%
-more each try, 3% less for every time you've fed him in there.
+more each try, 3% less for every time you've fed him in there, all times
+(1 − his bond): the closer he feels to you, the less he wants out, and devoted
+through and through he never tries.
 
 His escape progress is his own, not the cage's: time caged adds up across
 cagings, so letting him out and catching him again later carries on where he
@@ -70,7 +72,7 @@ python -m venv .venv
 .venv/bin/zengo --scale 3               # bigger bird
 .venv/bin/zengo --sprites art.json      # use hand-drawn frames (see below)
 .venv/bin/zengo --branch-now            # grow a branch straight away
-.venv/bin/zengo --quick                 # short timers: cage escapes in seconds, hunger every 20 s
+.venv/bin/zengo --quick                 # short timers: cage escapes in seconds (odds times 1 − bond), hunger every 20 s
 ```
 
 Requires Python 3.11+. On Linux, Qt's X11 plugin needs `libxcb-cursor0`

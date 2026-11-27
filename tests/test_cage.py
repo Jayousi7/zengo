@@ -287,12 +287,21 @@ def test_escape_odds_start_at_15_percent_after_5_minutes_and_rise_1_percent_a_mi
     from zengo.behavior.cage import escape_chance
 
     cfg = ctx.config
-    assert escape_chance(cfg, 4 * 60, 0) == 0
-    assert escape_chance(cfg, 5 * 60, 0) == pytest.approx(0.15)
-    assert escape_chance(cfg, 6 * 60, 0) == pytest.approx(0.16)
-    assert escape_chance(cfg, 10 * 60 + 30, 0) == pytest.approx(0.20)
-    assert escape_chance(cfg, 10 * 60, 2) == pytest.approx(0.14)  # fed twice: 3% off each
-    assert escape_chance(cfg, 5 * 60, 10) == 0  # never below nothing
+    assert escape_chance(cfg, 4 * 60, 0, 0.0) == 0
+    assert escape_chance(cfg, 5 * 60, 0, 0.0) == pytest.approx(0.15)
+    assert escape_chance(cfg, 6 * 60, 0, 0.0) == pytest.approx(0.16)
+    assert escape_chance(cfg, 10 * 60 + 30, 0, 0.0) == pytest.approx(0.20)
+    assert escape_chance(cfg, 10 * 60, 2, 0.0) == pytest.approx(0.14)  # fed twice: 3% off each
+    assert escape_chance(cfg, 5 * 60, 10, 0.0) == 0  # never below nothing
+
+
+def test_the_closer_he_feels_to_you_the_less_he_tries_to_escape(ctx):
+    from zengo.behavior.cage import escape_chance
+
+    cfg = ctx.config
+    assert escape_chance(cfg, 10 * 60 + 30, 0, 0.5) == pytest.approx(0.10)  # half of 20%
+    assert escape_chance(cfg, 10 * 60 + 30, 0, 0.75) == pytest.approx(0.05)
+    assert escape_chance(cfg, 60 * 60, 0, 1.0) == 0  # devoted: he never tries
 
 
 def test_he_tries_once_a_minute_from_five_minutes(ctx):
@@ -325,6 +334,7 @@ def test_with_quick_timers_he_works_the_latch_and_escapes_within_seconds(ctx):
     ctx.config = quick(ctx.config)
     brain = Brain(ctx, Idle())
     catch(ctx, brain)
+    ctx.bond.level = 0.0  # nothing holding him back
     run(brain, ctx.config.escape_after + 0.5)
     assert ctx.animator.clip_name == "front_pick"  # working the latch...
     run_until(brain, Fly, limit=4)
@@ -372,6 +382,7 @@ def test_only_escaping_starts_his_progress_over(ctx):
     brain = Brain(ctx, Idle())
     catch(ctx, brain)
     brain.feed()
+    ctx.bond.level = 0.0  # nothing holding him back
     run_until(brain, Fly, limit=15)
     assert ctx.cage.escaped
     assert (ctx.escape.caged_for, ctx.escape.feedings, ctx.escape.next_try) == (0, 0, None)

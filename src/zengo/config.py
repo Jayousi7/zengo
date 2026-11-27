@@ -112,7 +112,8 @@ class Config:
     escape_feed_penalty: float = 0.03
     """Caged, after ``escape_after`` seconds he tries to escape every ``escape_every``:
     ``escape_chance`` at the first try, ``escape_chance_rise`` more each try after,
-    less ``escape_feed_penalty`` for every time he's been fed in the cage."""
+    less ``escape_feed_penalty`` for every time he's been fed in the cage, all
+    times ``1 - bond``: a devoted bird hardly tries."""
 
     hunger_drain: float = 0.06
     """Share of a full stomach used up a minute at rest. Activity multiplies it (see

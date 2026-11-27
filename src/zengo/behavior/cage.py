@@ -185,20 +185,23 @@ class EscapeProgress:
         if self.caged_for < self.next_try_at(cfg):
             return False
         self.next_try = self.caged_for + cfg.escape_every
-        return ctx.rng.random() < escape_chance(cfg, self.caged_for, self.feedings)
+        chance = escape_chance(cfg, self.caged_for, self.feedings, ctx.bond.level)
+        return ctx.rng.random() < chance
 
-    def chance_at_next_try(self, cfg: Config) -> float:
-        return escape_chance(cfg, max(self.next_try_at(cfg), self.caged_for), self.feedings)
+    def chance_at_next_try(self, cfg: Config, bond: float) -> float:
+        caged_for = max(self.next_try_at(cfg), self.caged_for)
+        return escape_chance(cfg, caged_for, self.feedings, bond)
 
     def escaped(self) -> None:
         """He's out by his own wits: start over."""
         self.caged_for, self.feedings, self.next_try = 0.0, 0, None
 
 
-def escape_chance(cfg: Config, caged_for: float, feedings: int) -> float:
+def escape_chance(cfg: Config, caged_for: float, feedings: int, bond: float) -> float:
     """Odds he gets out at a try: ``escape_chance`` at the first, rising by
     ``escape_chance_rise`` with every try after, less ``escape_feed_penalty`` for each
-    time he's been fed in the cage."""
+    time he's been fed in the cage, all scaled by ``1 - bond``: the closer he feels
+    to you, the less he wants out, and at full devotion he never tries."""
     if caged_for < cfg.escape_after:
         return 0.0
     tries_before = int((caged_for - cfg.escape_after) // cfg.escape_every)
@@ -207,7 +210,7 @@ def escape_chance(cfg: Config, caged_for: float, feedings: int) -> float:
         + tries_before * cfg.escape_chance_rise
         - feedings * cfg.escape_feed_penalty
     )
-    return min(max(chance, 0.0), 1.0)
+    return min(max(chance, 0.0), 1.0) * min(max(1.0 - bond, 0.0), 1.0)
 
 
 def caught_in(ctx: Context, left: float, top: float, right: float, bottom: float) -> bool:

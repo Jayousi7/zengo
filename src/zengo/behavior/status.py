@@ -45,7 +45,7 @@ def read(ctx: Context, food_stacks: int) -> Status:
         hunger_check_in=0.0 if hunger.hungry else hunger.check_in,
         food_stacks=food_stacks,
         caged=cage is not None and not cage.door_open,
-        escape_chance=escape.chance_at_next_try(cfg),
+        escape_chance=escape.chance_at_next_try(cfg, ctx.bond.level),
         escape_try_in=max(0.0, next_try - escape.caged_for),
         escape_started=escape.caged_for >= cfg.escape_after,
         escape_warmup=min(1.0, escape.caged_for / cfg.escape_after) if cfg.escape_after else 1.0,

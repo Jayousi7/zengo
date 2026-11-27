@@ -42,6 +42,7 @@ def test_caged_he_squawks_and_freed_by_his_own_wits_he_trills(ctx):
     brain = Brain(ctx, Idle())
     brain.catch_in(ctx.body.x - 40, ctx.body.y - 80, ctx.body.x + 40, ctx.body.y + 5)
     assert "squawk" in ctx.sounds
+    ctx.bond.level = 0.0  # nothing holding him back
     for _ in range(round(10 / DT)):
         brain.tick(DT)
     assert "trill" in ctx.sounds
