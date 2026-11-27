@@ -306,6 +306,8 @@ def quiet_bundled_libraries() -> None:
     needs neither: his menu is styled by hand and he opens no files over the
     network. ``setdefault`` leaves any value the user set alone.
     """
+    # Qt's sound support announces its FFmpeg version on every start; he needn't.
+    os.environ.setdefault("QT_LOGGING_RULES", "qt.multimedia.ffmpeg*=false")
     if getattr(sys, "frozen", False) and sys.platform.startswith("linux"):
         os.environ.setdefault("QT_QPA_PLATFORMTHEME", "generic")
         os.environ.setdefault("GIO_MODULE_DIR", "/nonexistent")
