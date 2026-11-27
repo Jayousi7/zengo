@@ -115,7 +115,8 @@ LibreSprite), draw on a 44x36 canvas facing right, with the feet's lowest
 pixel on row 29 and the gap between the feet on column 31 (zero-based). Name
 each frame after the one it replaces (`perch`, `blink`, `alert`, `step_back`,
 `step_front`, `preen_a`, `preen_b`, `sleep`, `wings_up`, `wings_level`,
-`wings_down`, `wings_recover`, `held`, `shake_a`, `shake_b`) and export a sprite sheet with JSON data, hash or array layout.
+`wings_down`, `wings_recover`, `held`, `held_blink`, `held_kick_a`, `held_kick_b`,
+`held_look`, `held_flick`, `shake_a`, `shake_b`) and export a sprite sheet with JSON data, hash or array layout.
 Frames not in the sheet keep the built-in art. Run with
 `zengo --sprites sheet.json`. Draw your own outline here; generated outlines
 only apply to the built-in art.

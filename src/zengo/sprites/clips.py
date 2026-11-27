@@ -2,6 +2,27 @@
 
 from zengo.animation import Clip
 
+# Hanging from the cursor: long, irregular holds between small fidgets (a blink,
+# a kick of the feet, a look down, a wing flick), so the ~7 s loop never reads as
+# a pattern.
+_HELD_FIDGETS = (
+    ("held", 0.9),
+    ("held_blink", 0.12),
+    ("held", 0.6),
+    ("held_kick_a", 0.14),
+    ("held_kick_b", 0.14),
+    ("held_kick_a", 0.14),
+    ("held", 1.1),
+    ("held_look", 0.9),
+    ("held_blink", 0.12),
+    ("held_look", 0.5),
+    ("held", 0.7),
+    ("held_flick", 0.12),
+    ("held", 0.15),
+    ("held_flick", 0.12),
+    ("held", 0.8),
+)
+
 CLIPS: dict[str, Clip] = {
     # Irregular gaps and an occasional double blink keep idling from looking mechanical.
     "idle": Clip(
@@ -21,7 +42,7 @@ CLIPS: dict[str, Clip] = {
     "glide": Clip(("wings_level",), (1.0,)),
     "flare": Clip(("wings_up",), (1.0,)),
     "flutter": Clip.even("wings_up", "wings_level", "wings_down", "wings_recover", fps=13),
-    "held": Clip(("held",), (1.0,)),
+    "held": Clip(*zip(*_HELD_FIDGETS, strict=True)),
     # A quick ruffle after landing, then settle.
     "shake": Clip(
         ("shake_a", "shake_b") * 3 + ("perch",),

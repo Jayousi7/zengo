@@ -97,7 +97,7 @@ def test_held_pet_lags_behind_the_mouse_then_hangs_below_it(ctx):
     assert 0 < ctx.body.x - start[0] < 200  # on his way, not teleported
 
     run(brain, 3)
-    assert ctx.body.x == pytest.approx(start[0] + 200, abs=1)
+    assert ctx.body.x == pytest.approx(start[0] + 200, abs=ctx.config.px(2))  # sways gently
     sag = ctx.body.y - (start[1] - 400)
     assert 0 < sag < ctx.config.px(6)  # hangs a little below the grab point
 
@@ -248,3 +248,15 @@ def test_walking_moves_only_while_a_foot_is_lifted(ctx):
         brain.tick(DT)
         moved = ctx.body.x != before
         assert moved == (ctx.animator.frame in STEPPING_FRAMES), ctx.animator.frame
+
+
+def test_hanging_still_is_never_a_frozen_frame(ctx):
+    brain = Brain(ctx)
+    pick_up(ctx, brain, 0, -300)
+    seen, xs = set(), []
+    for _ in range(round(8 / DT)):
+        brain.tick(DT)
+        seen.add(ctx.animator.frame)
+        xs.append(ctx.body.x)
+    assert {"held", "held_blink", "held_kick_a", "held_look", "held_flick"} <= seen
+    assert max(xs) - min(xs) >= ctx.config.px(1)  # a gentle sway

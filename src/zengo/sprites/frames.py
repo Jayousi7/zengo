@@ -33,6 +33,9 @@ _UPPER = (art.BODY, art.WING_FOLDED, art.HEAD, art.CREST)
 _FLYING_HEAD = _shifted(0, 9, art.CREST_FLAT, art.HEAD)
 """Head lowered to lead the level flying body, crest laid back in the airflow."""
 
+_HELD_BODY = (art.BODY, art.WING_FOLDED)
+_HELD_HEAD = (art.HEAD, art.CREST_RAISED)
+
 FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     "perch": (art.LEGS, *_UPPER),
     "blink": (art.LEGS, *_UPPER, art.EYE_CLOSED),
@@ -54,7 +57,14 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.WING_FOLDED,
         *_shifted(-1, 2, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED),
     ),
-    "held": (art.LEGS_DANGLE, art.BODY, art.WING_HALF, art.HEAD, art.CREST_RAISED),
+    # Held: hanging with wings folded, crest up. He kicks, blinks, looks down at
+    # the ground and now and then flicks a wing.
+    "held": (art.LEGS_DANGLE, *_HELD_BODY, *_HELD_HEAD),
+    "held_blink": (art.LEGS_DANGLE, *_HELD_BODY, *_HELD_HEAD, art.EYE_CLOSED),
+    "held_kick_a": (art.LEGS_KICK_FRONT, *_HELD_BODY, *_HELD_HEAD),
+    "held_kick_b": (art.LEGS_KICK_BACK, *_HELD_BODY, *_HELD_HEAD),
+    "held_look": (art.LEGS_DANGLE, *_HELD_BODY, *_shifted(1, 2, *_HELD_HEAD)),
+    "held_flick": (art.LEGS_DANGLE, art.BODY, art.WING_HALF, *_HELD_HEAD),
     # Feathers puffed and the head shaken side to side, settling after a landing.
     "shake_a": (
         art.LEGS,

@@ -178,7 +178,7 @@ PUFF = _layer(
 
 
 # --- Held and shaking -----------------------------------------------------
-# Picked up: legs hang free and the near wing lifts half open.
+# Picked up: legs hang free and kick now and then; the near wing flicks half open.
 
 LEGS_DANGLE = _layer(
     """
@@ -187,6 +187,26 @@ LEGS_DANGLE = _layer(
     .FF.FF
     """,
     x=28,
+    y=27,
+)
+
+LEGS_KICK_FRONT = _layer(
+    """
+    .F..F
+    .F...F
+    .FF...FF
+    """,
+    x=28,
+    y=27,
+)
+
+LEGS_KICK_BACK = _layer(
+    """
+    .F..F
+    F...F
+    FF..FF
+    """,
+    x=27,
     y=27,
 )
 

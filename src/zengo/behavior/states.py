@@ -248,12 +248,16 @@ class Dragged(State):
     ``target`` is where the grab point wants the body to be; the brain moves it as
     the mouse moves. The spring and gravity make Zengo lag behind, sag a little
     and swing, so he feels like he has weight. Moved fast, he flaps in protest.
+    Held still, the grab point drifts gently side to side so he sways a little
+    while the held clip plays his fidgets.
     """
 
     clip = "held"
     grounded = False
     protest_hold: ClassVar[float] = 0.4
     """Seconds he keeps flapping after the movement that set him off."""
+    sway: ClassVar[tuple[float, float]] = (1.5, 2.4)
+    """Art pixels and seconds: how far and how slowly he sways while hanging."""
 
     def __init__(self, target: tuple[float, float]) -> None:
         super().__init__()
@@ -267,6 +271,8 @@ class Dragged(State):
     def step(self, ctx: Context, dt: float) -> State | None:
         cfg, body = ctx.config, ctx.body
         (tx, ty), k, c = self.target, cfg.drag_stiffness, cfg.drag_damping
+        reach, period = self.sway
+        tx += cfg.px(reach) * math.sin(2 * math.pi * self.elapsed / period)
         body.vx += (k * (tx - body.x) - c * body.vx) * dt
         body.vy += (k * (ty - body.y) - c * body.vy + cfg.px(cfg.gravity)) * dt
         body.x += body.vx * dt
