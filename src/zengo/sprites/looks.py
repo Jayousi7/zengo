@@ -58,59 +58,113 @@ DAMP_PALETTE: dict[str, RGBA] = {
 }
 
 # --- The scarf ---------------------------------------------------------------------
-# Red wool knitted in ribs, the loose end hanging down his back (side on) or over
-# his chest (from the front).
+# Red wool, ribbed here and there, round the base of his neck, its loose end
+# hanging down his chest (or his back, from behind). It belongs to his body, not
+# his head: drawn over the body and wings but under the head, so his head moves
+# above it (nodding, preening, singing) as it would over a real scarf, and it
+# stays inside his outline so he's never drawn in two pieces. Each scarf is
+# placed for its body drawn where that body's art says; moved with the body.
 
-SCARF = Layer.parse(
+_SIDE_SCARF = Layer.parse(
     """
-    .RrRrRrRr
-    RRrRrRrRrR
-    Rr
-    rR
-    Rr
-    .r
+    rRRrRRrRR
+    .rRRrRRrR
+    ......Rr.
+    ......rR.
+    .......r.
     """,
-    x=30,
-    y=15,
+    x=31,
+    y=16,
 )
 
-FRONT_SCARF = Layer.parse(
+_FLYING_SCARF = Layer.parse(
     """
-    .RrRrRrR
-    RRrRrRrRR
-    .....Rr
-    .....rR
-    .....Rr
-    ......r
+    rRRr.....
+    ...rRRrR.
+    .......Rr
+    .......rR
+    .......Rr
+    .......rR
+    .......Rr
+    """,
+    x=24,
+    y=16,
+)
+"""Flying, his head leads the level body: a band round the neck behind it, and the
+loose end streaming back over his shoulders."""
+
+_DIP_SCARF = Layer.parse(
+    """
+    rR..
+    Rr..
+    rR..
+    Rr..
+    .rR.
+    ..Rr
+    ..r.
+    """,
+    x=33,
+    y=15,
+)
+_LOW_SCARF = Layer.parse(
+    """
+    rR..
+    Rr..
+    rR..
+    .Rr.
+    .rR.
+    ..Rr
+    """,
+    x=34,
+    y=17,
+)
+"""Bent over pecking: the neck reaches forward and down, the scarf round it."""
+
+_FRONT_SCARF = Layer.parse(
+    """
+    rRRrRRrRr
+    .rRRrRRr.
+    .....Rr..
+    .....rR..
+    ......r..
     """,
     x=26,
-    y=15,
+    y=16,
 )
-
-# Flying, his head leads the level body: the scarf rings the neck behind it and
-# the loose end streams back over his shoulders.
-FLYING_SCARF = Layer.parse(
+_BACK_SCARF = Layer.parse(
     """
-    .........rR
-    rR.rRrR.rRr
-    .rRr.rRrRrR
-    .........rR
-    .........Rr
+    rRRrRRrRr
+    .rRRrRRr.
+    ...Rr....
+    ...rR....
+    ...r.....
     """,
-    x=21,
-    y=20,
+    x=26,
+    y=16,
 )
 
-_FLYING_HEADS = ((art.HEAD, 9),)
-"""Heads lowered this far to lead the flying body (see ``frames._FLYING_HEAD``)."""
+_SCARVES = (
+    (art.BODY, _SIDE_SCARF),
+    (art.FLIGHT_BODY, _FLYING_SCARF),
+    (art.BENT_BODY_DIP, _DIP_SCARF),
+    (art.BENT_BODY, _LOW_SCARF),
+    (art.FRONT_BODY, _FRONT_SCARF),
+    (art.BACK_BODY, _BACK_SCARF),
+    (art.FRONT_FLY_BODY, _FRONT_SCARF.shifted(0, 5)),
+)
+"""Each body, and its scarf as placed for that body where its art puts it."""
 
-_SIDE_HEADS = (
-    art.HEAD, art.HEAD_DOWN, art.HEAD_UP, art.HEAD_COCKED, art.HEAD_TURNED, art.HEAD_AWAY,
+_HEADS = frozenset(
+    layer.rows
+    for layer in (
+        art.HEAD, art.HEAD_DOWN, art.HEAD_UP, art.HEAD_COCKED, art.HEAD_TURNED,
+        art.HEAD_AWAY, art.FRONT_HEAD, art.FRONT_HEAD_DOWN, art.FRONT_HEAD_TURN,
+        art.FRONT_HEAD_BOWED, art.BACK_HEAD, art.CREST, art.CREST_RAISED, art.CREST_FLAT,
+        art.FRONT_CREST, art.FRONT_CREST_RAISED, art.FRONT_CREST_FLAT,
+    )
 )  # fmt: skip
-_FRONT_HEADS = (
-    art.FRONT_HEAD, art.FRONT_HEAD_DOWN, art.FRONT_HEAD_TURN, art.BACK_HEAD,
-    art.FRONT_HEAD_BOWED.shifted(0, -3),  # drawn 3 rows lower: its neck is too
-)  # fmt: skip
+"""Heads and crests, as drawn: the scarf goes under the first of them."""
+
 _MIDLINE = ANCHOR_COLUMN - PADDING
 """Art column the front view is symmetric about."""
 
@@ -119,25 +173,19 @@ def _same_art(layer: Layer, other: Layer) -> bool:
     return layer.rows == other.rows
 
 
-def _scarf_for(layer: Layer, flying: bool = False) -> Layer | None:
-    """The scarf round the neck of ``layer``, if it's a head (or the front-on
-    flying body, whose head is part of it)."""
-    for head, lowered in _FLYING_HEADS:
-        # (The downstroke lifts everything a pixel, head included.)
-        if flying and _same_art(layer, head) and layer.y - head.y in (lowered - 1, lowered):
-            return FLYING_SCARF.shifted(layer.x - head.x, layer.y - head.y - lowered)
-    for heads, scarf in ((_SIDE_HEADS, SCARF), (_FRONT_HEADS, FRONT_SCARF)):
-        for head in heads:
-            for candidate, wrap in (
-                (head, scarf),
-                (head.mirrored(_MIDLINE), scarf.mirrored(_MIDLINE)),
-            ):
-                if _same_art(layer, candidate):
-                    return wrap.shifted(layer.x - candidate.x, layer.y - candidate.y)
-    if _same_art(layer, art.FRONT_FLY_BODY):
-        return FRONT_SCARF.shifted(
-            layer.x - art.FRONT_FLY_BODY.x, layer.y - art.FRONT_FLY_BODY.y + 5
-        )
+def _is_head(layer: Layer) -> bool:
+    if layer.rows in _HEADS:
+        return True
+    mirrored = layer.mirrored(_MIDLINE).rows
+    return mirrored in _HEADS
+
+
+def _scarf_for(layers: tuple[Layer, ...]) -> Layer | None:
+    """The scarf for the body in ``layers``, placed where that body is."""
+    for layer in layers:
+        for body, scarf in _SCARVES:
+            if _same_art(layer, body):
+                return scarf.shifted(layer.x - body.x, layer.y - body.y)
     return None
 
 
@@ -162,13 +210,11 @@ def _slicked(layer: Layer) -> Layer:
 def layers_with(layers: tuple[Layer, ...], look: Look) -> tuple[Layer, ...]:
     """A pose's layers, with a slicked crest when damp and a scarf when wrapped up."""
     out = [_slicked(layer) for layer in layers] if look.damp else list(layers)
-    if look.scarf:
-        # Over the body and head (so it wraps the neck), under a wing or beak drawn after.
-        flying = any(_same_art(layer, art.FLIGHT_BODY) for layer in layers)
-        placed = [(i, s) for i, layer in enumerate(layers) if (s := _scarf_for(layer, flying))]
-        if placed:
-            index, scarf = placed[-1]
-            out.insert(index + 1, scarf)
+    scarf = _scarf_for(layers) if look.scarf else None
+    if scarf is not None:
+        # Over the body and wings, under his head (and crest), wherever they are.
+        heads = [i for i, layer in enumerate(layers) if _is_head(layer)]
+        out.insert(heads[0] if heads else len(out), scarf)
     return tuple(out)
 
 
