@@ -75,7 +75,30 @@ def test_the_player_makes_its_files_and_tidies_them_away():
 
     player = SoundPlayer()
     folder = player._folder
-    assert folder is not None and len(list(folder.glob("*.wav"))) == len(sounds.names())
+    if folder is None:  # no Qt multimedia on this machine: quiet, and that's all
+        player.play("chirp_a")
+        player.close()
+        return
+    assert len(list(folder.glob("*.wav"))) == len(sounds.names())
     player.play("no such sound")  # ignored
     player.close()
     assert not folder.exists()
+
+
+def test_without_multimedia_he_stays_quiet(monkeypatch):
+    import builtins
+
+    from zengo.ui.sound import SoundPlayer
+
+    real_import = builtins.__import__
+
+    def no_multimedia(name, *args, **kwargs):
+        if name == "PySide6.QtMultimedia":
+            raise ImportError(name)
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", no_multimedia)
+    player = SoundPlayer()
+    assert player._folder is None
+    player.play("chirp_a")  # nothing happens, nothing breaks
+    player.close()
