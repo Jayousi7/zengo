@@ -114,3 +114,58 @@ def test_the_focus_settings_and_their_ranges():
     assert read.next_session == "ask" and read.reminder_minutes == 0
     assert Settings.from_json({"long_after": False, "reminder_minutes": 7}).long_after == 4
     assert Settings.from_json({"reminder_minutes": 7}).reminder_minutes == 50
+
+
+# --- Remembered between runs -----------------------------------------------------
+
+from zengo.behavior.memory import restore, snapshot  # noqa: E402
+
+
+def _fresh(ctx):
+    from zengo.behavior.context import Context
+
+    return Context(ctx.body, ctx.world, ctx.animator, ctx.config, ctx.rng, clock=ctx.clock)
+
+
+def test_a_session_under_way_survives_a_restart(ctx):
+    now = ctx.clock()
+    ctx.focus.plan = PLAN
+    ctx.focus.start(now - 30)
+    saved = snapshot(ctx)
+    later = _fresh(ctx)
+    restore(later, saved)
+    assert later.focus.focusing and later.focus.left(now) == pytest.approx(70, abs=0.2)
+    assert later.focus.session == PLAN
+    assert later.focus.take_events() == []
+
+
+def test_a_paused_session_stays_paused(ctx):
+    now = ctx.clock()
+    ctx.focus.plan = PLAN
+    ctx.focus.start(now - 30)
+    ctx.focus.pause(now)
+    later = _fresh(ctx)
+    restore(later, snapshot(ctx))
+    assert later.focus.paused and later.focus.left(now + 9999) == pytest.approx(70)
+
+
+def test_a_session_that_ended_while_he_was_closed(ctx):
+    now = ctx.clock()
+    ctx.focus.plan = PLAN
+    ctx.focus.start(now - 110)  # focus ended 10 s ago: on the break
+    later = _fresh(ctx)
+    restore(later, snapshot(ctx))
+    assert later.focus.on_break and later.focus.done == 1
+    ctx.focus.start(now - 10_000)
+    later = _fresh(ctx)
+    restore(later, snapshot(ctx))
+    assert later.focus.phase == "waiting"
+
+
+def test_nothing_running_nothing_saved_and_rubbish_ignored(ctx):
+    assert snapshot(ctx)["focus"] is None
+    data = snapshot(ctx)
+    for junk in ({"phase": "nap"}, {"phase": "focus"}, {"phase": "focus", "ends_at": "soon"}):
+        later = _fresh(ctx)
+        restore(later, {**data, "focus": junk})
+        assert later.focus.phase == "off"

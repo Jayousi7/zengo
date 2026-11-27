@@ -13,6 +13,7 @@ from zengo.behavior.body import Body
 from zengo.behavior.bond import Bond
 from zengo.behavior.cage import Cage, EscapeProgress
 from zengo.behavior.effects import Effects
+from zengo.behavior.focus import Focus
 from zengo.behavior.food import Food, Hunger
 from zengo.behavior.moult import Moult
 from zengo.behavior.petting import PettingSensor
@@ -70,6 +71,7 @@ class Context:
     bath: BathCycle = field(default_factory=BathCycle)
     moult: Moult = field(default_factory=Moult)
     toys: Toys = field(default_factory=Toys)
+    focus: Focus = field(default_factory=Focus)
     weather: Weather = field(default_factory=Weather)
     effects: Effects = field(default_factory=Effects)
     """Droplets, snowflakes and leaves in the air."""

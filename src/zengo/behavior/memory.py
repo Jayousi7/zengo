@@ -1,7 +1,7 @@
 """What Zengo remembers between runs: where he was and which way he faced, whether
 he was caged (and where the cage hung or stood, and the seeds in its dish), how
 full he is, whether he's hungry, the seeds you've put out, how far he's got
-towards escaping, and the words you've taught him.
+towards escaping, the words you've taught him, and a focus session under way.
 
 Plain data in and out, so the app can keep it in a file. Restoring is forgiving:
 anything missing, of the wrong type or out of range is left at its default, so a
@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any
 from zengo.behavior import vocabulary
 from zengo.behavior.body import Facing
 from zengo.behavior.cage import BELOW_FLOOR, Cage
+from zengo.behavior.focus import PHASES, Plan
 from zengo.behavior.food import STAND_OFF, Food, Pile
 from zengo.behavior.voice import MOMENTS
 from zengo.sprites.cage import CAGE_WIDTH, FLOOR
@@ -48,6 +49,7 @@ def snapshot(ctx: Context) -> dict[str, Any]:
         "cage": _cage_snapshot(ctx.cage),
         "bond": round(ctx.bond.level, 4),
         "vocabulary": vocabulary.to_json(ctx.vocabulary),
+        "focus": _focus_snapshot(ctx),
         "escape": {
             "caged_for": round(ctx.escape.caged_for, 2),
             "feedings": ctx.escape.feedings,
@@ -93,6 +95,10 @@ def restore(ctx: Context, data: object) -> None:
         e.feedings = int(_number(escape.get("feedings"), 0, 10_000, e.feedings))
         e.next_try = _number(escape.get("next_try"), 0.0, math.inf, None)
 
+    focus = data.get("focus")
+    if isinstance(focus, dict):
+        _focus_restored(ctx, focus)
+
     food = data.get("food")
     if isinstance(food, dict):
         seeds = _number(food.get("seeds"), 0, MAX_SEEDS, 0)
@@ -103,6 +109,53 @@ def restore(ctx: Context, data: object) -> None:
             lo, hi = area.left + ctx.margin + reach, area.right - ctx.margin - reach
             pile = Pile(seeds=int(seeds), shown=int(seeds))
             ctx.food = Food(min(max(x, lo), hi), area.bottom, pile)
+
+
+def _focus_snapshot(ctx: Context) -> dict[str, Any] | None:
+    focus = ctx.focus
+    if focus.phase == "off":
+        return None
+    s = focus.session
+    return {
+        "phase": focus.phase,
+        "long_break": focus.long_break,
+        "ends_at": None if focus.ends_at is None else round(focus.ends_at, 1),
+        "paused_left": None if focus.paused_left is None else round(focus.paused_left, 1),
+        "done": focus.done,
+        "session": {
+            "focus": s.focus,
+            "short_break": s.short_break,
+            "long_break": s.long_break,
+            "long_after": s.long_after,
+            "auto": s.auto,
+        },
+    }
+
+
+def _focus_restored(ctx: Context, data: dict) -> None:
+    """A session under way when he was closed: picked up where it would be now."""
+    phase = data.get("phase")
+    if phase not in PHASES or phase == "off":
+        return
+    focus, day = ctx.focus, 24 * 3600.0
+    session = data.get("session") if isinstance(data.get("session"), dict) else {}
+    default = focus.plan
+    focus.session = Plan(
+        focus=_number(session.get("focus"), 1.0, day, default.focus),
+        short_break=_number(session.get("short_break"), 1.0, day, default.short_break),
+        long_break=_number(session.get("long_break"), 1.0, day, default.long_break),
+        long_after=int(_number(session.get("long_after"), 0, 100, default.long_after)),
+        auto=session["auto"] if isinstance(session.get("auto"), bool) else default.auto,
+    )
+    focus.phase = phase
+    focus.long_break = data.get("long_break") is True
+    focus.done = int(_number(data.get("done"), 0, 100, 0))
+    focus.paused_left = _number(data.get("paused_left"), 0.0, day, None)
+    focus.ends_at = _number(data.get("ends_at"), 0.0, math.inf, None)
+    if focus.running and focus.ends_at is None and focus.paused_left is None:
+        focus.phase = "off"  # no idea when it ends: drop it
+        return
+    focus.catch_up(ctx.clock())
 
 
 def _number(value: object, low: float, high: float, default):
