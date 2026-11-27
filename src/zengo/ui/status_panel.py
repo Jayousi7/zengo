@@ -12,15 +12,16 @@ from PySide6.QtWidgets import QWidget
 from zengo.behavior.status import Status
 from zengo.sprites.food import MAX_STACKS
 
-INK = QColor("#3a2a30")
-QUIET = QColor("#7a6a66")
-PAPER = QColor("#fcf7ef")
-TRACK = QColor("#e6d8c8")
-GOOD = QColor("#7fa36a")
-FAIR = QColor("#d4b06a")
-POOR = QColor("#c46a52")
-SEED = QColor("#5e4a40")
-ESCAPE = QColor("#a07f3f")
+# Dark theme: a warm near-black panel, light words, a dark track for the bars.
+INK = QColor("#f1e6da")
+QUIET = QColor("#a8978c")
+PAPER = QColor("#231c1f")
+TRACK = QColor("#3a3034")
+GOOD = QColor("#8dbb74")
+FAIR = QColor("#e0bc6e")
+POOR = QColor("#e07a5f")
+SEED = QColor("#b08d74")
+ESCAPE = QColor("#c9a45a")
 
 
 @dataclass(frozen=True)

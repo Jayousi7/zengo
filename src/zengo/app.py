@@ -45,6 +45,15 @@ SPEECH_HEIGHT = 32
 """Art px above his feet where a speech cloud's tail points: just over his crest
 at its tallest, so no pose of his pokes into the cloud."""
 
+MENU_STYLE = """
+QMenu { background: #231c1f; color: #f1e6da; border: 1px solid #3a3034; padding: 4px 0; }
+QMenu::item { padding: 6px 22px; background: transparent; }
+QMenu::item:selected { background: #3a3034; }
+QMenu::item:disabled { color: #6e6064; }
+QMenu::separator { height: 1px; background: #3a3034; margin: 4px 8px; }
+"""
+"""Dark, to match the needs panel at its top."""
+
 SAVE_EVERY_MS = 15_000
 """How often what he remembers is written down, besides when he quits."""
 
@@ -166,6 +175,7 @@ class Pet:
 
     def _show_menu(self, where: QPoint) -> None:
         menu = QMenu()
+        menu.setStyleSheet(MENU_STYLE)
         panel = QWidgetAction(menu)
         panel.setDefaultWidget(StatusPanel(self._brain.status))
         menu.addAction(panel)
