@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, replace
 from typing import Any
 
+from zengo.behavior.focus import Plan
 from zengo.behavior.seasons import HEMISPHERES, SEASONS
 from zengo.behavior.toys import TOYS
 from zengo.config import Config, quick
@@ -36,6 +37,15 @@ BATH_EVERY: dict[str, tuple[float, float]] = {
     "often": (900.0, 1800.0),
 }
 """Seconds between one bath dish going and the next appearing."""
+
+FOCUS_MINUTES = (5, 120)
+SHORT_BREAK_MINUTES = (1, 30)
+LONG_BREAK_MINUTES = (5, 60)
+LONG_AFTER = (2, 8)
+"""Ranges for the focus timer's lengths; a long break after 0 sessions is never."""
+NEXT_SESSION = ("ask", "auto")
+REMINDER_MINUTES = (15, 180)
+"""A break reminder after this long at the computer; 0 is off."""
 
 APPETITE: dict[str, float] = {"slow": 0.5, "normal": 1.0, "fast": 2.0}
 """How fast he gets hungry, as a multiple of the built-in rate."""
@@ -60,6 +70,24 @@ class Settings:
     """A key of :data:`zengo.behavior.seasons.HEMISPHERES`."""
     toys: tuple[str, ...] = ()
     """The toys you've put out for him: keys of :data:`zengo.behavior.toys.TOYS`."""
+    focus_minutes: int = 25
+    short_break_minutes: int = 5
+    long_break_minutes: int = 15
+    long_after: int = 4
+    """A long break after this many focus sessions; 0 for never."""
+    next_session: str = "ask"
+    """After a break: ``"ask"`` you first, or start the next session ``"auto"``-matically."""
+    reminder_minutes: int = 50
+    """Not using the timer: a nudge to take a break after this long at it; 0 is off."""
+
+    def focus_plan(self) -> Plan:
+        return Plan(
+            focus=self.focus_minutes * 60.0,
+            short_break=self.short_break_minutes * 60.0,
+            long_break=self.long_break_minutes * 60.0,
+            long_after=self.long_after,
+            auto=self.next_session == "auto",
+        )
 
     def to_json(self) -> dict[str, Any]:
         data = asdict(self)
@@ -81,6 +109,9 @@ class Settings:
         hemisphere = data.get("hemisphere")
         toys = data.get("toys")
         baths = data.get("baths")
+        long_after = data.get("long_after")
+        reminder = data.get("reminder_minutes")
+        next_session = data.get("next_session")
         return cls(
             scale=_whole(scale, MIN_SCALE, MAX_SCALE, default.scale),
             sound=sound if isinstance(sound, bool) else default.sound,
@@ -91,6 +122,16 @@ class Settings:
             seasons=seasons if isinstance(seasons, bool) else default.seasons,
             hemisphere=hemisphere if hemisphere in HEMISPHERES else default.hemisphere,
             toys=tuple(t for t in TOYS if t in toys) if isinstance(toys, list) else default.toys,
+            focus_minutes=_whole(data.get("focus_minutes"), *FOCUS_MINUTES, default.focus_minutes),
+            short_break_minutes=_whole(
+                data.get("short_break_minutes"), *SHORT_BREAK_MINUTES, default.short_break_minutes
+            ),
+            long_break_minutes=_whole(
+                data.get("long_break_minutes"), *LONG_BREAK_MINUTES, default.long_break_minutes
+            ),
+            long_after=_whole_or_off(long_after, *LONG_AFTER, default.long_after),
+            next_session=next_session if next_session in NEXT_SESSION else default.next_session,
+            reminder_minutes=_whole_or_off(reminder, *REMINDER_MINUTES, default.reminder_minutes),
         )
 
 
@@ -133,6 +174,13 @@ def _whole(value: object, low: int, high: int, default: int) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         return default
     return value if low <= value <= high else default
+
+
+def _whole_or_off(value: object, low: int, high: int, default: int) -> int:
+    """A whole number in range, or 0 for off."""
+    if value == 0 and not isinstance(value, bool):
+        return 0
+    return _whole(value, low, high, default)
 
 
 def _fraction(value: object, default: float) -> float:
