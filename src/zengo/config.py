@@ -83,6 +83,23 @@ class Config:
     speech_seconds: float = 2.6
     """How long a whistle's cloud stays up."""
 
+    cage_hang_reach: float = 60.0
+    """Let the cage go with its top within this many art px of the top of the screen
+    and it hangs from a chain."""
+
+    cage_shelf_reach: float = 40.0
+    """...or with a side this close to a side edge, and it goes on a shelf there."""
+
+    cage_min_chain: float = 8.0
+    """Shortest chain, in art px, between the top of the screen and the cage's hook."""
+
+    cage_swing_stiffness: float = 9.0
+    cage_swing_damping: float = 1.2
+    """How a hung cage swings (1/s², 1/s): a few slow swings, then it's still."""
+
+    complaints: tuple[str, ...] = ("HEY!!", "let me out!", "squawk!!", "rude.", ">:(", "not cool!")
+    """What a caged Zengo has to say about it."""
+
     sleep_after: float = 300.0
     """Seconds of user inactivity after which Zengo becomes sleepy."""
 

@@ -42,6 +42,12 @@ PALETTE: dict[str, RGBA] = {
     "Y": _rgb("#aecb8f"),  # leaf, lit side
     "V": _rgb("#86a86e"),  # leaf
     "v": _rgb("#5f8052"),  # leaf shadow
+    # The cage: brass bars, and the iron chain and bracket it hangs from.
+    "G": _rgb("#d4b06a"),  # brass
+    "g": _rgb("#a07f3f"),  # brass in shadow
+    "h": _rgb("#efd99a"),  # brass highlight
+    "M": _rgb("#a3a3ab"),  # iron
+    "m": _rgb("#66666e"),  # iron in shadow
 }
 
 

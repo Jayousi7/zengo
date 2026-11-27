@@ -506,7 +506,7 @@ class _Contentment:
         if ctx.petting.active:
             self.unpetted = 0.0
             if self.since_heart >= self.heart_every:
-                ctx.say("♥", 1.0)
+                ctx.say("♥", 1.0, mood="love")
                 self.since_heart = 0.0
         else:
             self.unpetted += dt
@@ -790,6 +790,122 @@ class OnBranch(State):
         launch = (body.x + branch.inward * cfg.px(30), branch.top - cfg.px(12))
         tour = Fly.tour(ctx).waypoints or ()
         return Fly([launch, *tour])
+
+    def _do(self, ctx: Context, what: str) -> None:
+        self.doing = what
+        ctx.animator.play(self.clips[what], restart=True)
+        self.until = self.elapsed + ctx.rng.uniform(*self.sit_for)
+
+
+class Caged(State):
+    """Shut in the cage, sitting on its tray facing you.
+
+    Furious at first: crest up, puffing and stamping, with angry clouds. Then he
+    sulks, preens, naps and grumbles now and then. Being carried about, hung up
+    or bumped down sets him off again; petting through the bars calms him. When
+    the door opens he flies out, a little huffy.
+    """
+
+    clip = "front_angry"
+    grounded = False
+    tantrum: ClassVar[tuple[float, float]] = (8.0, 12.0)
+    sit_for: ClassVar[tuple[float, float]] = (5.0, 12.0)
+    clips: ClassVar[dict[str, str]] = {
+        "angry": "front_angry",
+        "sit": "front_idle",
+        "preen": "front_preen",
+        "fluff": "front_fluff",
+        "sleep": "front_sleep",
+        "petted": "front_petted",
+    }
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        self.until = 0.0
+        self._provoked(ctx, ctx.rng.choice(ctx.config.complaints))
+        self.anger = ctx.rng.uniform(*self.tantrum)
+        self._place(ctx)
+
+    def clicked(self, ctx: Context) -> State | None:
+        return None
+
+    def double_clicked(self, ctx: Context) -> State | None:
+        return None
+
+    def petted(self, ctx: Context) -> State | None:
+        if self.doing != "petted":
+            self._do(ctx, "petted")
+            self.contentment = _Contentment()
+            self.anger = 0.0
+        return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        cage = ctx.cage
+        if cage is None:
+            return Idle()
+        self._place(ctx)
+        if cage.door_open:
+            cage.left = True
+            return self._fly_out(ctx, cage.x)
+        for event in cage.take_events():
+            self._provoked(ctx, "ow!" if event == "bump" else None)
+        if cage.mount == "held" and self.doing != "angry":
+            self._provoked(ctx)
+
+        if self.doing == "angry":
+            self.anger -= dt
+            self.next_complaint -= dt
+            if self.next_complaint <= 0:
+                ctx.say(ctx.rng.choice(ctx.config.complaints), 2.0, mood="angry")
+                self.next_complaint = ctx.rng.uniform(2.0, 3.5)
+            if self.anger <= 0 and cage.mount != "held":
+                self._do(ctx, "sit")
+            return None
+        if self.doing == "petted":
+            if not self.contentment.still_enjoying(ctx, dt):
+                self._do(ctx, "fluff")
+            return None
+        if self.doing == "sleep":
+            if not is_sleepy(ctx):
+                self._do(ctx, "sit")
+            return None
+        if self.doing != "sit":
+            if ctx.animator.finished:
+                self._do(ctx, "sit")
+            return None
+        if self.elapsed < self.until:
+            return None
+        if is_sleepy(ctx) and ctx.rng.random() < 0.6:
+            self._do(ctx, "sleep")
+            return None
+        pick = ctx.rng.choices(("preen", "fluff", "sit", "grumble"), (0.3, 0.2, 0.3, 0.2))[0]
+        if pick == "grumble":
+            self._provoked(ctx)
+            self.anger = ctx.rng.uniform(2.0, 3.0)
+        else:
+            self._do(ctx, pick)
+        return None
+
+    def _provoked(self, ctx: Context, text: str | None = None) -> None:
+        self.anger = max(getattr(self, "anger", 0.0), 3.0)
+        self._do(ctx, "angry")
+        ctx.say(text or ctx.rng.choice(ctx.config.complaints), 2.0, mood="angry")
+        self.next_complaint = ctx.rng.uniform(2.0, 3.5)
+
+    def _place(self, ctx: Context) -> None:
+        if ctx.cage is not None:
+            ctx.body.x, ctx.body.y = ctx.cage.shown_x, ctx.cage.y
+            ctx.body.vx = ctx.body.vy = 0.0
+
+    def _fly_out(self, ctx: Context, cage_x: float) -> Fly:
+        """Out of the door and down, heading into the screen, away from the nearer edge."""
+        cfg, body, area = ctx.config, ctx.body, ctx.area()
+        d = 1 if cage_x < (area.left + area.right) / 2 else -1
+        body.facing = Facing(d)
+        ctx.say("hmph.", 1.5)
+        x1 = area.clamp_x(body.x + d * ctx.rng.uniform(cfg.px(70), cfg.px(160)), ctx.margin)
+        hop = (body.x + d * cfg.px(18), body.y - cfg.px(16))
+        return Fly([hop, *_landing(ctx, x1, coming_from=body.x)])
 
     def _do(self, ctx: Context, what: str) -> None:
         self.doing = what

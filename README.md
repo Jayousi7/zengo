@@ -19,7 +19,8 @@ it and he grabs it. Now and then he sits facing you on the ground too.
 | Double-click | Bobs his head and whistles; the tune pops up in a cloud |
 | Stroke the mouse gently back and forth over him | Fluffs up, shuts his eyes and leans into it, with hearts; a happy shake when you stop |
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
-| Right click | Menu with *Quit Zengo* |
+| Right click | Menu: *Catch Zengo* (or *Let Zengo out*), *Quit Zengo* |
+| *Catch Zengo*, then drag a box around him | Caged where he is, and furious about it. Drag the cage: let go near the top and it hangs from a chain, near a side and it sits on a shelf, anywhere else it falls to the ground. Petting him through the bars calms him; *Let Zengo out* opens the door |
 
 ## Download
 
@@ -86,6 +87,7 @@ src/zengo/
     flight.py       smooth flight paths through waypoints
     scenery.py      the branch: when it grows, stays and withdraws
     petting.py      tells gentle strokes of the pointer from passing by
+    cage.py         the cage: carried, hung on a chain, shelved or dropped
     machine.py      Brain: runs states, routes mouse input
   sprites/
     palette.py      Zengo's colours
@@ -94,6 +96,7 @@ src/zengo/
     frames.py       named frames and canvas geometry
     clips.py        animation catalogue
     branch.py       the branch's art and where he can sit on it
+    cage.py         the cage, chain and shelf art
   ui/
     qt_world.py     World backed by Qt screens and cursor
     sprites.py      frames -> scaled, mirrored pixmaps and click masks
@@ -101,6 +104,8 @@ src/zengo/
     sheet_loader.py Aseprite JSON + PNG -> frames
     branch_window.py click-through window the branch is drawn in
     bubble_window.py the speech cloud above his head
+    cage_window.py  the draggable cage, and the chain or shelf under it
+    catch_overlay.py the dimmed screen you drag a box on to catch him
 ```
 
 Only `ui/` and `app.py` import Qt. Everything else is plain Python and is

@@ -13,18 +13,21 @@ from pathlib import Path
 
 from PySide6.QtCore import QPoint, QRect, Qt, QTimer
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMenu
 
 from zengo.animation import Animator
 from zengo.behavior.body import Body, Facing
 from zengo.behavior.context import Context
 from zengo.behavior.machine import Brain
 from zengo.config import Config
+from zengo.sprites.cage import CAGE_WIDTH, FLOOR
 from zengo.sprites.clips import CLIPS
 from zengo.sprites.compose import Frame
 from zengo.sprites.frames import ANCHOR_COLUMN, CANVAS_WIDTH, GROUND_ROW, build_frames
 from zengo.ui.branch_window import BranchWindow
 from zengo.ui.bubble_window import BubbleWindow
+from zengo.ui.cage_window import CageWindow, MountWindow
+from zengo.ui.catch_overlay import CatchOverlay
 from zengo.ui.qt_world import QtWorld
 from zengo.ui.sheet_loader import SheetError, load_sheet
 from zengo.ui.sprites import SpriteSheet
@@ -66,7 +69,15 @@ class Pet:
         self._branch = BranchWindow(config)
         self._window.released.connect(self._branch.keep_in_front)
         self._bubble = BubbleWindow(config.scale)
-        self._window.quit_requested.connect(QApplication.quit)
+        self._window.menu_requested.connect(self._show_menu)
+        self._cage = CageWindow(config, config.drag_threshold)
+        self._cage.grabbed.connect(self._brain.cage_grab)
+        self._cage.dragged.connect(self._brain.cage_drag)
+        self._cage.released.connect(self._brain.cage_release)
+        self._cage.menu_requested.connect(self._show_menu)
+        self._mount = MountWindow(config)
+        self._overlay: CatchOverlay | None = None
+        self._door_was_open = False
 
         self._timer = QTimer(timerType=Qt.TimerType.PreciseTimer, interval=1000 // config.fps)
         self._timer.timeout.connect(self._tick)
@@ -96,7 +107,39 @@ class Pet:
         top = body.y - self._config.px(GROUND_ROW + 1)
         self._window.show_sprite(sprite, QPoint(round(left), round(top)))
         self._branch.show_branch(ctx.scenery.branch)
+        self._show_cage()
         self._show_speech()
+
+    def _show_cage(self) -> None:
+        cage = self._brain.ctx.cage
+        self._mount.show_mount(cage)
+        self._cage.show_cage(cage)
+        door_open = cage is not None and cage.door_open
+        if door_open and not self._door_was_open:
+            self._window.raise_()  # out through the door, in front of the bars
+        self._door_was_open = door_open
+
+    # --- Menu and catching -------------------------------------------------------
+
+    def _show_menu(self, where: QPoint) -> None:
+        menu = QMenu()
+        if self._brain.caged:
+            menu.addAction("Let Zengo out", self._brain.let_out)
+        else:
+            menu.addAction("Catch Zengo", self._start_catching)
+        menu.addSeparator()
+        menu.addAction("Quit Zengo", QApplication.quit)
+        menu.exec(where)
+
+    def _start_catching(self) -> None:
+        body = self._brain.ctx.body
+        here = QPoint(round(body.x), round(body.y) - 1)
+        screen = QGuiApplication.screenAt(here) or QGuiApplication.primaryScreen()
+        self._overlay = CatchOverlay(screen)
+        self._overlay.selected.connect(
+            lambda box: self._brain.catch_in(box.left(), box.top(), box.right(), box.bottom())
+        )
+        self._overlay.start()
 
     def _show_speech(self) -> None:
         ctx = self._brain.ctx
@@ -106,9 +149,24 @@ class Pet:
         body, px = ctx.body, self._config.px
         # The head is just ahead of the anchor side-on, straight above it facing you.
         ahead = 0 if ctx.animator.frame.startswith(FACING_YOU) else px(6) * int(body.facing)
-        head = QPoint(round(body.x + ahead), round(body.y - px(30)))
+        head_y, keep_clear = body.y - px(30), None
+        cage = ctx.cage
+        if cage is not None and not cage.door_open:
+            head_y = cage.y - px(FLOOR + 1)  # above the cage's hook
+            if cage.pivot is not None:  # hung: keep the cage and its chain in view
+                half = px(CAGE_WIDTH / 2)
+                keep_clear = QRect(
+                    round(cage.shown_x - half),
+                    round(cage.pivot[1]),
+                    round(2 * half),
+                    round(cage.y - cage.pivot[1]),
+                )
+                head_y = body.y - px(20)
+        head = QPoint(round(body.x + ahead), round(head_y))
         screen = QGuiApplication.screenAt(head) or QGuiApplication.primaryScreen()
-        self._bubble.say(ctx.speech.text, head, screen.availableGeometry())
+        self._bubble.say(
+            ctx.speech.text, head, screen.availableGeometry(), ctx.speech.mood, keep_clear
+        )
 
 
 @dataclass(frozen=True)

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 from zengo.animation import Animator
 from zengo.behavior.body import Body
+from zengo.behavior.cage import Cage
 from zengo.behavior.petting import PettingSensor
 from zengo.behavior.scenery import Scenery
 from zengo.config import Config
@@ -15,10 +16,12 @@ from zengo.world import Area, World
 
 @dataclass
 class Speech:
-    """Words in a cloud above his head: a whistle, or a heart when petted."""
+    """Words in a cloud above his head: a whistle, a heart, a complaint."""
 
     text: str
     remaining: float
+    mood: str = "plain"
+    """``"plain"``, ``"love"`` or ``"angry"``: how the cloud is coloured."""
 
 
 @dataclass
@@ -31,9 +34,10 @@ class Context:
     scenery: Scenery = field(default_factory=Scenery)
     petting: PettingSensor = field(default_factory=PettingSensor)
     speech: Speech | None = None
+    cage: Cage | None = None
 
-    def say(self, text: str, seconds: float) -> None:
-        self.speech = Speech(text, seconds)
+    def say(self, text: str, seconds: float, mood: str = "plain") -> None:
+        self.speech = Speech(text, seconds, mood)
 
     def area(self) -> Area:
         # Probe slightly above the feet: the ground line is the area's exclusive bottom edge.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QPoint, QPointF, Qt, QTimer, Signal
 from PySide6.QtGui import QContextMenuEvent, QMouseEvent, QPainter, QPaintEvent
-from PySide6.QtWidgets import QApplication, QMenu, QWidget
+from PySide6.QtWidgets import QApplication, QWidget
 
 from zengo.ui.sprites import Sprite
 
@@ -23,7 +23,8 @@ class PetWindow(QWidget):
     grabbed = Signal(float, float)
     dragged = Signal(float, float)
     released = Signal()
-    quit_requested = Signal()
+    menu_requested = Signal(QPoint)
+    """Right-clicked, at this screen point: the app shows the menu."""
 
     def __init__(self, drag_threshold: int) -> None:
         super().__init__(
@@ -96,6 +97,4 @@ class PetWindow(QWidget):
             self.double_clicked.emit()
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
-        menu = QMenu(self)
-        menu.addAction("Quit Zengo", self.quit_requested.emit)
-        menu.exec(event.globalPos())
+        self.menu_requested.emit(event.globalPos())

@@ -9,6 +9,8 @@ from PySide6.QtWidgets import QWidget
 INK = QColor("#3a2a30")
 PAPER = QColor("#fcf7ef")
 HEART = QColor("#d9576b")
+ANGRY = QColor("#b8433a")
+MOOD_INK = {"love": HEART, "angry": ANGRY}
 
 
 class BubbleWindow(QWidget):
@@ -31,31 +33,49 @@ class BubbleWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setWindowTitle("Zengo says")
         self._scale = scale
-        self._text: str | None = None
+        self._said: tuple[str, str] | None = None
         self._pixmap = QPixmap()
         self._tail_x = 0
 
-    def say(self, text: str | None, head: QPoint, screen: QRect) -> None:
-        """Show ``text`` with the tail's tip just above ``head``, kept on ``screen``."""
+    def say(
+        self,
+        text: str | None,
+        head: QPoint,
+        screen: QRect,
+        mood: str = "plain",
+        keep_clear: QRect | None = None,
+    ) -> None:
+        """Show ``text`` with the tail's tip just above ``head``, kept on ``screen``.
+
+        If that would cover ``keep_clear`` (a hung cage and its chain), the cloud
+        goes beside it instead, level with ``head``, on whichever side has room.
+        """
         if text is None:
-            self._text = None
+            self._said = None
             self.hide()
             return
-        if text != self._text:
-            self._text = text
-            self._pixmap = self._draw(text)
+        if (text, mood) != self._said:
+            self._said = (text, mood)
+            self._pixmap = self._draw(text, mood)
             self.resize(self._pixmap.size())
             self.update()
         w, h = self._pixmap.width(), self._pixmap.height()
         left = min(max(head.x() - self._tail_x, screen.left()), screen.right() - w)
         top = max(head.y() - h, screen.top())
+        if keep_clear is not None and QRect(left, top, w, h).intersects(keep_clear):
+            gap = 2 * self._scale
+            room_right = screen.right() - keep_clear.right()
+            left = (
+                keep_clear.right() + gap if room_right >= w + gap else keep_clear.left() - gap - w
+            )
+            top = min(max(head.y() - h // 2, screen.top()), screen.bottom() - h)
         if self.pos() != QPoint(left, top):
             self.move(left, top)
         if not self.isVisible():
             self.show()
         self.raise_()
 
-    def _draw(self, text: str) -> QPixmap:
+    def _draw(self, text: str, mood: str) -> QPixmap:
         s = self._scale
         font = QFont()
         font.setPixelSize(7 * s)
@@ -85,7 +105,7 @@ class BubbleWindow(QWidget):
                 p.fillRect(x + s, box_h - s + row * s, width, s, PAPER)
         p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
         p.setFont(font)
-        p.setPen(HEART if text.strip() == "♥" else INK)
+        p.setPen(MOOD_INK.get(mood, INK))
         p.drawText(QRect(0, 0, box_w, box_h), Qt.AlignmentFlag.AlignCenter, text)
         p.end()
         return pixmap

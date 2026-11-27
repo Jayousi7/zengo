@@ -84,6 +84,18 @@ FRONT_CLIPS: dict[str, Clip] = {
         ("front_fluff_a", "front_fluff_b") * 3 + ("front_perch",), (0.07,) * 6 + (0.3,), loop=False
     ),
     "front_sleep": Clip(("front_sleep",), (1.0,)),
+    # Caged and furious: crest up, puffing and shaking, glaring this way and that.
+    "front_angry": Clip(
+        (
+            "front_alert",
+            "front_fluff_a",
+            "front_fluff_b",
+            "front_alert",
+            "front_look_l",
+            "front_look_r",
+        ),
+        (0.3, 0.08, 0.08, 0.35, 0.18, 0.18),
+    ),
     "front_petted": Clip(("front_petted_a", "front_petted_b"), (1.1, 0.9)),
     "front_whistle": Clip(("front_whistle_a", "front_alert") * 7, (0.16,) * 14, loop=False),
 }

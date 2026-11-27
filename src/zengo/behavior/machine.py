@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from zengo.behavior.cage import BELOW_FLOOR, Cage, caught_in
 from zengo.behavior.context import Context
-from zengo.behavior.states import Dragged, Fall, Idle, State
+from zengo.behavior.states import Caged, Dragged, Fall, Idle, State
 
 
 class Brain:
@@ -30,6 +31,10 @@ class Brain:
             ctx.speech.remaining -= dt
             if ctx.speech.remaining <= 0:
                 ctx.speech = None
+        if ctx.cage is not None:
+            ctx.cage.update(ctx, dt)
+            if ctx.cage.empty_for > 1.5:  # he's out: the cage goes
+                ctx.cage = None
         ctx.petting.update(ctx, dt)
         if ctx.petting.active and (following := self._state.petted(ctx)) is not None:
             self.transition(following)
@@ -64,8 +69,48 @@ class Brain:
         if (following := self._state.double_clicked(self.ctx)) is not None:
             self.transition(following)
 
+    @property
+    def caged(self) -> bool:
+        return isinstance(self._state, Caged)
+
+    def catch_in(self, left: float, top: float, right: float, bottom: float) -> bool:
+        """A box was drawn on screen. If it takes him in, he's caged where he is: on
+        the ground, or the cage drops there. Miss him and he lets you know."""
+        ctx = self.ctx
+        if self.caged or isinstance(self._state, Dragged):
+            return False
+        if not caught_in(ctx, left, top, right, bottom):
+            ctx.say("missed! hehe", 2.0)
+            return False
+        area = ctx.area()
+        ctx.cage = Cage(x=area.clamp_x(ctx.body.x, ctx.config.px(16)), y=ctx.body.y)
+        if ctx.body.y >= area.bottom - 1:  # caught on the ground: the cage stands there
+            ctx.cage.mount = "ground"
+            ctx.cage.y = area.bottom - ctx.config.px(BELOW_FLOOR)
+        self.transition(Caged())
+        return True
+
+    def let_out(self) -> None:
+        """Open the cage door; he flies out and the cage goes."""
+        if self.ctx.cage is not None:
+            self.ctx.cage.door_open = True
+
+    def cage_grab(self, x: float, y: float) -> None:
+        if self.ctx.cage is not None and not self.ctx.cage.door_open:
+            self.ctx.cage.grab(x, y)
+
+    def cage_drag(self, x: float, y: float) -> None:
+        if self.ctx.cage is not None:
+            self.ctx.cage.drag(x, y)
+
+    def cage_release(self) -> None:
+        if self.ctx.cage is not None:
+            self.ctx.cage.release(self.ctx)
+
     def grab(self, x: float, y: float) -> None:
         """Mouse pressed on Zengo at screen ``(x, y)`` and started moving."""
+        if self.caged:
+            return  # behind bars: the cage is what gets dragged
         body = self.ctx.body
         self._grab_offset = (body.x - x, body.y - y)
         self.transition(Dragged(target=(body.x, body.y)))
