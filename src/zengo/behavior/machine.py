@@ -50,6 +50,10 @@ class Brain:
         ctx.animator.update(dt)
         ctx.scenery.update(ctx, dt, occupied=self._state.holds_branch)
         ctx.effects.update(dt, ctx.config.scale)
+        ctx.bath.update(
+            ctx, dt, occupied=self._state.holds_bath, free=not (self.caged or self.away)
+        )
+        ctx.damp = max(0.0, ctx.damp - dt)
         if ctx.speech is not None:
             ctx.speech.remaining -= dt
             if ctx.speech.remaining <= 0:

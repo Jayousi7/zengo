@@ -77,6 +77,9 @@ class State:
         """He's on the branch or on his way to it, so it mustn't withdraw yet."""
         return False
 
+    holds_bath: ClassVar[bool] = False
+    """He's in his bath or on his way to it, so it mustn't go yet."""
+
     def __repr__(self) -> str:
         return type(self).__name__
 

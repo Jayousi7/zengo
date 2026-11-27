@@ -64,6 +64,18 @@ class Config:
     branch_height: tuple[float, float] = (0.25, 0.6)
     """Where it grows, as a share of the screen height from the top."""
 
+    bath_every: tuple[float, float] = (1800.0, 5400.0)
+    """Seconds between one bath dish going and the next appearing."""
+
+    bath_stays: tuple[float, float] = (180.0, 300.0)
+    """Seconds a dish stays out if he leaves it alone."""
+
+    bath_fade_seconds: float = 1.5
+    """Time for a dish to fade in, and out."""
+
+    damp_seconds: float = 60.0
+    """How long he's damp after a bath: he won't fly till he's dry."""
+
     branch_visit: tuple[float, float] = (40.0, 150.0)
     """Seconds Zengo sits on the branch before flying off."""
 
@@ -186,7 +198,7 @@ def _within(hours: tuple[int, int], hour: int) -> bool:
 
 def quick(config: Config) -> Config:
     """Timers shortened for trying things out: he escapes a cage within seconds,
-    and gets hungry ten times as fast."""
+    gets hungry ten times as fast, and gets a bath every minute or so."""
     from dataclasses import replace
 
     return replace(
@@ -197,4 +209,6 @@ def quick(config: Config) -> Config:
         hunger_drain=0.6,
         hunger_check_every=5.0,
         nag_every=20.0,
+        bath_every=(30.0, 60.0),
+        damp_seconds=20.0,
     )

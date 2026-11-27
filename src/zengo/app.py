@@ -33,6 +33,7 @@ from zengo.sprites.compose import Frame
 from zengo.sprites.food import MAX_STACKS
 from zengo.sprites.frames import ANCHOR_COLUMN, CANVAS_WIDTH, GROUND_ROW, build_frames
 from zengo.ui.autostart import Autostart
+from zengo.ui.bath_window import BathWindow
 from zengo.ui.branch_window import BranchWindow
 from zengo.ui.bubble_window import BubbleWindow
 from zengo.ui.cage_window import CageWindow, MountWindow
@@ -94,6 +95,7 @@ class Pet:
         rng: random.Random | None = None,
         *,
         branch_now: bool = False,
+        bath_now: bool = False,
         memory: StateFile | None = None,
         settings: Settings | None = None,
         settings_file: StateFile | None = None,
@@ -126,6 +128,8 @@ class Pet:
             self._brain.ctx.voice = voice_files.load()
         if branch_now:
             self._brain.ctx.scenery.grow(self._brain.ctx)
+        if bath_now:
+            self._brain.ctx.bath.fill(self._brain.ctx)
         self._memory = memory
         if memory is not None:
             restore(self._brain.ctx, memory.load())
@@ -203,6 +207,7 @@ class Pet:
         self._food = FoodWindow(config)
         self._dish = FoodWindow(config, in_front_of=self._window)
         self._effects = EffectsWindow(config.scale, in_front_of=self._window)
+        self._bath = BathWindow(config, in_front_of=self._window)
 
     def _scaled_windows(self) -> list:
         """The windows drawn at his size, made again when it changes."""
@@ -214,6 +219,7 @@ class Pet:
             self._food,
             self._dish,
             self._effects,
+            self._bath,
         ]
 
     def _resize(self) -> None:
@@ -287,6 +293,7 @@ class Pet:
             self._dish.show_pile(None)
         else:
             self._dish.show_pile(cage.dish, cage.shown_x, cage.y)
+        self._bath.show_dish(ctx.bath.dish, time.monotonic())
         self._show_cage()
         self._effects.show_particles(ctx.effects.particles)
         self._show_speech()
@@ -314,6 +321,7 @@ class Pet:
             self._mount,
             self._food,
             self._window,
+            self._bath,
             self._branch,
             self._dish,
             self._cage,
@@ -324,9 +332,11 @@ class Pet:
     def restack(self) -> None:
         """Put the windows in their proper order, back to front.
 
-        Behind Zengo: the chain or shelf and the seed pile. In front of him: the
-        branch (so his tail hangs behind it), the dish and the cage (so he's behind
-        the bars; once the door's open he comes out in front), and the speech cloud.
+        Behind Zengo: the chain or shelf and the seed pile. In front of him: his
+        bath (so the rim hides his feet as he stands in it), the branch (so his
+        tail hangs behind it), the dish and the cage (so he's behind the bars;
+        once the door's open he comes out in front), the droplets and snow, and
+        the speech cloud.
         Window managers reorder windows on clicks and when new ones appear, so this
         is done at start, after any click or drag on him, and every so often.
         """
@@ -574,6 +584,8 @@ class Options:
     """Aseprite JSON export whose frames replace the built-in ones by name."""
     branch_now: bool = False
     """Grow a branch straight away instead of waiting for one."""
+    bath_now: bool = False
+    """Put his bath out straight away."""
 
 
 def parse_args(argv: list[str]) -> Options:
@@ -599,6 +611,11 @@ def parse_args(argv: list[str]) -> Options:
         help="grow a branch for Zengo straight away instead of waiting for one",
     )
     parser.add_argument(
+        "--bath-now",
+        action="store_true",
+        help="put Zengo's bath out straight away instead of waiting for it",
+    )
+    parser.add_argument(
         "--season",
         choices=SEASONS,
         help="show this season whatever the date, to try it out",
@@ -607,7 +624,7 @@ def parse_args(argv: list[str]) -> Options:
     if (args.scale is not None and args.scale < 1) or (args.fps is not None and args.fps < 1):
         parser.error("--scale and --fps must be positive")
     flags = Flags(scale=args.scale, fps=args.fps, quick=args.quick, season=args.season)
-    return Options(flags, args.sprites, args.branch_now)
+    return Options(flags, args.sprites, args.branch_now, args.bath_now)
 
 
 def quiet_bundled_libraries() -> None:
@@ -666,6 +683,7 @@ def main(argv: list[str] | None = None) -> int:
         config,
         frames,
         branch_now=options.branch_now,
+        bath_now=options.bath_now,
         memory=memory,
         settings=settings,
         settings_file=settings_file,

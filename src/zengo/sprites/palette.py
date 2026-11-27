@@ -55,6 +55,9 @@ PALETTE: dict[str, RGBA] = {
     "a": _rgb("#78bcdb"),  # water
     "E": _rgb("#e39a48"),  # autumn leaf
     "e": _rgb("#b8642e"),  # autumn leaf in shadow
+    # His bath dish: glazed ceramic.
+    "U": _rgb("#e2e7ec"),  # glaze, lit
+    "u": _rgb("#a6b0bc"),  # glaze in shadow
     # His winter scarf: red wool, knitted in ribs.
     "R": _rgb("#c4524b"),  # wool
     "r": _rgb("#97393a"),  # wool in the rib

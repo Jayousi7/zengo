@@ -78,3 +78,9 @@ def test_every_window_drawn_at_his_size_is_stacked_and_remade_on_resize(make_pet
     pet.change_settings(pet.settings.__class__(scale=3))
     assert pet._effects is not old
     assert pet._effects in pet._layers()
+
+
+def test_the_bath_dish_stands_in_front_of_him(make_pet):
+    pet = make_pet()
+    layers = pet._layers()
+    assert layers.index(pet._window) < layers.index(pet._bath)

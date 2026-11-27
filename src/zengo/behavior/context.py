@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from zengo.animation import Animator
+from zengo.behavior.bath import BathCycle
 from zengo.behavior.body import Body
 from zengo.behavior.bond import Bond
 from zengo.behavior.cage import Cage, EscapeProgress
@@ -63,6 +64,7 @@ class Context:
     talking: bool = False
     """He's just said one of your words: the app shows his beak working."""
     seasons: Seasons = field(default_factory=Seasons)
+    bath: BathCycle = field(default_factory=BathCycle)
     effects: Effects = field(default_factory=Effects)
     """Droplets, snowflakes and leaves in the air."""
     damp: float = 0.0
