@@ -1255,7 +1255,7 @@ class Caged(State):
                     ctx.config.complaint_seconds,
                     mood="angry",
                 )
-                ctx.play("squawk")
+                ctx.play("chirp_b")  # cross, but soft: no squawking at your desk
                 self.next_complaint = ctx.rng.uniform(*ctx.config.complaint_every)
             if self.anger <= 0 and cage.mount != "held":
                 self._do(ctx, "sit")
@@ -1310,7 +1310,7 @@ class Caged(State):
             ctx.config.complaint_seconds,
             mood="angry",
         )
-        ctx.play("squawk")
+        ctx.play("chirp_b")  # cross, but soft: no squawking at your desk
         self.next_complaint = ctx.rng.uniform(*ctx.config.complaint_every)
 
     def _place(self, ctx: Context) -> None:

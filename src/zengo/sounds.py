@@ -1,4 +1,4 @@
-"""Zengo's voice: chirps, whistles, squawks and trills, synthesized.
+"""Zengo's voice: chirps, whistles and trills, synthesized.
 
 No recordings: each sound is a few pitch sweeps, shaped with a soft start and end
 and a touch of overtone so they sound like a small bird rather than a test tone.
@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import io
 import math
-import random
 import struct
 import wave
 from collections.abc import Sequence
@@ -22,12 +21,8 @@ Note = tuple[float, float, float]
 """Seconds, starting pitch and ending pitch (Hz); a pitch of 0 is a rest."""
 
 
-def _notes(
-    notes: Sequence[Note], *, warble: float = 0.0, rough: float = 0.0, seed: int = 0
-) -> list[float]:
-    """Render notes as samples in -1..1. ``warble`` adds a fast trill (Hz of wobble),
-    ``rough`` blends in noise and buzz for a squawk."""
-    rng = random.Random(seed)
+def _notes(notes: Sequence[Note], *, warble: float = 0.0) -> list[float]:
+    """Render notes as samples in -1..1. ``warble`` adds a fast trill (Hz of wobble)."""
     out: list[float] = []
     phase = 0.0
     for seconds, start, end in notes:
@@ -44,9 +39,6 @@ def _notes(
                 freq += warble * math.sin(2 * math.pi * 24 * i / RATE)
             phase += 2 * math.pi * freq / RATE
             sample = math.sin(phase) + 0.25 * math.sin(2 * phase) + 0.08 * math.sin(3 * phase)
-            if rough:
-                buzz = math.copysign(1.0, math.sin(phase * 0.5))
-                sample = (1 - rough) * sample + rough * (0.6 * buzz + 0.4 * rng.uniform(-1, 1))
             envelope = min(1.0, i / attack if attack else 1.0, (count - i) / release)
             out.append(sample / 1.33 * envelope)
     return out
@@ -68,7 +60,7 @@ _RECIPES = {
     "whistle_0": lambda: _notes(
         [(0.16, 1800, 3200), _rest(0.07), (0.18, 1800, 3400)]
     ),  # fweet-fweet
-    "whistle_1": lambda: _notes([(0.32, 1500, 3400), (0.34, 3100, 1400)]),  # wheee-ooo
+    "whistle_1": lambda: _notes([(0.12, 2600, 3200), _rest(0.04), (0.16, 2900, 3700)]),  # twee-dee
     "whistle_2": lambda: _notes(
         [(0.08, 2200, 2200), _rest(0.06), (0.08, 2200, 2200), _rest(0.06), (0.3, 2000, 3600)]
     ),  # tu-tu-tweeet
@@ -79,8 +71,6 @@ _RECIPES = {
     "whistle_5": lambda: _notes(
         [(0.14, 2000, 2050), (0.14, 2500, 2550), (0.2, 3000, 3100), (0.22, 2500, 2400)]
     ),  # a little tune
-    # Unhappy: a scratchy squawk, falling.
-    "squawk": lambda: _notes([(0.24, 1500, 1100)], rough=0.55, seed=3),
     # Asking for food: a pleading rise, twice.
     "ask": lambda: _notes([(0.12, 2300, 3300), _rest(0.08), (0.16, 2400, 3600)]),
     # Greeting you back: a bright two-note hello.

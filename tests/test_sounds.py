@@ -1,4 +1,4 @@
-"""His chirps, whistles, squawks and trills."""
+"""His chirps, whistles and trills."""
 
 import io
 import wave
@@ -34,13 +34,13 @@ def test_a_whistle_plays_its_tune(ctx):
     assert ctx.sounds == [sounds.whistle_for(phrase)]
 
 
-def test_caged_he_squawks_and_freed_by_his_own_wits_he_trills(ctx):
+def test_caged_he_chirps_crossly_and_freed_by_his_own_wits_he_trills(ctx):
     from zengo.config import quick
 
     ctx.config = quick(ctx.config)
     brain = Brain(ctx, Idle())
     brain.catch_in(ctx.body.x - 40, ctx.body.y - 80, ctx.body.x + 40, ctx.body.y + 5)
-    assert "squawk" in ctx.sounds
+    assert "chirp_b" in ctx.sounds and "squawk" not in ctx.sounds
     ctx.bond.level = 0.0  # nothing holding him back
     for _ in range(round(10 / DT)):
         brain.tick(DT)
@@ -110,3 +110,10 @@ def test_a_replaced_sound_plays_your_file_and_a_missing_one_his_own(tmp_path, ca
         assert "gone.wav" in capsys.readouterr().err
     finally:
         player.close()
+
+
+def test_his_sounds_are_short_and_high():
+    """Nothing harsh: no squawk, and every sound over in under a second."""
+    assert "squawk" not in sounds.names()
+    for name in sounds.names():
+        assert len(sounds.sound(name)) / sounds.RATE < 1.0, name

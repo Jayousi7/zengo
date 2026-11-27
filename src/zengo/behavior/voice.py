@@ -47,7 +47,7 @@ DEFAULT_PHRASES: dict[str, tuple[str, ...]] = {
     "random": ("♪",),
     "whistle": (
         "♪ fweet-fweet! ♪",
-        "♫ wheee-ooo! ♫",
+        "♫ twee-dee! ♫",
         "♪ tu-tu-tweeet ♪",
         "Zengo! ♪",
         "pretty bird! ♫",
@@ -57,7 +57,7 @@ DEFAULT_PHRASES: dict[str, tuple[str, ...]] = {
     "hungry": ("feed me!!", "seeds pls? ♥", "hungryyy...", "*stares*"),
     "fed": ("yum! ♥",),
     "petted": ("♥",),
-    "caged": ("HEY!!", "let me out!", "squawk!!", "rude.", ">:(", "not cool!"),
+    "caged": ("HEY!!", "let me out!", "hmph!!", "rude.", ">:(", "not cool!"),
     "freed": ("freedom!! ♪",),
 }
 
@@ -69,7 +69,6 @@ CUES: dict[str, str] = {
     "ask": "asking for food",
     "greeting": "greeting you",
     "trill": "content: a meal, freedom",
-    "squawk": "unhappy, in the cage",
 }
 """Each sound he makes, and what it's for."""
 
