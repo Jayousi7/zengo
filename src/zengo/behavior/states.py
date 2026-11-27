@@ -887,12 +887,22 @@ class Caged(State):
         "escape": "front_pick",
     }
 
+    def __init__(self, *, just_caught: bool = True) -> None:
+        super().__init__()
+        self.just_caught = just_caught
+        """Furious if he's just been caught; calm if he was simply in here already
+        (as when he's started up again caged)."""
+
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
         self.until = 0.0
         self.next_seed = 0.0
-        self._provoked(ctx, ctx.rng.choice(ctx.config.complaints))
-        self.anger = ctx.rng.uniform(*self.tantrum)
+        if self.just_caught:
+            self._provoked(ctx, ctx.rng.choice(ctx.config.complaints))
+            self.anger = ctx.rng.uniform(*self.tantrum)
+        else:
+            self.anger = 0.0
+            self._do(ctx, "sit")
         self._place(ctx)
 
     def clicked(self, ctx: Context) -> State | None:

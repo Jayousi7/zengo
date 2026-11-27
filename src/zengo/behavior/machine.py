@@ -94,6 +94,12 @@ class Brain:
         if (following := self._state.double_clicked(self.ctx)) is not None:
             self.transition(following)
 
+    def resume(self) -> None:
+        """Pick up where things were left, after his memory has been restored: back
+        in his cage if he was caged, otherwise just settled where he is."""
+        if self.ctx.cage is not None and not self.caged:
+            self.transition(Caged(just_caught=False))
+
     @property
     def caged(self) -> bool:
         return isinstance(self._state, Caged)

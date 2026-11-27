@@ -27,8 +27,10 @@ left off. Only escaping starts it over.
 
 His right-click menu opens with a live panel of all this: a fullness bar with his
 odds of getting hungry at the next check, the seeds out, and his escape bar
-(filling towards his first try, then showing his odds at the next). His fullness,
-hunger, seeds and escape progress are remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo` on Windows).
+(filling towards his first try, then showing his odds at the next). Where he was
+and which way he faced, whether he was caged (and where the cage hung or stood,
+with its dish), his fullness, hunger, seeds and escape progress are all
+remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo` on Windows).
 
 | Input | Reaction |
 |---|---|

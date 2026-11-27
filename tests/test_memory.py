@@ -113,3 +113,92 @@ def test_his_escape_progress_is_remembered(ctx, tmp_path):
     ctx.escape.caged_for, ctx.escape.feedings, ctx.escape.next_try = 0.0, 0, None
     restore(ctx, file.load())
     assert (ctx.escape.caged_for, ctx.escape.feedings, ctx.escape.next_try) == (400.0, 2, 420.0)
+
+
+def round_trip(ctx, tmp_path):
+    file = StateFile(tmp_path / "state.json")
+    file.save(snapshot(ctx))
+    return file.load()
+
+
+def test_he_comes_back_where_he_was_facing_the_same_way(ctx, tmp_path):
+    from zengo.behavior.body import Facing
+
+    ctx.body.x, ctx.body.facing = 1300.0, Facing.LEFT
+    data = round_trip(ctx, tmp_path)
+    ctx.body.x, ctx.body.facing = 960.0, Facing.RIGHT
+    restore(ctx, data)
+    assert (ctx.body.x, ctx.body.facing) == (1300.0, Facing.LEFT)
+    assert ctx.body.y == ctx.world.area.bottom
+
+
+def test_remembered_off_screen_he_comes_back_on_it(ctx):
+    restore(ctx, {"version": 1, "zengo": {"x": 99999, "facing": 1}})
+    assert ctx.body.x == ctx.world.area.right - ctx.margin
+
+
+@pytest.mark.parametrize("where", ["chain", "shelf", "ground"])
+def test_caged_he_comes_back_caged_where_the_cage_was_and_calm(ctx, tmp_path, where):
+    from zengo.behavior.machine import Brain
+    from zengo.behavior.states import Caged, Idle
+
+    brain = Brain(ctx, Idle())
+    brain.catch_in(ctx.body.x - 40, ctx.body.y - 80, ctx.body.x + 40, ctx.body.y + 5)
+    cage = ctx.cage
+    brain.feed()
+    to = {"chain": (700, 150), "shelf": (40, 500), "ground": (900, 600)}[where]
+    brain.cage_grab(cage.x, cage.y - 30)
+    brain.cage_drag(*to)
+    brain.tick(1 / 30)
+    brain.cage_release()
+    for _ in range(90):
+        brain.tick(1 / 30)
+    before = (cage.mount, round(cage.x), round(cage.y), cage.side, cage.dish.seeds)
+    data = round_trip(ctx, tmp_path)
+
+    ctx.cage, ctx.speech = None, None
+    fresh = Brain(ctx, Idle())
+    restore(ctx, data)
+    fresh.resume()
+    assert isinstance(fresh.state, Caged)
+    after = ctx.cage
+    assert (after.mount, round(after.x), round(after.y), after.side, after.dish.seeds) == before
+    fresh.tick(1 / 30)
+    assert ctx.speech is None  # calm: he wasn't just caught
+    assert ctx.animator.clip_name != "front_angry"
+    assert (ctx.body.x, ctx.body.y) == (after.shown_x, after.y)
+
+
+def test_free_he_stays_free(ctx, tmp_path):
+    from zengo.behavior.machine import Brain
+    from zengo.behavior.states import Idle
+
+    data = round_trip(ctx, tmp_path)
+    assert data["cage"] is None
+    brain = Brain(ctx, Idle())
+    restore(ctx, data)
+    brain.resume()
+    assert isinstance(brain.state, Idle) and ctx.cage is None
+
+
+def test_the_app_comes_back_caged_on_a_shelf(tmp_path):
+    import random
+
+    from zengo.app import Pet
+    from zengo.behavior.states import Caged
+    from zengo.config import Config
+    from zengo.sprites.frames import build_frames
+
+    file = StateFile(tmp_path / "state.json")
+    first = Pet(Config(), build_frames(), random.Random(1), memory=file)
+    b, ctx = first._brain, first._brain.ctx
+    b.catch_in(ctx.body.x - 40, ctx.body.y - 80, ctx.body.x + 40, ctx.body.y + 5)
+    b.cage_grab(ctx.cage.x, ctx.cage.y - 30)
+    b.cage_drag(ctx.area().right - 10, 400)
+    b.tick(1 / 30)
+    b.cage_release()
+    first.save()
+
+    second = Pet(Config(), build_frames(), random.Random(2), memory=file)
+    assert isinstance(second._brain.state, Caged)
+    assert second._brain.ctx.cage.mount == "shelf" and second._brain.ctx.cage.side == 1

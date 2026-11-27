@@ -84,6 +84,7 @@ class Pet:
         self._memory = memory
         if memory is not None:
             restore(self._brain.ctx, memory.load())
+            self._brain.resume()
             self._save_timer = QTimer(interval=SAVE_EVERY_MS)
             self._save_timer.timeout.connect(self.save)
             app = QApplication.instance()
