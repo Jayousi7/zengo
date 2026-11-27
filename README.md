@@ -53,7 +53,7 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
 | Right click | Menu: a live panel of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Sounds* on/off, *Quit Zengo* |
 | *Feed Zengo (n/3)* | Pours out a stack of sunflower seeds, his favourite: up to three stacks, the pile filling as you add. He eats one stack whenever he gets hungry; caged, they go in his dish |
-| *Catch Zengo*, then drag a box around him | Caged where he is, and furious about it. Drag the cage: let go near the top and it hangs from a chain, near a side and it sits on a shelf, anywhere else it falls to the ground. Petting him through the bars calms him; *Let Zengo out* opens the door |
+| *Catch Zengo*, then drag a box around him | Caged where he is, and furious about it. Drag the cage: let go near the top and it hangs from a chain, near a side and it sits on a shelf (unless that's too near the floor for one), anywhere else it falls to the ground. Petting him through the bars calms him; *Let Zengo out* opens the door |
 
 ## Download
 

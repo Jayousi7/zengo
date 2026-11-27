@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from zengo.behavior.food import Pile
-from zengo.sprites.cage import CAGE_HEIGHT, CAGE_WIDTH, FLOOR, SHELF_WIDTH
+from zengo.sprites.cage import CAGE_HEIGHT, CAGE_WIDTH, FLOOR, SHELF_HEIGHT, SHELF_WIDTH
 
 if TYPE_CHECKING:
     from zengo.behavior.context import Context
@@ -97,6 +97,9 @@ class Cage:
         self.x = min(max(self.x, area.left + half), area.right - half)
         if self.top(ctx) - area.top <= cfg.px(cfg.cage_hang_reach):
             self._hang(ctx, area)
+        elif not self.shelf_fits(ctx, area):
+            self.mount = "falling"  # too near the floor for a shelf under it
+            self.vy = max(self.vy, 0.0)
         elif self.x - half - area.left <= cfg.px(cfg.cage_shelf_reach):
             self._shelve(ctx, area, side=-1)
         elif area.right - (self.x + half) <= cfg.px(cfg.cage_shelf_reach):
@@ -113,6 +116,11 @@ class Cage:
         limit = cfg.px(80)
         self.sway, self.sway_speed = 0.0, min(max(self.vx * 0.5, -limit), limit) or cfg.px(25)
         self.events.append("hung")
+
+    def shelf_fits(self, ctx: Context, area: Area) -> bool:
+        """Is there room on screen for a shelf under the tray? Too near the floor,
+        the shelf would hang off the bottom edge (and get pushed up into the cage)."""
+        return self.y + ctx.config.px(BELOW_FLOOR + SHELF_HEIGHT + 1) <= area.bottom
 
     def _shelve(self, ctx: Context, area: Area, side: int) -> None:
         cfg = ctx.config

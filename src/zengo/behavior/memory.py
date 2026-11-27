@@ -140,7 +140,7 @@ def _cage_restored(ctx: Context, data: dict) -> Cage | None:
     if mount == "chain":
         cage._hang(ctx, area)
         cage.sway_speed = 0.0  # hanging still, not swinging from a throw
-    elif mount == "shelf" and data.get("side") in (-1, 1):
+    elif mount == "shelf" and data.get("side") in (-1, 1) and cage.shelf_fits(ctx, area):
         cage._shelve(ctx, area, side=data["side"])
     else:
         cage.mount, cage.y = "ground", area.bottom - cfg.px(BELOW_FLOOR)

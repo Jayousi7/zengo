@@ -124,6 +124,19 @@ def test_carried_to_a_side_edge_it_stands_on_a_shelf(ctx):
     assert (cage.mount, cage.side) == ("shelf", 1)
 
 
+def test_too_low_at_a_side_edge_for_a_shelf_it_goes_to_the_floor(ctx):
+    """A shelf under a cage this near the floor would hang off the screen."""
+    brain = Brain(ctx, Idle())
+    cage = catch(ctx, brain)
+    area, px = ctx.world.area, ctx.config.px
+    low = area.bottom - px(BELOW_FLOOR) - 5
+    for x in (area.left + px(CAGE_WIDTH / 2) + 10, area.right - px(CAGE_WIDTH / 2) - 10):
+        carry(ctx, brain, to=(x, low))
+        assert cage.mount == "falling"
+        run(brain, 2)
+        assert cage.mount == "ground"
+
+
 def test_let_go_anywhere_else_it_falls_to_the_ground_and_he_complains(ctx):
     brain = Brain(ctx, Idle())
     cage = catch(ctx, brain)
