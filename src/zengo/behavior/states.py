@@ -22,7 +22,7 @@ from zengo.sounds import CHIRPS, whistle_for
 from zengo.sprites.bath import DISH_WIDTH
 from zengo.sprites.clips import RING_PECKS
 from zengo.sprites.toys import STANDING_WIDTH
-from zengo.world import Area, Ledge
+from zengo.world import Area, Ledge, neighbours
 
 
 class State:
@@ -172,6 +172,8 @@ def choose_activity(ctx: Context) -> State:
         (Fly.to_branch, 6.0 if flies and branch_is_inviting(ctx) else 0.0),  # he loves it
         (Fly.to_window, 2.5 if flies and perchable_ledges(ctx) else 0.0),
         (go_to_bath, 8.0 if ctx.bath.usable else 0.0),  # and he loves a bath
+        (Fly.to_screen, 0.5 if flies and other_screens(ctx) else 0.0),
+        (follow_you_over, 5.0 if flies and bond.close(cfg) and _pointer_next_door(ctx) else 0.0),
         (go_to_mirror, (3.0 if ctx.focus.on_break else 1.5) if mirror_is_inviting(ctx) else 0.0),
     ]
     makers, weights = zip(*options, strict=True)
@@ -183,16 +185,58 @@ def _cursor_on_same_screen(ctx: Context) -> bool:
 
 
 def perchable_ledges(ctx: Context) -> list[Ledge]:
-    """Window tops on his screen he could sit on: wide enough for his feet, with room
-    for him above, and up off the ground."""
-    cfg, area = ctx.config, ctx.area()
-    return [
-        ledge
-        for ledge in ctx.world.ledges()
-        if ledge.right - ledge.left >= cfg.px(cfg.ledge_min_width)
-        and area.top + cfg.px(36) <= ledge.y <= area.bottom - cfg.px(60)
-        and ctx.world.area_at((ledge.left + ledge.right) / 2, ledge.y) == area
-    ]
+    """Window tops he could sit on, on his screen or one beside it: wide enough
+    for his feet, with room for him above, and up off the ground."""
+    cfg, here = ctx.config, ctx.area()
+    reachable = [here, *(a for a, _ in neighbours(here, ctx.world.areas()))]
+    found = []
+    for ledge in ctx.world.ledges():
+        area = ctx.world.area_at((ledge.left + ledge.right) / 2, ledge.y)
+        if (
+            area in reachable
+            and ledge.right - ledge.left >= cfg.px(cfg.ledge_min_width)
+            and area.top + cfg.px(36) <= ledge.y <= area.bottom - cfg.px(60)
+        ):
+            found.append(ledge)
+    return found
+
+
+def other_screens(ctx: Context) -> list[tuple[Area, str]]:
+    """The screens beside his, and which side of his each is on."""
+    return neighbours(ctx.area(), ctx.world.areas())
+
+
+def _crossing(ctx: Context, there: Area) -> list[Point]:
+    """Two points either side of where his screen meets ``there``, to fly across
+    by: at a height (or along a stretch) the two screens share."""
+    cfg, rng, here = ctx.config, ctx.rng, ctx.area()
+    side = next((s for a, s in other_screens(ctx) if a == there), None)
+    if side is None:
+        return []
+    reach = cfg.px(30)
+    if side in ("left", "right"):
+        top, bottom = max(here.top, there.top), min(here.bottom, there.bottom)
+        y = top + (bottom - top) * rng.uniform(0.25, 0.55)
+        if side == "right":
+            return [(here.right - reach, y), (there.left + reach, y)]
+        return [(here.left + reach, y), (there.right - reach, y)]
+    left, right = max(here.left, there.left), min(here.right, there.right)
+    x = rng.uniform(left + ctx.margin, max(left + ctx.margin, right - ctx.margin))
+    if side == "below":
+        return [(x, here.bottom - cfg.px(70)), (x, there.top + cfg.px(50))]
+    return [(x, here.top + cfg.px(50)), (x, there.bottom - cfg.px(90))]
+
+
+def follow_you_over(ctx: Context) -> State:
+    """Devoted, he follows your pointer to the screen beside his."""
+    cx, cy = ctx.world.cursor()
+    return Fly.to_screen(ctx, ctx.world.area_at(cx, cy), cx)
+
+
+def _pointer_next_door(ctx: Context) -> bool:
+    cx, cy = ctx.world.cursor()
+    there = ctx.world.area_at(cx, cy)
+    return any(a == there for a, _ in other_screens(ctx))
 
 
 def _ledge_under(ctx: Context, window: int, x: float) -> Ledge | None:
@@ -514,12 +558,31 @@ class Fly(State):
         ledge = ctx.rng.choice(perchable_ledges(ctx))
         inset = cfg.px(6)
         x = ctx.rng.uniform(ledge.left + inset, max(ledge.left + inset, ledge.right - inset))
-        side = -1 if ctx.body.x < x else 1
-        approach_x = ctx.area().clamp_x(x + side * cfg.px(55), ctx.margin)
+        there = ctx.world.area_at(x, ledge.y)
+        cross = _crossing(ctx, there) if there != ctx.area() else []  # next door
+        coming_from = cross[-1][0] if cross else ctx.body.x
+        side = -1 if coming_from < x else 1
+        approach_x = there.clamp_x(x + side * cfg.px(55), ctx.margin)
         approach = (approach_x, ledge.y - cfg.px(18))
-        flight = cls([*_takeoff(ctx, towards=approach_x), approach, (x, ledge.y)], onto="window")
+        start = cross[0][0] if cross else approach_x
+        flight = cls([*_takeoff(ctx, towards=start), *cross, approach, (x, ledge.y)], onto="window")
         flight.window, flight.offset = ledge.window, x - ledge.window_left
         return flight
+
+    @classmethod
+    def to_screen(cls, ctx: Context, there: Area | None = None, x: float | None = None) -> Fly:
+        """Over to the screen beside his (``there``, or one at random), across the
+        edge where they meet, to land on its ground (at ``x``, or anywhere)."""
+        if there is None:
+            there = ctx.rng.choice(other_screens(ctx))[0]
+        cross = _crossing(ctx, there)
+        margin = ctx.margin + ctx.config.px(30)
+        if x is None:
+            x = ctx.rng.uniform(there.left + margin, max(there.left + margin, there.right - margin))
+        x = there.clamp_x(x, margin)
+        start = cross[0][0] if cross else x
+        coming_from = cross[-1][0] if cross else ctx.body.x
+        return cls([*_takeoff(ctx, towards=start), *cross, *_landing(ctx, x, coming_from, there)])
 
     @classmethod
     def to_middle(cls, ctx: Context) -> Fly:
@@ -688,9 +751,10 @@ def _takeoff(ctx: Context, towards: float) -> list[Point]:
     return [(x, ctx.body.y - cfg.px(22))]
 
 
-def _landing(ctx: Context, x: float, coming_from: float) -> list[Point]:
-    """Come in low and shallow from the side, then touch down at ``x`` on the ground."""
-    cfg, area = ctx.config, ctx.area()
+def _landing(ctx: Context, x: float, coming_from: float, area: Area | None = None) -> list[Point]:
+    """Come in low and shallow from the side, then touch down at ``x`` on the
+    ground (of ``area``, if not his screen)."""
+    cfg, area = ctx.config, area or ctx.area()
     d = math.copysign(1.0, x - coming_from) if x != coming_from else int(ctx.body.facing)
     approach = area.clamp_x(x - d * cfg.px(60), ctx.margin)
     return [(approach, area.bottom - cfg.px(20)), (x, area.bottom)]

@@ -86,3 +86,79 @@ def test_his_mirror_stays_on_its_own_screen(ctx):
     ctx.body.x, ctx.body.y = 2500.0, RIGHT.bottom  # he's gone over to the other one
     brain.tick(0.05)
     assert ctx.toys.mirror.x == x and LEFT.contains(x, ctx.toys.mirror.y - 1)
+
+
+# --- Flying between screens ---------------------------------------------------------
+
+from zengo.behavior.states import choose_activity, follow_you_over, perchable_ledges  # noqa: E402
+from zengo.world import Ledge  # noqa: E402
+
+
+def _fly(brain, ctx, seconds=30.0):
+    path = []
+    for _ in range(round(seconds / 0.05)):
+        brain.tick(0.05)
+        path.append((ctx.body.x, ctx.body.y))
+        if not isinstance(brain.state, Fly):
+            break
+    return path
+
+
+def test_he_flies_across_to_the_screen_next_door_where_they_meet(ctx):
+    ctx.world.screens = [LEFT, RIGHT]
+    ctx.body.x, ctx.body.y = 1500.0, LEFT.bottom
+    brain = Brain(ctx, Fly.to_screen(ctx))
+    path = _fly(brain, ctx)
+    assert RIGHT.contains(ctx.body.x, ctx.body.y - 4) and ctx.body.y == RIGHT.bottom
+    crossing = [y for x, y in path if 1900 <= x <= 1940]
+    assert crossing and all(y < RIGHT.bottom for y in crossing)  # over the edge they share
+
+
+def test_to_a_screen_below(ctx):
+    ctx.world.screens = [LEFT, BELOW]
+    ctx.body.x, ctx.body.y = 1000.0, LEFT.bottom
+    brain = Brain(ctx, Fly.to_screen(ctx, BELOW))
+    _fly(brain, ctx)
+    assert BELOW.contains(ctx.body.x, ctx.body.y - 4) and ctx.body.y == BELOW.bottom
+
+
+def test_with_one_screen_theres_nowhere_to_cross_to(ctx):
+    from zengo.behavior.states import other_screens
+
+    assert other_screens(ctx) == []
+
+
+def test_window_tops_next_door_count(ctx):
+    ctx.world.screens = [LEFT, RIGHT]
+    ledge = Ledge(window=7, left=2200.0, right=2700.0, y=400.0, window_left=2200.0)
+    ctx.world.windows_on_top = [ledge]
+    assert perchable_ledges(ctx) == [ledge]
+    brain = Brain(ctx, Fly.to_window(ctx))
+    _fly(brain, ctx)
+    assert type(brain.state).__name__ == "OnWindow"
+    assert RIGHT.contains(ctx.body.x, ctx.body.y)
+
+
+def test_devoted_he_follows_you_over(ctx):
+    ctx.world.screens = [LEFT, RIGHT]
+    ctx.world.cursor_pos = (2600.0, 500.0)
+    ctx.bond.level = 0.95
+    picks = [choose_activity(ctx) for _ in range(60)]
+    assert sum(isinstance(p, Fly) for p in picks) >= 20
+    brain = Brain(ctx, follow_you_over(ctx))
+    _fly(brain, ctx)
+    assert RIGHT.contains(ctx.body.x, ctx.body.y - 4)
+    assert abs(ctx.body.x - 2600) < 300
+
+
+def test_not_devoted_he_stays_put(ctx):
+    ctx.world.screens = [LEFT, RIGHT]
+    ctx.world.cursor_pos = (2600.0, 500.0)
+    ctx.bond.level = 0.5
+    ctx.rng.seed(5)
+    flights = 0
+    for _ in range(200):
+        pick = choose_activity(ctx)
+        if isinstance(pick, Fly) and pick.waypoints and pick.waypoints[-1][0] > 1920:
+            flights += 1
+    assert flights < 25  # only the odd crossing of his own accord
