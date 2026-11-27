@@ -12,7 +12,13 @@ cursor, and falls asleep when you're away or late at night.
 | Left drag | Picked up, flutters; let go and Zengo flutters down |
 | Right click | Menu with *Quit Zengo* |
 
-## Run
+## Download
+
+Prebuilt executables for Linux and Windows are attached to each
+[GitHub release](../../releases/latest): download `zengo-linux-x86_64` or
+`zengo-windows-x86_64.exe` and run it. On Linux, `chmod +x` it first.
+
+## Run from source
 
 ```sh
 python -m venv .venv
@@ -35,6 +41,17 @@ python scripts/build.py    # -> dist/zengo (Linux) or dist/zengo.exe (Windows)
 ```
 
 PyInstaller does not cross-compile; build on each target OS.
+
+### Releasing
+
+CI runs the tests on every push. To publish a release, bump `version` in
+`pyproject.toml`, then tag and push:
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+GitHub Actions builds both executables and attaches them to a release for the tag.
 
 ## Develop
 
@@ -108,3 +125,7 @@ only apply to the built-in art.
 Subclass `State` in `behavior/states.py`: set `clip`, override `enter` and/or
 `step`, and return the next state from `step` when done. Add it to the weights
 in `choose_activity`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
