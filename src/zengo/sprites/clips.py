@@ -47,8 +47,8 @@ CLIPS: dict[str, Clip] = {
     "held": Clip(*zip(*_HELD_FIDGETS, strict=True)),
     # Petted: a slow lean into the hand and back.
     "petted": Clip(("petted_a", "petted_b"), (1.1, 0.9)),
-    # Whistling: the head bobs to the tune.
-    "whistle": Clip(("whistle_a", "perch") * 7, (0.16,) * 14, loop=False),
+    # Whistling: crest up, nodding to the tune.
+    "whistle": Clip(("whistle_a", "alert") * 7, (0.16,) * 14, loop=False),
     # A quick ruffle after landing, then settle.
     "shake": Clip(
         ("shake_a", "shake_b") * 3 + ("perch",),
@@ -85,7 +85,7 @@ FRONT_CLIPS: dict[str, Clip] = {
     ),
     "front_sleep": Clip(("front_sleep",), (1.0,)),
     "front_petted": Clip(("front_petted_a", "front_petted_b"), (1.1, 0.9)),
-    "front_whistle": Clip(("front_whistle_a", "front_perch") * 7, (0.16,) * 14, loop=False),
+    "front_whistle": Clip(("front_whistle_a", "front_alert") * 7, (0.16,) * 14, loop=False),
 }
 
 

@@ -43,3 +43,20 @@ def test_grounded_frames_stand_on_ground_row():
             y for y in range(frame.height) for x in range(frame.width) if frame.pixel(x, y) in feet
         )
         assert lowest == GROUND_ROW, name
+
+
+def test_no_part_is_cut_off_by_a_slit():
+    """A layer shifted a pixel off the one below leaves a clear slit, which the
+    outline then fills with a dark line through the bird (a head cut off at the
+    neck). Lone slit pixels are fine: between toes, crest strands, under the beak."""
+    for name, frame in build_frames(outline=None).items():
+        for y in range(1, frame.height - 1):
+            run = 0
+            for x in range(frame.width):
+                slit = (
+                    frame.pixel(x, y) is None
+                    and frame.pixel(x, y - 1) is not None
+                    and frame.pixel(x, y + 1) is not None
+                )
+                run = run + 1 if slit else 0
+                assert run < 3, f"{name}: slit through row {y} at column {x}"

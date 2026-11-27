@@ -151,6 +151,16 @@ EYE_CLOSED = _layer(
     y=12,
 )
 
+# Whistling: the beak a little open.
+BEAK_OPEN = _layer(
+    """
+    K.
+    Qq
+    """,
+    x=39,
+    y=14,
+)
+
 # --- Walking ---------------------------------------------------------------
 # The body bobs up a pixel on each step, so these legs are one row taller.
 
@@ -575,4 +585,14 @@ FRONT_TAIL = _layer(
     """,
     x=29,
     y=27,
+)
+
+
+FRONT_BEAK_OPEN = _layer(
+    """
+    QKq
+    .q
+    """,
+    x=29,
+    y=13,
 )

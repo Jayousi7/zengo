@@ -107,14 +107,14 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.WING_FOLDED,
         *_shifted(-1, 2, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED),
     ),
-    # Whistling: crest up, head bobbing.
+    # Whistling: crest up, nodding to the tune with the beak open. The head nods
+    # down into the body, so no gap can open at the neck.
     "whistle_a": (
         art.LEGS,
         art.TAIL,
         art.BODY,
         art.WING_FOLDED,
-        art.CREST_RAISED,
-        art.HEAD.shifted(0, -1),  # the crest is already as high as the canvas allows
+        *_shifted(1, 1, art.CREST_RAISED, art.HEAD, art.BEAK_OPEN),
     ),
     # The downstroke lifts the body a pixel.
     "wings_up": (art.FLIGHT_BODY, art.WING_UP, *_FLYING_HEAD),
@@ -162,7 +162,10 @@ FRONT_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.FRONT_PUFF,
         *_shifted(1, 1, art.FRONT_CREST_FLAT, art.FRONT_HEAD, art.FRONT_EYES_CLOSED),
     ),
-    "front_whistle_a": (*_FRONT_SITTING, art.FRONT_CREST_RAISED, art.FRONT_HEAD.shifted(0, -1)),
+    "front_whistle_a": (
+        *_FRONT_SITTING,
+        *_shifted(0, 1, art.FRONT_CREST_RAISED, art.FRONT_HEAD, art.FRONT_BEAK_OPEN),
+    ),
     "front_sleep": (
         *_FRONT_SITTING,
         art.FRONT_PUFF,
