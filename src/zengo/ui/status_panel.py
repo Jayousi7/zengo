@@ -1,23 +1,22 @@
-"""A little panel at the top of Zengo's menu showing his needs, live."""
+"""A slim strip at the top of Zengo's menu showing his needs, live."""
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from PySide6.QtCore import QRectF, QSize, Qt, QTimer
-from PySide6.QtGui import QColor, QFont, QPainter, QPaintEvent
-from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import QEvent, QRectF, QSize, Qt, QTimer
+from PySide6.QtGui import QColor, QFont, QFontMetricsF, QHelpEvent, QPainter, QPaintEvent
+from PySide6.QtWidgets import QToolTip, QWidget
 
 from zengo.behavior.status import Status
 from zengo.sprites.food import MAX_STACKS
 
-# Dark theme: a warm near-black panel, light words, a dark track for the bars.
+# Dark theme: a warm near-black strip, quiet icons, each number in its own colour.
 INK = QColor("#f1e6da")
 QUIET = QColor("#a8978c")
 PAPER = QColor("#231c1f")
-TRACK = QColor("#3a3034")
-CARD = QColor("#2e2629")
 GOOD = QColor("#8dbb74")
 FAIR = QColor("#e0bc6e")
 POOR = QColor("#e07a5f")
@@ -36,6 +35,8 @@ class Row:
     share: float
     """How much of the bar is filled, 0 to 1."""
     colour: QColor
+    icon: str = ""
+    """What stands for it in the strip."""
 
     @property
     def value(self) -> str:
@@ -48,7 +49,7 @@ def clock(seconds: float) -> str:
 
 
 def rows(status: Status) -> list[Row]:
-    """What the panel shows: one card each for how close he feels to you, his
+    """What the panel shows: one chip each for how close he feels to you, his
     hunger, his seeds and his escape."""
     full = status.fullness
     if status.hungry:
@@ -67,13 +68,14 @@ def rows(status: Status) -> list[Row]:
         escape = (clock(status.escape_try_in), f"to first try{paused}")
         escape_share = status.escape_warmup
     return [
-        Row("Bond ♥", f"{status.bond:.0%}", status.bond_mood, status.bond, HEART),
+        Row("Bond ♥", f"{status.bond:.0%}", status.bond_mood, status.bond, HEART, "♥"),
         Row(
             "Fullness",
             f"{full:.0%}",
             hunger,
             full,
             POOR if status.hungry or full < 0.3 else FAIR if full < 0.7 else GOOD,
+            "◐",
         ),
         Row(
             "Dish" if status.caged else "Seeds",
@@ -81,92 +83,95 @@ def rows(status: Status) -> list[Row]:
             "stacks",
             status.food_stacks / MAX_STACKS,
             SEED,
+            "∴",
         ),
-        Row("Escape", *escape, escape_share, ESCAPE),
+        Row("Escape", *escape, escape_share, ESCAPE, "⇥"),
     ]
 
 
 class StatusPanel(QWidget):
-    """Shows :func:`rows` for the status ``read`` returns as a grid of small cards,
-    two to a row, refreshed while open."""
+    """Shows :func:`rows` for the status ``read`` returns as one slim strip of
+    coloured icon-and-number chips, refreshed while open. Hovering a chip tells
+    you the rest: its name and the few words on it."""
 
-    COLUMNS = 2
-    CARD_WIDTH = 148
-    CARD_HEIGHT = 58
-    GAP = 6
-    PAD = 8
+    PAD_X = 12
+    PAD_Y = 7
+    GAP = 14
+    ICON_GAP = 4
 
     def __init__(self, read: Callable[[], Status], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._read = read
         self._rows = rows(read())
+        self._chips: list[QRectF] = []
+        self.setMouseTracking(True)
         self._timer = QTimer(self, interval=250)
         self._timer.timeout.connect(self._refresh)
         self._timer.start()
         self.setMinimumSize(self.sizeHint())
 
+    def _number_font(self) -> QFont:
+        font = QFont(self.font())
+        font.setBold(True)
+        return font
+
+    def _chip_width(self, row: Row) -> float:
+        icon = QFontMetricsF(self.font()).horizontalAdvance(row.icon)
+        numbers = QFontMetricsF(self._number_font())
+        widest = max(numbers.horizontalAdvance(n) for n in (row.headline, *_WIDEST))
+        return icon + self.ICON_GAP + widest
+
     def sizeHint(self) -> QSize:
-        lines = -(-len(self._rows) // self.COLUMNS)
-        return QSize(
-            2 * self.PAD + self.COLUMNS * self.CARD_WIDTH + (self.COLUMNS - 1) * self.GAP,
-            2 * self.PAD + lines * self.CARD_HEIGHT + (lines - 1) * self.GAP,
-        )
+        chips = sum(self._chip_width(row) for row in self._rows)
+        width = 2 * self.PAD_X + chips + self.GAP * (len(self._rows) - 1)
+        height = 2 * self.PAD_Y + QFontMetricsF(self._number_font()).height()
+        return QSize(math.ceil(width), math.ceil(height))
 
     def _refresh(self) -> None:
         self._rows = rows(self._read())
         self.update()
 
+    def row_at(self, x: float) -> Row | None:
+        """The chip nearest ``x``, as last painted: the whole strip is hoverable."""
+        pairs = list(zip(self._chips, self._rows, strict=False))
+        if not pairs:
+            return None
+        return min(pairs, key=lambda pair: abs(pair[0].center().x() - x))[1]
+
+    def event(self, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.ToolTip:
+            assert isinstance(event, QHelpEvent)
+            row = self.row_at(event.pos().x())
+            if row is None:
+                QToolTip.hideText()
+                event.ignore()
+            else:
+                QToolTip.showText(event.globalPos(), f"{row.title}: {row.value}", self)
+            return True
+        return super().event(event)
+
     def paintEvent(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.fillRect(self.rect(), PAPER)
-        base = self.font().pointSizeF()
-        title_font, headline_font, note_font = (
-            QFont(self.font()),
-            QFont(self.font()),
-            QFont(self.font()),
-        )
-        title_font.setPointSizeF(max(7.0, base * 0.85))
-        headline_font.setPointSizeF(base * 1.35)
-        headline_font.setBold(True)
-        note_font.setPointSizeF(max(7.0, base * 0.8))
-        width = (self.width() - 2 * self.PAD - (self.COLUMNS - 1) * self.GAP) / self.COLUMNS
-        left_align = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        for i, row in enumerate(self._rows):
-            col, line = i % self.COLUMNS, i // self.COLUMNS
-            x = self.PAD + col * (width + self.GAP)
-            y = self.PAD + line * (self.CARD_HEIGHT + self.GAP)
-            card = QRectF(x, y, width, self.CARD_HEIGHT)
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(CARD)
-            p.drawRoundedRect(card, 7, 7)
-            inner = card.adjusted(9, 6, -9, -8)
-            p.setFont(title_font)
+        number_font = self._number_font()
+        middle = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        x, height = float(self.PAD_X), float(self.height())
+        self._chips = []
+        for row in self._rows:
+            width = self._chip_width(row)
+            p.setFont(self.font())
             p.setPen(QUIET)
-            p.drawText(QRectF(inner.left(), inner.top(), inner.width(), 14), left_align, row.title)
-            p.setFont(headline_font)
+            icon_w = p.fontMetrics().horizontalAdvance(row.icon)
+            p.drawText(QRectF(x, 0, icon_w + 1, height), middle, row.icon)
+            p.setFont(number_font)
             p.setPen(row.colour)
-            p.drawText(
-                QRectF(inner.left(), inner.top() + 14, inner.width(), 22), left_align, row.headline
-            )
-            used = p.fontMetrics().horizontalAdvance(row.headline) + 6
-            p.setFont(note_font)
-            p.setPen(INK)
-            note = p.fontMetrics().elidedText(
-                row.note, Qt.TextElideMode.ElideRight, int(inner.width() - used)
-            )
-            p.drawText(
-                QRectF(inner.left() + used, inner.top() + 14, inner.width() - used, 22),
-                left_align,
-                note,
-            )
-            bar = QRectF(inner.left(), inner.bottom() - 4, inner.width(), 4)
-            p.setBrush(TRACK)
-            p.drawRoundedRect(bar, 2, 2)
-            share = min(max(row.share, 0.0), 1.0)
-            if share > 0:
-                p.setBrush(row.colour)
-                p.drawRoundedRect(
-                    QRectF(bar.left(), bar.top(), bar.width() * share, bar.height()), 2, 2
-                )
+            left = x + icon_w + self.ICON_GAP
+            p.drawText(QRectF(left, 0, x + width - left + 1, height), middle, row.headline)
+            self._chips.append(QRectF(x, 0, width, height))
+            x += width + self.GAP
         p.end()
+
+
+_WIDEST = ("100%", "00:00")
+"""Room every chip keeps for its number, so the strip doesn't jiggle as they change."""

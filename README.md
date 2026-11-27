@@ -39,9 +39,10 @@ after ten minutes away he flies over to greet you. Grumpy, he walks off when you
 pointer comes near, ignores your first poke, and sulks with his back to you,
 peeking round now and then to see if you've noticed.
 
-His right-click menu opens with a live panel of all this, as four small cards: his bond, his fullness with his
-odds of getting hungry at the next check, the seeds out, and his escape bar
-(filling towards his first try, then showing his odds at the next). Where he was
+His right-click menu opens with a slim live strip of all this, one coloured
+number each: ♥ his bond, ◐ his fullness, ∴ the seeds out, and ⇥ his escape
+(the time to his first try, then his odds at the next). Hover one for the rest:
+his mood, his odds of getting hungry at the next check, when he next tries. Where he was
 and which way he faced, whether he was caged (and where the cage hung or stood,
 with its dish), his bond, fullness, hunger, seeds and escape progress are all
 remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo` on Windows).
@@ -53,7 +54,7 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
 | Type (anywhere) | Sitting about, he bobs his head along. Only the timing of your input is noticed, never the keys |
 | Stroke the mouse gently back and forth over him | Fluffs up, shuts his eyes and leans into it, with hearts; a happy shake when you stop |
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
-| Right click | Menu: a live panel of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Sounds* on/off, *Quit Zengo* |
+| Right click | Menu: a live strip of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Sounds* on/off, *Quit Zengo* |
 | *Feed Zengo (n/3)* | Pours out a stack of sunflower seeds, his favourite: up to three stacks, the pile filling as you add. He eats one stack whenever he gets hungry; caged, they go in his dish |
 | *Catch Zengo*, then drag a box around him | Caged where he is, and furious about it. Drag the cage: let go near the top and it hangs from a chain, near a side and it sits on a shelf (unless that's too near the floor for one), anywhere else it falls to the ground. Petting him through the bars calms him; *Let Zengo out* opens the door |
 
@@ -150,7 +151,7 @@ src/zengo/
     cage_window.py  the draggable cage, and the chain or shelf under it
     catch_overlay.py the dimmed screen you drag a box on to catch him
     food_window.py  the seed pile's window
-    status_panel.py the live needs panel in his menu
+    status_panel.py the live needs strip in his menu
     state_file.py   the file what he remembers is kept in
     input_idle.py   time since any input, from the system (never the keys)
     desktop_windows.py other apps' windows, for perching on their tops

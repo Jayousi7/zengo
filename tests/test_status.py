@@ -76,5 +76,31 @@ def test_the_panel_draws(ctx):
     assert not panel.grab().isNull()
 
 
+def test_hovering_a_chip_names_it_and_tells_the_rest(ctx):
+    panel = StatusPanel(Brain(ctx, Idle()).status)
+    panel.resize(panel.sizeHint())
+    panel.grab()  # lays the chips out
+    assert panel.row_at(0).title == "Bond ♥"
+    assert panel.row_at(panel.width()).title == "Escape"
+    middles = [panel.row_at(chip.center().x()) for chip in panel._chips]
+    assert [row.title for row in middles] == ["Bond ♥", "Fullness", "Seeds", "Escape"]
+    assert middles[1].value == "80% · not peckish"  # what the tooltip says
+
+
 def test_clock():
     assert clock(0) == "0:00" and clock(65.4) == "1:05" and clock(-3) == "0:00"
+
+
+def test_hovering_the_strip_shows_a_tooltip(ctx):
+    from PySide6.QtCore import QEvent, QPoint
+    from PySide6.QtGui import QHelpEvent
+    from PySide6.QtWidgets import QToolTip
+
+    panel = StatusPanel(Brain(ctx, Idle()).status)
+    panel.resize(panel.sizeHint())
+    panel.show()
+    panel.grab()
+    at = QPoint(round(panel._chips[1].center().x()), 5)
+    assert panel.event(QHelpEvent(QEvent.Type.ToolTip, at, panel.mapToGlobal(at)))
+    assert QToolTip.text() == "Fullness: 80% · not peckish"
+    panel.hide()
