@@ -47,6 +47,34 @@ and which way he faced, whether he was caged (and where the cage hung or stood,
 with its dish), his bond, fullness, hunger, seeds and escape progress are all
 remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo` on Windows).
 
+### Making him yours
+
+- **Settings** (*Settings…* in his menu or the tray): his size (2× to 5×, changed
+  on the spot), sound and volume, how often a branch grows, how fast he gets
+  hungry, starting at login, and *Reset Zengo* to start over (your settings and
+  voice files stay). Kept in `settings.json` beside the state file; command-line
+  flags win over it.
+- **Teach him words** (*Teach Zengo…*): type a word or short phrase and choose
+  when he'll say it: any time, or at a moment (greeting you, asking for food,
+  after a meal, being petted, in the cage, getting free). He cocks his head,
+  listens and tries it back. It takes about five lessons at least an hour apart
+  (fewer the closer he feels to you); until then his tries come out garbled.
+  He keeps up to ten words, forgetting the least used for an eleventh.
+- **His words and sounds are files you can edit**: `phrases.toml` (a list per
+  moment) and `sounds.toml` (each sound built-in or a WAV file), in the same
+  folder. The *Words* and *Sounds* tabs of his settings edit them too. A broken
+  file is reported once and his built-in voice used.
+- **Make him sound like your bird**: *Record…* in the *Sounds* tab records up to
+  three seconds from your microphone (your cockatiel, or you whistling), trims
+  the silence, plays it back, and keeps it as the sound you chose. The
+  microphone is open only while you hold the Record button, and never otherwise.
+- **Tray icon**: his head in the system tray. Click it and he flies to the middle
+  of the screen ("here I am!"); its menu hides him (he flies off the side and
+  waits out of sight) or shows him, feeds him, opens his settings or quits. A
+  dot on it means he needs you: hungry, or caged.
+- **Start at login**: in his menu and settings. On Linux it's
+  `~/.config/autostart/zengo.desktop`; on Windows, the current user's *Run* key.
+
 | Input | Reaction |
 |---|---|
 | Left click | Crest up, startled |
@@ -54,7 +82,8 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
 | Type (anywhere) | Sitting about, he bobs his head along. Only the timing of your input is noticed, never the keys |
 | Stroke the mouse gently back and forth over him | Fluffs up, shuts his eyes and leans into it, with hearts; a happy shake when you stop |
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
-| Right click | Menu: a live strip of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Sounds* on/off, *Quit Zengo* |
+| Right click | Menu: a live strip of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Sounds* on/off, *Start at login*, *Teach Zengo…*, *Settings…*, *Quit Zengo* |
+| Click his tray icon | He flies to the middle of your screen: "here I am!" |
 | *Feed Zengo (n/3)* | Pours out a stack of sunflower seeds, his favourite: up to three stacks, the pile filling as you add. He eats one stack whenever he gets hungry; caged, they go in his dish |
 | *Catch Zengo*, then drag a box around him | Caged where he is, and furious about it. Drag the cage: let go near the top and it hangs from a chain, near a side and it sits on a shelf (unless that's too near the floor for one), anywhere else it falls to the ground. Petting him through the bars calms him; *Let Zengo out* opens the door |
 
@@ -70,7 +99,7 @@ Prebuilt executables for Linux and Windows are attached to each
 python -m venv .venv
 .venv/bin/pip install -e '.[dev]'      # Windows: .venv\Scripts\pip
 .venv/bin/zengo                         # or: python -m zengo
-.venv/bin/zengo --scale 3               # bigger bird
+.venv/bin/zengo --scale 3               # bigger bird (overrides the size in his settings)
 .venv/bin/zengo --sprites art.json      # use hand-drawn frames (see below)
 .venv/bin/zengo --branch-now            # grow a branch straight away
 .venv/bin/zengo --quick                 # short timers: cage escapes in seconds (odds times 1 − bond), hunger every 20 s
@@ -129,9 +158,12 @@ src/zengo/
     food.py         seeds put out for him, and his fullness and hunger
     bond.py         how close he feels to you, and noticing you come back
     status.py       a read-out of his needs, for the menu
+    voice.py        his phrases and sounds, from phrases.toml and sounds.toml
+    vocabulary.py   words you teach him: lessons, garbled tries, forgetting
     memory.py       what he remembers between runs
     machine.py      Brain: runs states, routes mouse input
-  sounds.py         his chirps, whistles, squawks and trills, synthesized
+  settings.py       your settings, laid over config.py, under the command-line flags
+  sounds.py         his chirps, whistles and trills, synthesized
   sprites/
     palette.py      Zengo's colours
     art.py          ASCII pixel-art layers
@@ -155,7 +187,13 @@ src/zengo/
     state_file.py   the file what he remembers is kept in
     input_idle.py   time since any input, from the system (never the keys)
     desktop_windows.py other apps' windows, for perching on their tops
-    sound.py        plays his sounds
+    sound.py        plays his sounds (or your WAV files in their place)
+    settings_window.py the settings window and its General tab
+    voice_tabs.py   the Words and Sounds tabs
+    teach_box.py    the "Teach Zengo…" box
+    recorder.py     recording a sound from the microphone, only while held
+    tray.py         his head in the system tray, and its menu
+    autostart.py    starting at login (freedesktop autostart, Windows Run key)
 ```
 
 Only `ui/` and `app.py` import Qt. Everything else is plain Python and is
