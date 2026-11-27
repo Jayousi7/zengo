@@ -27,6 +27,9 @@ class State:
     grounded: ClassVar[bool] = True
     """Grounded states are kept on the ground line and inside the screen by the brain."""
 
+    effort: ClassVar[float] = 1.0
+    """How hard he's working, as a multiple of resting: how fast he gets hungry."""
+
     def __init__(self) -> None:
         self.elapsed = 0.0
 
@@ -141,6 +144,7 @@ class Walk(State):
     """Waddle to ``target`` (screen x), or to a random nearby spot."""
 
     clip = "walk"
+    effort = 1.6  # waddling
 
     def __init__(self, target: float | None = None, *, then: str | None = None) -> None:
         super().__init__()
@@ -175,6 +179,7 @@ class Follow(State):
     """Walk after the cursor's x position for a while."""
 
     clip = "walk"
+    effort = 1.6  # waddling
     give_up_after: ClassVar[float] = 10.0
     close_enough: ClassVar[float] = 18.0  # art px
 
@@ -227,6 +232,7 @@ class Fly(State):
     """
 
     clip = "fly"
+    effort = 3.0  # flight burns energy
     grounded = False
 
     glide_above: ClassVar[float] = 0.3
@@ -501,6 +507,7 @@ class Sleep(State):
     """
 
     clip = "sleep"
+    effort = 0.4  # hardly anything
     nap_seconds: ClassVar[tuple[float, float]] = (120.0, 300.0)
 
     def go_eat(self, ctx: Context) -> State | None:
@@ -563,6 +570,7 @@ class Petted(State):
     petting stops he gives a happy shake."""
 
     clip = "petted"
+    effort = 0.8  # blissful
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
@@ -586,6 +594,7 @@ class Dragged(State):
     """
 
     clip = "held"
+    effort = 2.0  # struggling
     grounded = False
     protest_hold: ClassVar[float] = 0.4
     """Seconds he keeps flapping after the movement that set him off."""
@@ -627,6 +636,7 @@ class Fall(State):
     """
 
     clip = "flutter"
+    effort = 2.0  # flapping hard
     grounded = False
     recover_after: ClassVar[tuple[float, float]] = (0.25, 1.0)
     """Flaps at least this long, and once falling, at most this long, before gliding."""
@@ -676,6 +686,7 @@ class Glide(State):
     """
 
     clip = "glide"
+    effort = 1.5  # coasting
     grounded = False
     flare_from: ClassVar[float] = 0.85
     min_duration: ClassVar[float] = 0.6
@@ -775,6 +786,10 @@ class OnBranch(State):
     @property
     def holds_branch(self) -> bool:
         return True
+
+    @property
+    def effort(self) -> float:  # type: ignore[override]
+        return 0.4 if getattr(self, "doing", "") == "sleep" else 1.0
 
     def go_eat(self, ctx: Context) -> State | None:
         return go_to_food(ctx)
@@ -895,6 +910,11 @@ class Caged(State):
             self.anger = 0.0
         return None
 
+    @property
+    def effort(self) -> float:  # type: ignore[override]
+        doing = getattr(self, "doing", "")
+        return {"angry": 1.5, "escape": 1.5, "sleep": 0.4}.get(doing, 1.0)
+
     def go_eat(self, ctx: Context) -> State | None:
         return None  # only his dish counts in here, and he sees to that himself
 
@@ -954,7 +974,8 @@ class Caged(State):
                 self.next_seed += SECONDS_PER_SEED
                 if dish.take_seed():
                     self.to_eat -= 1
-                if self.to_eat <= 0 or dish.seeds <= 0:
+                    hunger.ate_seed(ctx)
+                if self.to_eat <= 0 or dish.seeds <= 0 or hunger.full:
                     hunger.fed()
                     ctx.say("yum! ♥", 1.8, mood="love")
                     self._do(ctx, "fluff")
@@ -1035,8 +1056,9 @@ def go_to_food(ctx: Context) -> State:
 
 
 class Eat(State):
-    """Hungry, he pecks up one stack of seeds one by one, cracking each open, and
-    then he's had enough and is very pleased with himself."""
+    """Hungry, he pecks up seeds one by one, cracking each open, each filling him
+    up a little: a meal is one stack, or less if he's full first. Then he's very
+    pleased with himself."""
 
     clip = "eat"
 
@@ -1063,7 +1085,8 @@ class Eat(State):
         self.next_seed += SECONDS_PER_SEED
         if food.pile.take_seed():
             self.to_eat -= 1
-        if self.to_eat > 0 and food.pile.seeds > 0:
+            ctx.hunger.ate_seed(ctx)
+        if self.to_eat > 0 and food.pile.seeds > 0 and not ctx.hunger.full:
             return None
         ctx.hunger.fed()
         ctx.say("yum! ♥", 1.8, mood="love")

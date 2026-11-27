@@ -1,12 +1,21 @@
 """Seeds, stacks, hunger, and asking for food."""
 
-from dataclasses import replace
 
 import pytest
 
-from zengo.behavior.food import STAND_OFF, Pile
+from zengo.behavior.food import STAND_OFF, Pile, hunger_chance
 from zengo.behavior.machine import Brain
-from zengo.behavior.states import Ask, Caged, Eat, Fall, Fly, Idle, OnBranch, Sleep
+from zengo.behavior.states import (
+    Ask,
+    Caged,
+    Eat,
+    Fall,
+    Fly,
+    FrontIdle,
+    Idle,
+    OnBranch,
+    Sleep,
+)
 from zengo.sprites.food import MAX_SEEDS, MAX_STACKS, SEEDS_PER_STACK
 
 DT = 1 / 30
@@ -27,6 +36,7 @@ def run_until(brain: Brain, kind: type, limit: float = 60.0) -> None:
 
 def make_hungry(ctx):
     ctx.hunger.hungry = True
+    ctx.hunger.fullness = 0.0
     ctx.hunger._ask_in = 0.0
 
 
@@ -80,20 +90,63 @@ def test_not_hungry_he_leaves_the_seeds_for_later(ctx):
     assert ctx.food.pile.seeds == SEEDS_PER_STACK
 
 
-def test_every_five_minutes_there_is_an_even_chance_he_gets_hungry(ctx):
-    ctx.config = replace(ctx.config, hunger_chance=1.0)
+def test_fullness_drains_with_time(ctx):
+    ctx.hunger.fullness = 1.0
+    for _ in range(round(60 / DT)):
+        ctx.hunger.update(ctx, DT, effort=1.0)  # a minute at rest
+    assert ctx.hunger.fullness == pytest.approx(1 - ctx.config.hunger_drain, abs=0.002)
+
+
+@pytest.mark.parametrize(
+    ("busy", "faster_than_resting"),
+    [(lambda ctx: Fly.tour(ctx), True), (lambda ctx: Sleep(), False)],
+)
+def test_activity_drains_him_faster_and_sleep_slower(ctx, world, busy, faster_than_resting):
+    world.hour = 2  # so a nap stays a nap
+    ctx.hunger.fullness = 1.0
+    brain = Brain(ctx, FrontIdle())
+    run(brain, 3)
+    resting = 1.0 - ctx.hunger.fullness
+    ctx.hunger.fullness = 1.0
+    brain.transition(busy(ctx))
+    run(brain, 3)
+    busy_drain = 1.0 - ctx.hunger.fullness
+    assert (busy_drain > 1.5 * resting) if faster_than_resting else (busy_drain < 0.6 * resting)
+
+
+def test_the_odds_of_getting_hungry_follow_how_full_he_is(ctx):
+    cfg = ctx.config
+    assert hunger_chance(cfg, 1.0) == 0
+    assert hunger_chance(cfg, cfg.peckish_below) == 0  # well fed: never
+    half, low = hunger_chance(cfg, 0.5), hunger_chance(cfg, 0.2)
+    assert 0 < half < low < 1  # likelier the emptier he is
+    assert hunger_chance(cfg, 0.0) == 1  # empty: certain
+
+
+def test_well_fed_he_never_gets_hungry(ctx):
+    ctx.hunger.fullness = 1.0
     brain = Brain(ctx, Idle())
-    run(brain, ctx.config.hunger_every - 1)
+    run(brain, 4 * 60)  # still above peckish
     assert not ctx.hunger.hungry
-    run(brain, 2)
+
+
+def test_empty_he_gets_hungry_at_the_next_check(ctx):
+    ctx.hunger.fullness = 0.0
+    brain = Brain(ctx, Idle())
+    run(brain, ctx.config.hunger_check_every + 1)
     assert ctx.hunger.hungry
 
 
-def test_some_five_minute_marks_pass_without_hunger(ctx):
-    ctx.config = replace(ctx.config, hunger_chance=0.0)
+def test_a_meal_fills_him_up_and_stops_when_he_is_full(ctx):
     brain = Brain(ctx, Idle())
-    run(brain, ctx.config.hunger_every * 3)
-    assert not ctx.hunger.hungry
+    brain.feed()
+    run(brain, 1)
+    make_hungry(ctx)
+    ctx.hunger.fullness = 0.9  # nearly full already
+    run_until(brain, Eat, limit=10)
+    run_until(brain, Idle, limit=SEEDS_PER_STACK * 1.2 + 3)
+    assert ctx.hunger.fullness > 0.99
+    assert 0 < ctx.food.pile.seeds < SEEDS_PER_STACK  # he stopped part way through
 
 
 def test_hungry_he_eats_one_stack_and_leaves_the_rest(ctx):

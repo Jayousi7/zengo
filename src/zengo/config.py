@@ -114,9 +114,17 @@ class Config:
     ``escape_chance`` at the first try, ``escape_chance_rise`` more each try after,
     less ``escape_feed_penalty`` for every time he's been fed in the cage."""
 
-    hunger_every: float = 300.0
-    hunger_chance: float = 0.5
-    """Every ``hunger_every`` seconds, the chance he gets hungry and eats a stack."""
+    hunger_drain: float = 0.06
+    """Share of a full stomach used up a minute at rest. Activity multiplies it (see
+    ``State.effort``): from full, about 5 minutes resting to peckish, 17 to empty."""
+
+    hunger_check_every: float = 30.0
+    peckish_below: float = 0.7
+    """Every ``hunger_check_every`` seconds he may get hungry: never above
+    ``peckish_below`` full, then likelier the emptier he is, certain at empty."""
+
+    seed_fill: float = 0.06
+    """How much fuller each seed makes him: a stack of eight, about half a stomach."""
 
     nag_every: float = 120.0
     """Hungry with nothing to eat, how often he asks you for food."""
@@ -146,7 +154,7 @@ class Config:
 
 def quick(config: Config) -> Config:
     """Timers shortened for trying things out: he escapes a cage within seconds,
-    and gets hungry every 20 s at the usual 50%."""
+    and gets hungry ten times as fast."""
     from dataclasses import replace
 
     return replace(
@@ -154,6 +162,7 @@ def quick(config: Config) -> Config:
         escape_after=5.0,
         escape_every=5.0,
         escape_chance=1.0,
-        hunger_every=20.0,
+        hunger_drain=0.6,
+        hunger_check_every=5.0,
         nag_every=20.0,
     )

@@ -2,8 +2,9 @@
 
 Seeds are put out a stack at a time, at most three stacks, in a pile on the
 ground or in the dish on his cage's tray. He doesn't just eat whatever is put
-down: every few minutes he may get hungry, and then he eats one stack. With
-nothing put out, he comes and asks for some.
+down: he eats when he's hungry, and how likely that is follows how full he is,
+which drains with time and activity (see :class:`Hunger`). A meal is up to one
+stack. With nothing put out, he comes and asks for some.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from zengo.sprites.food import MAX_SEEDS, PILE_WIDTH, SEEDS_PER_STACK
 
 if TYPE_CHECKING:
     from zengo.behavior.context import Context
+    from zengo.config import Config
 
 PECK_REACH = 16
 """Art px from his anchor to the tip of his beak when he pecks at the ground."""
@@ -80,26 +82,42 @@ class Food:
 
 @dataclass
 class Hunger:
-    """Every ``hunger_every`` seconds, a ``hunger_chance`` he gets hungry. Hungry, he
-    stays hungry until he's eaten a stack; with nothing to eat he asks for food,
-    and asks again every ``nag_every`` seconds until fed."""
+    """How full he is, and whether he's hungry.
 
+    ``fullness`` runs from 1 (stuffed) to 0 (empty). It drains with time, faster
+    the harder he's working (see ``State.effort``): flying burns far more than
+    sitting, sleeping hardly anything. Every seed he eats tops it up.
+
+    Getting hungry is still a matter of chance, but the chance follows the
+    meter: every ``hunger_check_every`` seconds he may get hungry, never while
+    he's well fed, more and more likely as he empties, certain at empty (see
+    :func:`hunger_chance`). Hungry, he stays so until he's had a meal; with
+    nothing to eat he asks for food, and asks again every ``nag_every`` seconds.
+    """
+
+    fullness: float = 0.8
     hungry: bool = False
-    _roll_in: float | None = None
+    _check_in: float | None = None
     _ask_in: float = 0.0
 
-    def update(self, ctx: Context, dt: float) -> None:
+    def update(self, ctx: Context, dt: float, effort: float = 1.0) -> None:
         cfg = ctx.config
-        if self._roll_in is None:
-            self._roll_in = cfg.hunger_every
+        self.fullness = max(0.0, self.fullness - cfg.hunger_drain / 60 * effort * dt)
         if self.hungry:
             self._ask_in -= dt
             return
-        self._roll_in -= dt
-        if self._roll_in <= 0:
-            self._roll_in += cfg.hunger_every
-            if ctx.rng.random() < cfg.hunger_chance:
+        if self._check_in is None:
+            self._check_in = cfg.hunger_check_every
+        self._check_in -= dt
+        if self._check_in <= 0:
+            self._check_in += cfg.hunger_check_every
+            if ctx.rng.random() < hunger_chance(cfg, self.fullness):
                 self.hungry, self._ask_in = True, 0.0
+
+    @property
+    def check_in(self) -> float:
+        """Seconds to the next time he may get hungry."""
+        return max(0.0, self._check_in or 0.0)
 
     @property
     def wants_to_ask(self) -> bool:
@@ -108,5 +126,21 @@ class Hunger:
     def asked(self, ctx: Context) -> None:
         self._ask_in = ctx.config.nag_every
 
+    def ate_seed(self, ctx: Context) -> None:
+        self.fullness = min(1.0, self.fullness + ctx.config.seed_fill)
+
+    @property
+    def full(self) -> bool:
+        return self.fullness >= 0.999
+
     def fed(self) -> None:
+        """The meal's over."""
         self.hungry = False
+
+
+def hunger_chance(cfg: Config, fullness: float) -> float:
+    """Odds he gets hungry at a check: none above ``peckish_below``, then rising
+    ever faster as he empties, up to certain when he's empty."""
+    if fullness >= cfg.peckish_below:
+        return 0.0
+    return min(1.0, ((cfg.peckish_below - fullness) / cfg.peckish_below) ** 2)

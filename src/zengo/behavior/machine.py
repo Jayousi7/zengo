@@ -41,7 +41,7 @@ class Brain:
             self.transition(following)
         if (following := self._state.update(ctx, dt)) is not None:
             self.transition(following)
-        ctx.hunger.update(ctx, dt)
+        ctx.hunger.update(ctx, dt, self._state.effort)
         if ctx.food is not None:
             ctx.food.pile.update(dt)
         self._mind_the_food()
