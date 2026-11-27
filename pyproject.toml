@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zengo"
-version = "0.3.1"
+version = "0.4.0"
 description = "Desktop pet: Zengo, a cinnamon white-face cockatiel."
 readme = "README.md"
 license = "MIT"
