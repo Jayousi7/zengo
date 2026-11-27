@@ -54,6 +54,22 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.WING_FOLDED,
         *_shifted(-1, 2, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED),
     ),
+    "held": (art.LEGS_DANGLE, art.BODY, art.WING_HALF, art.HEAD, art.CREST_RAISED),
+    # Feathers puffed and the head shaken side to side, settling after a landing.
+    "shake_a": (
+        art.LEGS,
+        art.BODY,
+        art.PUFF,
+        art.WING_FOLDED,
+        *_shifted(-1, 0, art.HEAD, art.CREST_RAISED),
+    ),
+    "shake_b": (
+        art.LEGS,
+        art.BODY,
+        art.PUFF,
+        art.WING_FOLDED,
+        *_shifted(1, 0, art.HEAD, art.CREST_RAISED),
+    ),
     # The downstroke lifts the body a pixel.
     "wings_up": (art.FLIGHT_BODY, art.WING_UP, *_FLYING_HEAD),
     "wings_level": (art.FLIGHT_BODY, art.WING_LEVEL, *_FLYING_HEAD),

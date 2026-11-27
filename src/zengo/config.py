@@ -20,6 +20,25 @@ class Config:
     max_fall_speed: float = 140.0
     """Fluttering caps the fall speed; Zengo never drops like a stone."""
 
+    drag_stiffness: float = 140.0
+    """Spring constant (1/s²) pulling a held Zengo towards the cursor. With gravity
+    it lets him sag a few pixels and swing as he is moved."""
+
+    drag_damping: float = 12.0
+    """Damping (1/s) on that spring: low enough to swing, high enough to settle."""
+
+    struggle_speed: float = 120.0
+    """Moved faster than this while held, Zengo flaps in protest."""
+
+    max_throw_speed: float = 400.0
+    """Fastest a throw can send him; a wild fling of the mouse shouldn't turn him into a missile."""
+
+    air_drag: float = 1.5
+    """Rate (1/s) at which a thrown Zengo loses horizontal speed."""
+
+    glide_speed: float = 90.0
+    """Speed of the glide that brings him down after being dropped or thrown."""
+
     idle_seconds: tuple[float, float] = (3.0, 9.0)
     """How long Zengo idles before choosing something else to do."""
 

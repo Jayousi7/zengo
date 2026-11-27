@@ -236,29 +236,142 @@ class Sleep(State):
         return Idle() if ctx.world.user_idle_seconds() < 1.0 else None
 
 
+class Shake(_OneShot):
+    """A feather ruffle to settle down after landing from a drop or a throw."""
+
+    clip = "shake"
+
+
 class Dragged(State):
-    """Held by the mouse. Position is driven by the brain's drag handler."""
+    """Held by the mouse, hanging from the grab point on a damped spring.
 
-    clip = "flutter"
+    ``target`` is where the grab point wants the body to be; the brain moves it as
+    the mouse moves. The spring and gravity make Zengo lag behind, sag a little
+    and swing, so he feels like he has weight. Moved fast, he flaps in protest.
+    """
+
+    clip = "held"
     grounded = False
+    protest_hold: ClassVar[float] = 0.4
+    """Seconds he keeps flapping after the movement that set him off."""
 
-
-class Fall(State):
-    """Dropped: flutter down under gravity until reaching the ground."""
-
-    clip = "flutter"
-    grounded = False
+    def __init__(self, target: tuple[float, float]) -> None:
+        super().__init__()
+        self.target = target
+        self.protesting = 0.0
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
-        ctx.body.vy = 0.0
+        ctx.body.vx = ctx.body.vy = 0.0
 
     def step(self, ctx: Context, dt: float) -> State | None:
-        ground = ctx.area().bottom
-        cfg = ctx.config
-        ctx.body.vy = min(ctx.body.vy + cfg.px(cfg.gravity) * dt, cfg.px(cfg.max_fall_speed))
-        ctx.body.y += ctx.body.vy * dt
-        if ctx.body.y < ground:
+        cfg, body = ctx.config, ctx.body
+        (tx, ty), k, c = self.target, cfg.drag_stiffness, cfg.drag_damping
+        body.vx += (k * (tx - body.x) - c * body.vx) * dt
+        body.vy += (k * (ty - body.y) - c * body.vy + cfg.px(cfg.gravity)) * dt
+        body.x += body.vx * dt
+        body.y += body.vy * dt
+        if abs(body.vx) > cfg.px(10):
+            body.face_towards(body.x + body.vx)
+
+        if math.hypot(body.vx, body.vy) > cfg.px(cfg.struggle_speed):
+            self.protesting = self.protest_hold
+        else:
+            self.protesting = max(0.0, self.protesting - dt)
+        ctx.animator.play("flutter" if self.protesting else "held")
+        return None
+
+
+class Fall(State):
+    """Let go: carried by whatever speed the drag gave him, flapping, then he
+    catches the air and glides in. Dropped close to the ground, he just flutters down.
+    """
+
+    clip = "flutter"
+    grounded = False
+    recover_after: ClassVar[tuple[float, float]] = (0.25, 1.0)
+    """Flaps at least this long, and once falling, at most this long, before gliding."""
+    low_drop: ClassVar[float] = 25.0
+    """Art pixels above the ground below which there's no room to glide."""
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        body, limit = ctx.body, ctx.config.px(ctx.config.max_throw_speed)
+        speed = math.hypot(body.vx, body.vy)
+        if speed > limit:
+            body.vx, body.vy = body.vx * limit / speed, body.vy * limit / speed
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        cfg, body, area = ctx.config, ctx.body, ctx.area()
+        body.vx *= math.exp(-cfg.air_drag * dt)
+        body.vy = min(body.vy + cfg.px(cfg.gravity) * dt, cfg.px(cfg.max_fall_speed))
+        body.x += body.vx * dt
+        body.y += body.vy * dt
+
+        lo, hi = area.left + ctx.margin, area.right - ctx.margin
+        if not lo <= body.x <= hi:  # bounce softly off the screen's sides
+            body.x = min(max(body.x, lo), hi)
+            body.vx *= -0.4
+        if body.y < area.top + cfg.px(30):
+            body.y, body.vy = area.top + cfg.px(30), max(body.vy, 0.0)
+
+        if body.y >= area.bottom:
+            body.y, body.vx, body.vy = area.bottom, 0.0, 0.0
+            return Shake()
+        if area.bottom - body.y < cfg.px(self.low_drop):
             return None
-        ctx.body.y, ctx.body.vy = ground, 0.0
-        return Alert()
+        earliest, latest = self.recover_after
+        if self.elapsed >= latest or (self.elapsed >= earliest and body.vy >= 0):
+            return Glide.from_fall(ctx)
+        return None
+
+
+class Glide(State):
+    """Glide down from mid-air to land at ``target`` (screen x) on the ground.
+
+    The descent is steep at first and flattens out, so he comes in shallow, and
+    the wings flare for the last stretch.
+    """
+
+    clip = "glide"
+    grounded = False
+    flare_from: ClassVar[float] = 0.85
+    min_duration: ClassVar[float] = 0.6
+
+    def __init__(self, target: float) -> None:
+        super().__init__()
+        self.target = target
+
+    @classmethod
+    def from_fall(cls, ctx: Context) -> Glide:
+        """Glide onwards in the direction he was moving, far enough to look like a
+        glide rather than a drop; turn back if the screen edge is in the way."""
+        body, area = ctx.body, ctx.area()
+        height = area.bottom - body.y
+        direction = 1 if body.vx > 0 else -1 if body.vx < 0 else int(body.facing)
+        run = max(abs(body.vx) * 0.8, 0.8 * height)
+        target = area.clamp_x(body.x + direction * run, ctx.margin)
+        if abs(target - body.x) < run / 2:
+            target = area.clamp_x(body.x - direction * run, ctx.margin)
+        return cls(target)
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        cfg, body = ctx.config, ctx.body
+        self.start = (body.x, body.y)
+        self.end = (self.target, ctx.area().bottom)
+        distance = math.dist(self.start, self.end)
+        self.duration = max(self.min_duration, distance / cfg.px(cfg.glide_speed))
+        body.vx = body.vy = 0.0
+        body.face_towards(self.target)
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        p = min(self.elapsed / self.duration, 1.0)
+        (x0, y0), (x1, y1) = self.start, self.end
+        ctx.body.x = x0 + (x1 - x0) * p
+        ctx.body.y = y0 + (y1 - y0) * math.sin(math.pi / 2 * p)
+        if p >= 1.0:
+            ctx.body.y = y1
+            return Shake()
+        ctx.animator.play("glide" if p < self.flare_from else "flare")
+        return None

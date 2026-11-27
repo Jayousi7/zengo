@@ -41,20 +41,22 @@ class Brain:
     # --- Input -------------------------------------------------------------
 
     def click(self) -> None:
-        if not isinstance(self._state, Dragged | Fall):
+        """A poke startles him, but only when he's settled: not mid-air or held."""
+        if self._state.grounded:
             self.transition(Alert())
 
     def grab(self, x: float, y: float) -> None:
         """Mouse pressed on Zengo at screen ``(x, y)`` and started moving."""
-        self._grab_offset = (self.ctx.body.x - x, self.ctx.body.y - y)
-        self.transition(Dragged())
+        body = self.ctx.body
+        self._grab_offset = (body.x - x, body.y - y)
+        self.transition(Dragged(target=(body.x, body.y)))
 
     def drag(self, x: float, y: float) -> None:
         if isinstance(self._state, Dragged):
             dx, dy = self._grab_offset
-            self.ctx.body.x, self.ctx.body.y = x + dx, y + dy
-            self.ctx.body.face_towards(x)
+            self._state.target = (x + dx, y + dy)
 
     def release(self) -> None:
+        """Let go: he keeps the speed the drag gave him (see :class:`Fall`)."""
         if isinstance(self._state, Dragged):
             self.transition(Fall())

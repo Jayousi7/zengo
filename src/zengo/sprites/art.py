@@ -177,6 +177,36 @@ PUFF = _layer(
 )
 
 
+# --- Held and shaking -----------------------------------------------------
+# Picked up: legs hang free and the near wing lifts half open.
+
+LEGS_DANGLE = _layer(
+    """
+    .F..F
+    .F..F
+    .FF.FF
+    """,
+    x=28,
+    y=27,
+)
+
+WING_HALF = _layer(
+    """
+    D.D
+    SDDD
+    .SDDDD
+    ..SDDDDD
+    ...SDDDDCC
+    .....SDDCCCCP
+    .......SDCCCCPPP
+    .........SCCCCPPPP
+    ...........SSCCCPPP
+    ..............SSCPP
+    """,
+    x=13,
+    y=8,
+)
+
 # --- Flying ----------------------------------------------------------------
 # Stretched level with the legs hanging, so the feet are on the ground row at
 # takeoff and landing. The wing is long, joins just behind the head and ends in

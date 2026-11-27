@@ -24,6 +24,7 @@ class Body:
     x: float
     y: float
     facing: Facing = Facing.RIGHT
+    vx: float = 0.0
     vy: float = 0.0
 
     def face_towards(self, x: float) -> None:

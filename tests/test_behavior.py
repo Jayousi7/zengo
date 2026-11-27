@@ -8,8 +8,10 @@ from zengo.behavior.states import (
     Dragged,
     Fall,
     Fly,
+    Glide,
     Idle,
     Preen,
+    Shake,
     Sleep,
     Walk,
     flight_profile,
@@ -75,27 +77,109 @@ def test_click_startles_then_settles(ctx):
     run_until(brain, Idle, limit=5)
 
 
-def test_drag_moves_body_then_drop_falls_to_ground(ctx):
-    brain = Brain(ctx)
+def pick_up(ctx, brain: Brain, dx: float, dy: float, settle: float = 3.0):
+    """Grab Zengo by the back, move the mouse by (dx, dy) and hold still."""
     grab_x, grab_y = ctx.body.x, ctx.body.y - 30
     brain.grab(grab_x, grab_y)
+    brain.drag(grab_x + dx, grab_y + dy)
+    run(brain, settle)
+    return ctx.body.x - dx, ctx.body.y - dy  # where the body was picked up from, plus sag
+
+
+def test_held_pet_lags_behind_the_mouse_then_hangs_below_it(ctx):
+    brain = Brain(ctx)
+    start = (ctx.body.x, ctx.body.y)
+    brain.grab(start[0], start[1] - 30)
     assert isinstance(brain.state, Dragged)
+    brain.drag(start[0] + 200, start[1] - 30 - 400)
 
-    brain.drag(grab_x + 200, grab_y - 400)
     brain.tick(DT)
-    assert (ctx.body.x, ctx.body.y) == (grab_x + 200, ctx.world.area.bottom - 400)
+    assert 0 < ctx.body.x - start[0] < 200  # on his way, not teleported
 
+    run(brain, 3)
+    assert ctx.body.x == pytest.approx(start[0] + 200, abs=1)
+    sag = ctx.body.y - (start[1] - 400)
+    assert 0 < sag < ctx.config.px(6)  # hangs a little below the grab point
+
+
+def test_moving_him_fast_makes_him_flap_holding_still_calms_him(ctx):
+    brain = Brain(ctx)
+    brain.grab(ctx.body.x, ctx.body.y - 30)
+    brain.drag(ctx.body.x + 300, ctx.body.y - 330)
+    run(brain, 0.2)
+    assert ctx.animator.clip_name == "flutter"
+    run(brain, 3)
+    assert ctx.animator.clip_name == "held"
+
+
+def test_drop_from_height_glides_down_and_shakes_it_off(ctx):
+    brain = Brain(ctx)
+    pick_up(ctx, brain, 0, -400)
     brain.release()
     assert isinstance(brain.state, Fall)
-    run_until(brain, Alert, limit=10)
+    run_until(brain, Glide, limit=2)
+    run_until(brain, Shake, limit=10)
     assert ctx.body.y == ctx.world.area.bottom
+    run_until(brain, Idle, limit=3)
 
 
-def test_clicks_are_ignored_while_held(ctx):
+def test_low_drop_flutters_straight_down_without_gliding(ctx):
+    brain = Brain(ctx)
+    pick_up(ctx, brain, 0, -ctx.config.px(12))
+    x = ctx.body.x
+    brain.release()
+    for _ in range(round(3 / DT)):
+        brain.tick(DT)
+        assert not isinstance(brain.state, Glide)
+        if isinstance(brain.state, Shake):
+            break
+    assert ctx.body.y == ctx.world.area.bottom
+    assert ctx.body.x == pytest.approx(x, abs=1)
+
+
+def fling(ctx, brain: Brain, cursor: tuple[float, float], dx: float, seconds: float = 0.1):
+    """Sweep the mouse sideways by ``dx`` over ``seconds``, then let go."""
+    steps = round(seconds / DT)
+    x, y = cursor
+    for i in range(1, steps + 1):
+        brain.drag(x + dx * i / steps, y)
+        brain.tick(DT)
+    brain.release()
+
+
+def test_throw_carries_him_onwards(ctx):
+    brain = Brain(ctx)
+    pick_up(ctx, brain, -300, -300)
+    release_x = ctx.body.x
+    fling(ctx, brain, cursor=(ctx.body.x, ctx.body.y - 30), dx=150)
+    assert isinstance(brain.state, Fall)
+    assert ctx.body.vx > 0
+    run_until(brain, Shake, limit=10)
+    assert ctx.body.x > release_x + 150
+    assert ctx.body.x <= ctx.world.area.right - ctx.margin
+
+
+def test_wild_fling_is_capped_and_stays_on_screen(ctx):
+    brain = Brain(ctx)
+    pick_up(ctx, brain, -600, -300)
+    fling(ctx, brain, cursor=(ctx.body.x, ctx.body.y - 30), dx=-3000)
+    speed_limit = ctx.config.px(ctx.config.max_throw_speed)
+    brain.tick(DT)
+    assert abs(ctx.body.vx) <= speed_limit
+    run_until(brain, Shake, limit=10)
+    assert ctx.world.area.left + ctx.margin <= ctx.body.x
+
+
+def test_clicks_are_ignored_while_held_or_airborne(ctx):
     brain = Brain(ctx)
     brain.grab(ctx.body.x, ctx.body.y)
     brain.click()
     assert isinstance(brain.state, Dragged)
+
+    brain = Brain(ctx, Fly())
+    run(brain, 0.3)
+    brain.click()
+    assert isinstance(brain.state, Fly)
 
 
 def test_sleepy_after_user_inactivity(ctx, world):

@@ -9,7 +9,7 @@ cursor, and falls asleep when you're away or late at night.
 | Input | Reaction |
 |---|---|
 | Left click | Crest up, startled |
-| Left drag | Picked up, flutters; let go and Zengo flutters down |
+| Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
 | Right click | Menu with *Quit Zengo* |
 
 ## Download
@@ -115,7 +115,7 @@ LibreSprite), draw on a 44x36 canvas facing right, with the feet's lowest
 pixel on row 29 and the gap between the feet on column 31 (zero-based). Name
 each frame after the one it replaces (`perch`, `blink`, `alert`, `step_back`,
 `step_front`, `preen_a`, `preen_b`, `sleep`, `wings_up`, `wings_level`,
-`wings_down`, `wings_recover`) and export a sprite sheet with JSON data, hash or array layout.
+`wings_down`, `wings_recover`, `held`, `shake_a`, `shake_b`) and export a sprite sheet with JSON data, hash or array layout.
 Frames not in the sheet keep the built-in art. Run with
 `zengo --sprites sheet.json`. Draw your own outline here; generated outlines
 only apply to the built-in art.

@@ -21,4 +21,11 @@ CLIPS: dict[str, Clip] = {
     "glide": Clip(("wings_level",), (1.0,)),
     "flare": Clip(("wings_up",), (1.0,)),
     "flutter": Clip.even("wings_up", "wings_level", "wings_down", "wings_recover", fps=13),
+    "held": Clip(("held",), (1.0,)),
+    # A quick ruffle after landing, then settle.
+    "shake": Clip(
+        ("shake_a", "shake_b") * 3 + ("perch",),
+        (0.07,) * 6 + (0.25,),
+        loop=False,
+    ),
 }

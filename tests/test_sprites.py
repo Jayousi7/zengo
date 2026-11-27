@@ -36,7 +36,8 @@ def test_grounded_frames_stand_on_ground_row():
     from zengo.sprites.palette import PALETTE
 
     feet = {PALETTE["F"]}
-    for name in ("perch", "blink", "alert", "step_back", "step_front", "preen_a", "sleep"):
+    grounded = ("perch", "blink", "alert", "step_back", "step_front", "preen_a", "sleep", "shake_a")
+    for name in (*grounded, "shake_b"):
         frame = FRAMES[name]
         lowest = max(
             y for y in range(frame.height) for x in range(frame.width) if frame.pixel(x, y) in feet
