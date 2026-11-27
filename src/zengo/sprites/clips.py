@@ -1,6 +1,7 @@
 """The animation catalogue. Every frame named here must exist in ``FRAME_LAYERS``."""
 
 from zengo.animation import Clip
+from zengo.sprites.frames import LEDGE_LAYERS
 
 # Hanging from the cursor: long, irregular holds between small fidgets (a blink,
 # a kick of the feet, a look down, a wing flick), so the ~7 s loop never reads as
@@ -171,3 +172,15 @@ CLIPS.update(FRONT_CLIPS)
 CLIPS.update({name.replace("front_", "branch_"): _on_branch(c) for name, c in FRONT_CLIPS.items()})
 # Turning round on the ground: a glimpse of his front, played over whatever he's doing.
 CLIPS["ground_turn"] = Clip(("front_perch",), (0.18,), loop=False)
+
+
+def _on_ledge(clip: Clip) -> Clip:
+    """The same clip sitting on something thin: frames with the tail angled down."""
+    names = tuple(n if f"ledge_{n}" not in LEDGE_LAYERS else f"ledge_{n}" for n in clip.frames)
+    return Clip(names, clip.durations, clip.loop)
+
+
+LEDGE_CLIPS = ("idle", "preen", "shake", "sleep", "alert", "whistle", "petted", "bob", "grip")
+"""Side-on clips he plays sitting on your pointer or a window: each has a ``ledge_``
+version with his tail hanging down past the perch."""
+CLIPS.update({f"ledge_{name}": _on_ledge(CLIPS[name]) for name in LEDGE_CLIPS})

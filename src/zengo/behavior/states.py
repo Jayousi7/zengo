@@ -567,7 +567,7 @@ class CursorPerch(State):
     down). Left alone, he flies back down to the ground after a while.
     """
 
-    clip = "idle"
+    clip = "ledge_idle"  # side-on, tail hanging down past the pointer
     grounded = False
     stay: ClassVar[tuple[float, float]] = (6.0, 20.0)
     startle_hop: ClassVar[float] = 60.0
@@ -1022,16 +1022,17 @@ class OnWindow(_Perched):
     another window over where he sits, and he startles and flutters down.
     """
 
-    clip = "idle"
+    # Side-on, with his tail hanging down over the window's edge.
+    clip = "ledge_idle"
     clips: ClassVar[dict[str, str]] = {
-        "sit": "idle",
-        "preen": "preen",
-        "fluff": "shake",
-        "sleep": "sleep",
-        "alert": "alert",
-        "whistle": "whistle",
-        "petted": "petted",
-        "bob": "bob",
+        "sit": "ledge_idle",
+        "preen": "ledge_preen",
+        "fluff": "ledge_shake",
+        "sleep": "ledge_sleep",
+        "alert": "ledge_alert",
+        "whistle": "ledge_whistle",
+        "petted": "ledge_petted",
+        "bob": "ledge_bob",
     }
 
     def __init__(self, window: int, offset: float, *, settle_in: bool = False) -> None:
@@ -1085,7 +1086,7 @@ class OnWindow(_Perched):
             if was == "sleep":  # woken by the ride
                 self._do(ctx, "alert")
             elif self.doing != "petted":
-                ctx.animator.interject("grip")  # crest up, a wing out for balance
+                ctx.animator.interject("ledge_grip")  # crest up, a wing out for balance
         return following
 
     def fly_off(self, ctx: Context) -> State:

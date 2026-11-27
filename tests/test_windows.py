@@ -68,7 +68,13 @@ def test_he_flies_up_and_sits_on_a_window_top(ctx, world):
     perch(ctx, world, brain)
     assert ctx.body.y == 500
     assert 600 <= ctx.body.x <= 1200
-    assert ctx.animator.frame in ("perch", "blink", "shake_a", "shake_b")
+    assert ctx.animator.frame in (
+        "ledge_perch",
+        "ledge_blink",
+        "ledge_shake_a",
+        "ledge_shake_mid",
+        "ledge_shake_b",
+    )
 
 
 def test_he_rides_along_when_the_window_moves(ctx, world):
@@ -90,9 +96,9 @@ def test_between_window_list_reads_he_rides_on_a_fresh_read_and_keeps_his_balanc
     brain.tick(DT)
     assert isinstance(brain.state, OnWindow)
     assert (ctx.body.x, ctx.body.y) == (pytest.approx(x + 50), 480)
-    assert ctx.animator.frame == "grip"
+    assert ctx.animator.frame == "ledge_grip"
     run(brain, 0.5)  # the window has stopped
-    assert ctx.animator.frame != "grip"
+    assert ctx.animator.frame != "ledge_grip"
 
 
 def test_a_ride_wakes_him(ctx, world):
@@ -161,7 +167,7 @@ def test_up_there_he_still_does_what_he_does(ctx, world):
     perch(ctx, world, brain)
     brain.double_click()
     brain.tick(DT)
-    assert ctx.animator.clip_name == "whistle" and isinstance(brain.state, OnWindow)
+    assert ctx.animator.clip_name == "ledge_whistle" and isinstance(brain.state, OnWindow)
 
 
 def test_after_a_while_he_flies_off(ctx, world):

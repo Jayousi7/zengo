@@ -60,3 +60,11 @@ def test_no_part_is_cut_off_by_a_slit():
                 )
                 run = run + 1 if slit else 0
                 assert run < 3, f"{name}: slit through row {y} at column {x}"
+
+
+def test_sitting_on_something_thin_his_tail_always_hangs_down():
+    from zengo.sprites.clips import CLIPS, LEDGE_CLIPS
+
+    for name in LEDGE_CLIPS:
+        for frame in CLIPS[f"ledge_{name}"].frames:
+            assert frame.startswith("ledge_"), (name, frame)

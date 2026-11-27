@@ -780,3 +780,26 @@ FRONT_HEAD_TURN = _layer(
     x=26,
     y=8,
 )
+
+
+# Sitting on something thin (your pointer, a window's top edge): nothing holds the
+# tail up, so it angles down past the perch.
+TAIL_PERCHED = _layer(
+    """
+    ..................TTT
+    ...............TTTTTT
+    .............TTTTTTTt
+    ...........TTTTTTTttt
+    .........TTTTTTTttt
+    ........TTTTTTttt
+    ......TTTTTTttt
+    .....TTTTTttt
+    ....TTTTttt
+    ...TTTttt
+    ..TTTtt
+    .TTtt
+    ttt
+    """,
+    x=2,
+    y=20,
+)

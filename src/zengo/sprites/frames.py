@@ -199,7 +199,30 @@ BRANCH_LAYERS: Mapping[str, tuple[Layer, ...]] = {
 }
 """The same poses sitting on the branch, the tail hanging down behind it."""
 
-FRAME_LAYERS = {**FRAME_LAYERS, **FRONT_LAYERS, **BRANCH_LAYERS, **BACK_LAYERS}
+LEDGE_FRAMES = frozenset(
+    {
+        *("perch", "blink", "alert", "sleep", "grip", "whistle_a"),
+        *("preen_a", "preen_b", "shake_a", "shake_mid", "shake_b"),
+        *("petted_a", "petted_b", "bob_fwd", "bob"),
+    }
+)
+"""The side-on poses he takes up sitting on something thin."""
+
+LEDGE_LAYERS: Mapping[str, tuple[Layer, ...]] = {
+    f"ledge_{name}": tuple(art.TAIL_PERCHED if layer is art.TAIL else layer for layer in layers)
+    for name, layers in FRAME_LAYERS.items()
+    if name in LEDGE_FRAMES
+}
+"""Side-on poses sitting on something thin (your pointer, a window's top edge), the
+tail angled down past the perch instead of held out level."""
+
+FRAME_LAYERS = {
+    **FRAME_LAYERS,
+    **FRONT_LAYERS,
+    **BRANCH_LAYERS,
+    **BACK_LAYERS,
+    **LEDGE_LAYERS,
+}
 
 
 def build_frames(
