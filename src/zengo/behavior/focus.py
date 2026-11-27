@@ -48,6 +48,8 @@ class Focus:
     done: int = 0
     """Focus sessions finished since the last long break."""
     session: Plan = field(default_factory=Plan)
+    suggested: bool = False
+    """He suggested something (a bath, a game) at the last break: not this time."""
     events: list[str] = field(default_factory=list)
     """What's just happened, for the brain: ``"focus"`` (a session began),
     ``"break"`` (focus is over: break time), ``"back"`` (the break's over: back to

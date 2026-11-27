@@ -156,6 +156,8 @@ class Config:
     bond_toy: float = 0.004
     bond_toy_per_hour: float = 0.012
     """Gained each time he plays with a toy you gave him, up to so much an hour."""
+    bond_focus: float = 0.006
+    """Gained for a focus session finished, out of the same hourly allowance as toys."""
     bond_ignored: float = 0.04
     """Lost each time he has to ask again for food."""
     bond_dropped: float = 0.05

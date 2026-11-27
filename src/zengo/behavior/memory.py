@@ -122,6 +122,7 @@ def _focus_snapshot(ctx: Context) -> dict[str, Any] | None:
         "ends_at": None if focus.ends_at is None else round(focus.ends_at, 1),
         "paused_left": None if focus.paused_left is None else round(focus.paused_left, 1),
         "done": focus.done,
+        "suggested": focus.suggested,
         "session": {
             "focus": s.focus,
             "short_break": s.short_break,
@@ -150,6 +151,7 @@ def _focus_restored(ctx: Context, data: dict) -> None:
     focus.phase = phase
     focus.long_break = data.get("long_break") is True
     focus.done = int(_number(data.get("done"), 0, 100, 0))
+    focus.suggested = data.get("suggested") is True
     focus.paused_left = _number(data.get("paused_left"), 0.0, day, None)
     focus.ends_at = _number(data.get("ends_at"), 0.0, math.inf, None)
     if focus.running and focus.ends_at is None and focus.paused_left is None:

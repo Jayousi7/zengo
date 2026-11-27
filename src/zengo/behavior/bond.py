@@ -93,11 +93,12 @@ class Bond:
     def fed(self, cfg: Config, *, hungry: bool) -> None:
         self.change(cfg.bond_fed_hungry if hungry else cfg.bond_fed)
 
-    def played(self, cfg: Config) -> None:
-        """He's played with a toy you gave him."""
+    def played(self, cfg: Config, amount: float | None = None) -> None:
+        """He's played with a toy you gave him (or a game with you, or you've
+        finished a focus session together: ``amount``), out of an hourly allowance."""
         if self.toys_left < 0:
             self.toys_left = cfg.bond_toy_per_hour
-        gain = min(self.toys_left, cfg.bond_toy)
+        gain = min(self.toys_left, cfg.bond_toy if amount is None else amount)
         self.toys_left -= gain
         self.change(gain)
 

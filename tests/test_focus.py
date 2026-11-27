@@ -1,5 +1,7 @@
 """The focus timer: sessions, breaks, pausing, and the settings for it."""
 
+import itertools
+
 import pytest
 
 from zengo.behavior.focus import Focus, Plan
@@ -175,7 +177,7 @@ def test_nothing_running_nothing_saved_and_rubbish_ignored(ctx):
 
 from zengo.behavior.food import Food  # noqa: E402
 from zengo.behavior.machine import Brain  # noqa: E402
-from zengo.behavior.states import FocusRest, Idle  # noqa: E402
+from zengo.behavior.states import FocusRest, Idle, Walk  # noqa: E402
 
 
 class Clock:
@@ -267,3 +269,131 @@ def test_pausing_or_stopping_lets_him_up(ctx):
     ctx.focus.stop()
     _run(brain, clock, 0.2)
     assert not isinstance(brain.state, FocusRest)
+
+
+# --- Break time and back to it ----------------------------------------------------------
+
+from zengo.behavior.cage import Cage  # noqa: E402
+from zengo.behavior.states import BreakCall, Caged, Stretch  # noqa: E402
+
+
+def _to_break(ctx, initial=None):
+    brain, clock = _brain(ctx, initial or FocusRest())
+    ctx.focus.start(clock.now)
+    _run(brain, clock, 1)
+    ctx.focus.ends_at = clock.now + 0.05
+    return brain, clock
+
+
+def test_at_the_break_he_stretches_comes_to_you_and_calls(ctx):
+    ctx.world.cursor_pos = (ctx.body.x + 300, 500.0)
+    brain, clock = _to_break(ctx)
+    level = ctx.bond.level
+    _run(brain, clock, 0.2)
+    assert isinstance(brain.state, Stretch)
+    assert ctx.bond.level > level  # a session done together
+    called = False
+    for _ in range(400):
+        clock.now += 0.05
+        brain.tick(0.05)
+        called |= isinstance(brain.state, BreakCall)
+        if called:
+            break
+    assert called
+    assert abs(ctx.body.x - ctx.world.cursor_pos[0]) < ctx.config.px(20)
+    assert "break" in ctx.sounds
+    assert ctx.speech is not None
+
+
+def test_caged_he_calls_from_the_cage(ctx):
+    ctx.cage = Cage(x=ctx.body.x, y=ctx.body.y)
+    ctx.cage.mount = "ground"
+    brain, clock = _to_break(ctx, Caged(just_caught=False))
+    _run(brain, clock, 0.3)
+    assert isinstance(brain.state, Caged)
+    assert "break" in ctx.sounds
+
+
+def test_hidden_he_stays_hidden(ctx):
+    from zengo.behavior.states import Away
+
+    brain, clock = _to_break(ctx, Away())
+    _run(brain, clock, 2)
+    assert brain.away and "break" not in ctx.sounds
+
+
+def test_he_suggests_a_bath_about_one_break_in_three_never_twice_running(ctx):
+    suggested = []
+    for i in range(60):
+        ctx.bath.dish, ctx.bath.phase = None, "waiting"
+        ctx.rng.seed(i)
+        BreakCall().enter(ctx)
+        suggested.append(ctx.bath.dish is not None)
+    assert 10 <= sum(suggested) <= 30
+    assert not any(a and b for a, b in itertools.pairwise(suggested))
+
+
+def test_damp_he_walks_to_you(ctx):
+    from zengo.behavior.states import go_to_you
+
+    ctx.damp = 30.0
+    ctx.world.cursor_pos = (ctx.body.x + 800, 500.0)
+    going = go_to_you(ctx)
+    assert isinstance(going, Walk) and going.then == "break"
+
+
+def test_pointer_on_another_screen_he_calls_from_where_he_is(ctx):
+    from zengo.behavior.states import go_to_you
+    from zengo.world import Area
+
+    ctx.world.area_at = lambda x, y: (
+        Area(0, 0, 1920, 1040) if x < 1920 else Area(1920, 0, 3840, 1040)
+    )
+    ctx.world.cursor_pos = (2500.0, 500.0)
+    assert isinstance(go_to_you(ctx), BreakCall)
+
+
+def test_after_the_break_he_asks_back_to_it_and_a_button_waits(make_pet):
+    pet = make_pet()
+    ctx = pet._brain.ctx
+    clock = Clock(ctx.clock())
+    ctx.clock = clock
+    pet.change_settings(Settings(focus_minutes=5, short_break_minutes=1))
+    pet.start_focus()
+    assert ctx.focus.focusing and ctx.focus.session.focus == 300
+    clock.now += 301
+    pet._brain.tick(0.1)
+    assert ctx.focus.on_break
+    clock.now += 61
+    pet._brain.tick(0.1)
+    pet._render()
+    assert ctx.focus.phase == "waiting"
+    assert ctx.speech is not None
+    assert pet._start_button.isVisible()
+    pet._start_button.clicked.emit()
+    assert ctx.focus.focusing
+    pet._render()
+    assert not pet._start_button.isVisible()
+    pet.pause_focus()
+    assert ctx.focus.paused
+    pet.pause_focus()
+    assert ctx.focus.focusing
+    pet.stop_focus()
+    assert ctx.focus.phase == "off"
+
+
+def test_waiting_he_asks_again_now_and_then_without_a_sound(ctx):
+    brain, clock = _brain(ctx)
+    ctx.focus.start(clock.now)
+    ctx.focus.update(clock.now + 600)
+    ctx.focus.update(clock.now + 660)
+    ctx.speech = None
+    asks = 0
+    for _ in range(round(200 / 0.1)):
+        clock.now += 0.1
+        had = ctx.speech
+        brain.tick(0.1)
+        if ctx.speech is not None and ctx.speech is not had and "?" in ctx.speech.text:
+            asks += 1
+        brain.ctx.sounds.clear()
+    assert asks >= 2

@@ -35,6 +35,12 @@ CLIPS: dict[str, Clip] = {
         ("perch", "blink", "perch", "blink", "perch", "blink"),
         (3.2, 0.12, 2.4, 0.12, 0.18, 0.12),
     ),
+    # Waking from a doze for his break: a big stretch.
+    "stretch": Clip(
+        ("perch", "stretch_a", "stretch_b", "stretch_a", "perch"),
+        (0.2, 0.6, 0.45, 0.4, 0.3),
+        loop=False,
+    ),
     # Winter: puffed up against the cold.
     "puffed": Clip(("puffed", "puffed_blink", "puffed", "puffed_blink"), (2.6, 0.14, 1.8, 0.14)),
     # A hot summer afternoon: beak open, panting.

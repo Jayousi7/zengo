@@ -39,6 +39,8 @@ MOMENTS: dict[str, str] = {
     "fed": "after a meal",
     "bathed": "after a bath, shaking himself dry",
     "toy": "chatting to his mirror",
+    "break": "calling you to a break after a focus session",
+    "back": "the break's over: asking if you're ready for the next session",
     "petted": "while you pet him",
     "caged": "complaining in the cage",
     "freed": "out of the cage by his own wits",
@@ -60,6 +62,8 @@ DEFAULT_PHRASES: dict[str, tuple[str, ...]] = {
     "fed": ("yum! ♥",),
     "bathed": ("ahh, fresh! ♪", "splish splash ♪"),
     "toy": ("pretty bird! ♪", "who's that? ♪", "hello you! ♥", "♪ ♫ ♪"),
+    "break": ("break! ♪", "break time! ♪", "stretch time! ♪"),
+    "back": ("back to it? ♪", "ready? ♪"),
     "petted": ("♥",),
     "caged": ("HEY!!", "let me out!", "hmph!!", "rude.", ">:(", "not cool!"),
     "freed": ("freedom!! ♪",),
@@ -74,6 +78,7 @@ CUES: dict[str, str] = {
     "greeting": "greeting you",
     "trill": "content: a meal, freedom",
     "ting": "his bell",
+    "break": "break time, after a focus session",
 }
 """Each sound he makes, and what it's for."""
 

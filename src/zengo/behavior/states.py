@@ -167,7 +167,7 @@ def choose_activity(ctx: Context) -> State:
         (Fly.to_branch, 6.0 if flies and branch_is_inviting(ctx) else 0.0),  # he loves it
         (Fly.to_window, 2.5 if flies and perchable_ledges(ctx) else 0.0),
         (go_to_bath, 8.0 if ctx.bath.usable else 0.0),  # and he loves a bath
-        (go_to_mirror, 1.5 if mirror_is_inviting(ctx) else 0.0),
+        (go_to_mirror, (3.0 if ctx.focus.on_break else 1.5) if mirror_is_inviting(ctx) else 0.0),
     ]
     makers, weights = zip(*options, strict=True)
     return ctx.rng.choices(makers, weights)[0](ctx)
@@ -328,6 +328,8 @@ class Walk(State):
             return PlayMirror() if ctx.toys.mirror is not None else Idle()
         if self.then == "rest":
             return FocusRest() if ctx.focus.focusing else Idle()
+        if self.then == "break":
+            return BreakCall()
         return Ask() if self.then == "ask" else Idle()
 
 
@@ -611,6 +613,8 @@ class Fly(State):
                 return PlayMirror() if ctx.toys.mirror is not None else Idle()
             if self.onto == "rest":
                 return FocusRest() if ctx.focus.focusing else Idle()
+            if self.onto == "break":
+                return BreakCall()
             if self.onto == "window":
                 return OnWindow(self.window, self.offset)
             if self.onto == "away":
@@ -1800,6 +1804,62 @@ class FocusRest(State):
             self.preening = True
             ctx.animator.play("preen", restart=True)
         return None
+
+
+class Stretch(_OneShot):
+    """Awake from his doze for the break: a big stretch, then off to call you."""
+
+    clip = "stretch"
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        return go_to_you(ctx) if ctx.animator.finished else None
+
+
+def go_to_you(ctx: Context) -> State:
+    """Over to where your pointer is, to land below it and call you to your break.
+    If it's on another screen, he calls from where he is."""
+    cfg, body, area = ctx.config, ctx.body, ctx.area()
+    cx, cy = ctx.world.cursor()
+    if ctx.world.area_at(cx, cy) != area:
+        return BreakCall()
+    x = area.clamp_x(cx, ctx.margin)
+    on_ground = body.y >= area.bottom - 1
+    if on_ground and (abs(x - body.x) <= cfg.px(100) or not can_fly(ctx)):
+        return Walk(x, then="break") if abs(x - body.x) > 1 else BreakCall()
+    return Fly([*_takeoff(ctx, towards=x), *_landing(ctx, x, coming_from=body.x)], onto="break")
+
+
+SUGGEST_ODDS = 1 / 3
+"""About one break in three he suggests something to do (never two in a row)."""
+
+
+class BreakCall(State):
+    """Break time! Crest up, he whistles to you. Now and then he has an idea for
+    the break, and puts his bath out."""
+
+    clip = "whistle"
+    chirpy = True
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        cx = ctx.world.cursor()[0]
+        ctx.body.face_towards(cx)
+        ctx.say(ctx.phrase("break"), 2.4)
+        ctx.play("break")
+        focus = ctx.focus
+        if not focus.suggested and ctx.rng.random() < SUGGEST_ODDS and ctx.bath.dish is None:
+            focus.suggested = True
+            ctx.bath.fill(ctx)
+            self.suggestion = "bath time? ♪"
+        else:
+            focus.suggested, self.suggestion = False, ""
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        if self.suggestion and self.elapsed >= 2.6:
+            if ctx.focus.on_break:  # (not if the break's over already)
+                ctx.say(self.suggestion, 2.4)
+            self.suggestion = ""
+        return Idle() if ctx.animator.finished and not self.suggestion else None
 
 
 def go_ask(ctx: Context) -> State:

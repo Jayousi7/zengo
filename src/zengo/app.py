@@ -48,6 +48,7 @@ from zengo.ui.settings_window import SettingsWindow
 from zengo.ui.sheet_loader import SheetError, load_sheet
 from zengo.ui.sound import SoundPlayer
 from zengo.ui.sprites import SpriteSheet
+from zengo.ui.start_button import StartButton
 from zengo.ui.state_file import StateFile
 from zengo.ui.status_panel import StatusPanel
 from zengo.ui.teach_box import TeachBox
@@ -213,6 +214,8 @@ class Pet:
         self._bath = BathWindow(config, in_front_of=self._window)
         self._bell = BellWindow(config, in_front_of=self._window)
         self._mirror = MirrorWindow(config, in_front_of=self._window)
+        self._start_button = StartButton(config.scale)
+        self._start_button.clicked.connect(self.start_focus)
         # One more than can lie about: the oldest fades as a new one falls.
         self._feathers = [FeatherWindow(config.scale) for _ in range(MAX_FEATHERS + 1)]
         for index, feather in enumerate(self._feathers):
@@ -232,6 +235,7 @@ class Pet:
             self._bell,
             self._mirror,
             *self._feathers,
+            self._start_button,
         ]
 
     def _resize(self) -> None:
@@ -314,6 +318,7 @@ class Pet:
         self._show_cage()
         self._effects.show_particles(ctx.effects.particles)
         self._show_speech()
+        self._show_start_button()
         self._play_sounds()
         showing = tuple(w.isVisible() for w in self._layers())
         if _menu_open():
@@ -347,6 +352,7 @@ class Pet:
             self._cage,
             self._effects,
             self._bubble,
+            self._start_button,
         ]
 
     def restack(self) -> None:
@@ -556,6 +562,42 @@ class Pet:
         self.save()
         self._show_taught()
         self._render()
+
+    # --- Focus ----------------------------------------------------------------------
+
+    def start_focus(self) -> None:
+        ctx = self._brain.ctx
+        ctx.focus.plan = self._settings.focus_plan()
+        ctx.focus.start(ctx.clock())
+        self._focus_changed()
+
+    def pause_focus(self) -> None:
+        ctx = self._brain.ctx
+        if ctx.focus.paused:
+            ctx.focus.resume(ctx.clock())
+        else:
+            ctx.focus.pause(ctx.clock())
+        self._focus_changed()
+
+    def stop_focus(self) -> None:
+        self._brain.ctx.focus.stop()
+        self._focus_changed()
+
+    def _focus_changed(self) -> None:
+        self.save()
+        self._render()
+
+    def _show_start_button(self) -> None:
+        """By his head while he waits for you to start the next session."""
+        ctx = self._brain.ctx
+        if ctx.focus.phase != "waiting" or self._brain.away or not self._window.isVisible():
+            self._start_button.show_beside(None, 1, QRect())
+            return
+        body, px = ctx.body, self._config.px
+        side = int(body.facing)
+        head = QPoint(round(body.x + side * px(14)), round(body.y - px(16)))
+        screen = QGuiApplication.screenAt(head) or QGuiApplication.primaryScreen()
+        self._start_button.show_beside(head, side, screen.availableGeometry())
 
     def _start_catching(self) -> None:
         body = self._brain.ctx.body

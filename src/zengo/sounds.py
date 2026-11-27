@@ -88,6 +88,10 @@ _RECIPES = {
     "greeting": lambda: _notes([(0.1, 2600, 3400), _rest(0.05), (0.18, 2800, 3900)]),
     # Content (a meal, freedom): a quick trill.
     "trill": lambda: _notes([(0.32, 3000, 3300)], warble=320),
+    # Break time! A bright little three-note call.
+    "break": lambda: _notes(
+        [(0.1, 2400, 2500), _rest(0.03), (0.1, 2900, 3000), _rest(0.03), (0.22, 3300, 3900)]
+    ),
     # His bell, pecked: a soft ting.
     "ting": lambda: _bell(),
 }

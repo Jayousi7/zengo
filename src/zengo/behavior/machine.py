@@ -21,16 +21,21 @@ from zengo.behavior.states import (
     Listen,
     OnBranch,
     State,
+    Stretch,
     Walk,
     can_fly,
     cursor_is_inviting,
     focus_rest,
+    go_to_you,
 )
 from zengo.behavior.status import Status
 from zengo.behavior.status import read as read_status
 from zengo.behavior.vocabulary import Lesson, Vocabulary
 from zengo.sounds import CHIRPS
 from zengo.sprites.looks import Look
+
+ASK_BACK_EVERY = 90.0
+"""Seconds between his asks, while the next focus session waits for you."""
 
 
 class Brain:
@@ -43,6 +48,8 @@ class Brain:
         self._asks = 0
         """Times he's asked for food since he got hungry."""
         self._welcome_wait = 0.0
+        self._break_due = 0.0
+        self._ask_back_in = 0.0
 
     @property
     def state(self) -> State:
@@ -57,7 +64,7 @@ class Brain:
         ctx.animator.update(dt)
         ctx.scenery.update(ctx, dt, occupied=self._state.holds_branch)
         ctx.effects.update(dt, ctx.config.scale)
-        self._mind_the_focus()
+        self._mind_the_focus(dt)
         ctx.bath.update(
             ctx,
             dt,
@@ -158,7 +165,7 @@ class Brain:
         if side_on and self._state.grounded and not isinstance(self._state, Listen):
             ctx.animator.interject("talk")
 
-    def _mind_the_focus(self) -> None:
+    def _mind_the_focus(self, dt: float) -> None:
         """Keep time for the focus timer, and act on what it says."""
         ctx = self.ctx
         ctx.focus.update(ctx.clock())
@@ -167,6 +174,37 @@ class Brain:
                 self.transition(focus_rest(ctx))  # settle down somewhere out of the way
             elif event == "stopped" and isinstance(self._state, FocusRest):
                 self.transition(Idle())
+            elif event == "break":
+                ctx.bond.played(ctx.config, ctx.config.bond_focus)  # well done, you two
+                self._break_due = 30.0
+            elif event == "back" and not self.away:
+                ctx.say(ctx.phrase("back"), 6.0)
+                ctx.play("chirp_a")
+                self._ask_back_in = ASK_BACK_EVERY
+        self._call_break(dt)
+        if ctx.focus.phase == "waiting" and not self.away:
+            # Still waiting for you: he asks again now and then, quietly.
+            self._ask_back_in -= dt
+            if self._ask_back_in <= 0 and ctx.speech is None:
+                ctx.say(ctx.phrase("back"), 4.0)
+                self._ask_back_in = ASK_BACK_EVERY
+
+    def _call_break(self, dt: float) -> None:
+        """Break time: he wakes, stretches and comes to call you, as soon as he's
+        free to (within half a minute; caged, he calls from there)."""
+        if self._break_due <= 0:
+            return
+        self._break_due -= dt
+        ctx = self.ctx
+        if self.away or not ctx.focus.on_break:
+            self._break_due = 0.0
+        elif self.caged:
+            self._break_due = 0.0
+            ctx.say(ctx.phrase("break"), 2.4)
+            ctx.play("break")
+        elif isinstance(self._state, FocusRest) or self._state.pottering:
+            self._break_due = 0.0
+            self.transition(Stretch() if self._state.grounded else go_to_you(ctx))
 
     def _mind_the_food(self) -> None:
         """Hunger, and what he does about it given what he's up to."""
