@@ -38,6 +38,7 @@ from zengo.ui.cage_window import CageWindow, MountWindow
 from zengo.ui.catch_overlay import CatchOverlay
 from zengo.ui.food_window import FoodWindow
 from zengo.ui.qt_world import QtWorld
+from zengo.ui.recorder import RecorderBox, microphone
 from zengo.ui.settings_window import SettingsWindow
 from zengo.ui.sheet_loader import SheetError, load_sheet
 from zengo.ui.sound import SoundPlayer
@@ -108,6 +109,8 @@ class Pet:
         self._settings_window: SettingsWindow | None = None
         self._teach_box: TeachBox | None = None
         self._words_tab: WordsTab | None = None
+        self._sounds_tab: SoundsTab | None = None
+        self._recorder: RecorderBox | None = None
         self._world = QtWorld()
 
         area = self._world.area_at(*self._world.cursor())
@@ -428,9 +431,29 @@ class Pet:
             lambda s: self.change_voice(voice_with(self.voice, sounds=s))
         )
         self._sounds_tab.play.connect(self._sound.play)
-        self._sounds_tab.set_recording(False, "not available yet")
+        self._sounds_tab.record.connect(self.open_recorder)
+        device, why_not = microphone()
+        self._sounds_tab.set_recording(device is not None, why_not)
         window.add_tab(self._words_tab, "Words")
         window.add_tab(self._sounds_tab, "Sounds")
+
+    def open_recorder(self, cue: str) -> None:
+        """The recording box, for a sound to replace ``cue``."""
+        if self._voice_files is None:
+            return
+        if self._recorder is not None:
+            self._recorder.close()
+        self._recorder = RecorderBox(
+            self._voice_files.folder, self._keep_recording, self._sound.preview, cue
+        )
+        self._recorder.show()
+        self._recorder.raise_()
+        self._recorder.activateWindow()
+
+    def _keep_recording(self, cue: str, path: Path) -> None:
+        self.change_voice(voice_with(self.voice, sounds={**self.voice.sounds, cue: path}))
+        if self._sounds_tab is not None:
+            self._sounds_tab.show_sounds(self.voice.sounds)
 
     def open_teach_box(self) -> None:
         if self._teach_box is None:
