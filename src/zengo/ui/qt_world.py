@@ -8,8 +8,12 @@ from datetime import datetime
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QCursor, QGuiApplication
 
+from zengo.ui.desktop_windows import windows_reader
 from zengo.ui.input_idle import InputIdle
-from zengo.world import Area
+from zengo.world import Area, Ledge, visible_ledges
+
+LEDGES_EVERY = 0.25
+"""Seconds between looks at where the other windows are."""
 
 
 class QtWorld:
@@ -24,6 +28,9 @@ class QtWorld:
         self._last_cursor = QCursor.pos()
         self._last_activity = time.monotonic()
         self._input = InputIdle()
+        self._read_windows = windows_reader()
+        self._ledges: list[Ledge] = []
+        self._ledges_read = -LEDGES_EVERY
 
     def sample(self) -> None:
         position = QCursor.pos()
@@ -43,6 +50,15 @@ class QtWorld:
 
     def user_idle_seconds(self) -> float:
         return time.monotonic() - self._last_activity
+
+    def ledges(self) -> list[Ledge]:
+        """Visible tops of other windows, re-read a few times a second (asking the
+        window manager every frame would be wasteful)."""
+        now = time.monotonic()
+        if now - self._ledges_read >= LEDGES_EVERY:
+            self._ledges_read = now
+            self._ledges = visible_ledges(self._read_windows())
+        return self._ledges
 
     def input_idle_seconds(self) -> float | None:
         return self._input.seconds()

@@ -11,7 +11,9 @@ move it and he flutters off.
 Every 10 to 20 minutes a leafy branch grows out from the side of the screen. He
 flies over and sits on it facing you: looking about, preening, fluffing up,
 napping if it's late, until he flies off and it withdraws. Drop him just above
-it and he grabs it. Now and then he sits facing you on the ground too.
+it and he grabs it. He also flies up onto the tops of your windows (ones that
+aren't maximized) and sits there; move the window and he rides along, close,
+minimize, maximize or cover it and he flutters down. Now and then he sits facing you on the ground too.
 
 He has a fullness meter. It drains with time, faster when he's busy (flying
 burns three times what sitting does, sleeping very little), and every seed fills
@@ -138,6 +140,7 @@ src/zengo/
     status_panel.py the live needs panel in his menu
     state_file.py   the file what he remembers is kept in
     input_idle.py   time since any input, from the system (never the keys)
+    desktop_windows.py other apps' windows, for perching on their tops
     sound.py        plays his sounds
 ```
 

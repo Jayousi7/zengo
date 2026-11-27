@@ -11,7 +11,7 @@ from zengo.behavior.body import Body
 from zengo.behavior.context import Context
 from zengo.config import Config
 from zengo.sprites.clips import CLIPS
-from zengo.world import Area
+from zengo.world import Area, Ledge
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -36,6 +36,8 @@ class FakeWorld:
     idle: float = 0.0
     hour: int = 12
     input_idle: float | None = None
+    windows_on_top: list[Ledge] = field(default_factory=list)
+    """Visible window tops to perch on."""
     """Seconds since any input; None: the system won't say."""
 
     def area_at(self, x: float, y: float) -> Area:
@@ -46,6 +48,9 @@ class FakeWorld:
 
     def user_idle_seconds(self) -> float:
         return self.idle
+
+    def ledges(self) -> list[Ledge]:
+        return self.windows_on_top
 
     def input_idle_seconds(self) -> float | None:
         return self.input_idle

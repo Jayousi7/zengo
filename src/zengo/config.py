@@ -136,6 +136,12 @@ class Config:
     begging: tuple[str, ...] = ("feed me!!", "seeds pls? ♥", "hungryyy...", "*stares*")
     """What he says asking for food."""
 
+    window_visit: tuple[float, float] = (30.0, 120.0)
+    """Seconds he sits on top of a window before flying off."""
+
+    ledge_min_width: float = 40.0
+    """Art px of a window's top edge he needs in view to land on it."""
+
     sleep_after: float = 300.0
     """Seconds of user inactivity after which Zengo becomes sleepy."""
 
