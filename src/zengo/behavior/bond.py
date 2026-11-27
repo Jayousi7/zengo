@@ -42,6 +42,10 @@ class Bond:
         return self.level <= cfg.bond_grumpy
 
     def change(self, amount: float) -> None:
+        """Gains count for less the closer he already is (full value up to the
+        middle, half at three quarters, nothing at the top); losses count in full."""
+        if amount > 0:
+            amount *= min(1.0, (1.0 - self.level) / 0.5)
         self.level = min(1.0, max(0.0, self.level + amount))
 
     def update(self, ctx: Context, dt: float, *, caged: bool, petted: bool) -> None:

@@ -33,7 +33,8 @@ def test_feeding_brings_him_closer_and_more_so_when_he_was_hungry(ctx, world):
     ctx.hunger.hungry = True
     before = ctx.bond.level
     brain.feed()
-    assert ctx.bond.level == pytest.approx(before + ctx.config.bond_fed_hungry)
+    gain = ctx.config.bond_fed_hungry * (1 - before) / 0.5  # past the middle, gains shrink
+    assert ctx.bond.level == pytest.approx(before + gain)
 
 
 def test_catching_him_costs_and_letting_him_out_wins_some_back(ctx, world):
@@ -56,6 +57,18 @@ def test_petting_helps_but_only_so_much_an_hour(ctx, world):
     for _ in range(round(60 / DT)):  # a solid minute of petting
         ctx.bond.update(ctx, DT, caged=False, petted=True)
     assert ctx.bond.level == pytest.approx(0.5 + ctx.config.bond_petting_per_hour, abs=0.01)
+
+
+def test_the_closer_he_is_the_less_each_kindness_adds(ctx):
+    ctx.bond.level = 0.5
+    ctx.bond.change(0.1)
+    assert ctx.bond.level == pytest.approx(0.6)  # full value up to the middle
+    ctx.bond.level = 0.75
+    ctx.bond.change(0.1)
+    assert ctx.bond.level == pytest.approx(0.8)  # half, three quarters of the way
+    ctx.bond.level = 0.75
+    ctx.bond.change(-0.1)
+    assert ctx.bond.level == pytest.approx(0.65)  # losses count in full
 
 
 def test_your_pointer_nearby_is_company(ctx, world):
