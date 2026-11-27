@@ -402,3 +402,11 @@ def test_waiting_he_asks_again_now_and_then_without_a_sound(ctx):
             asks += 1
         brain.ctx.sounds.clear()
     assert asks >= 2
+
+
+def test_sessions_and_games_cant_be_farmed_for_his_bond(ctx):
+    start = ctx.bond.level
+    for _ in range(40):
+        ctx.bond.played(ctx.config, ctx.config.bond_focus)
+        ctx.bond.played(ctx.config, ctx.config.bond_chase)
+    assert ctx.bond.level - start <= ctx.config.bond_toy_per_hour + 1e-9
