@@ -84,6 +84,9 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     # Petted: fluffed up, eyes shut, crest relaxed, tilting his head into the hand.
     "petted_a": (*_PUFFED, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED),
     "petted_b": (*_PUFFED, art.CREST_FLAT.shifted(1, 1), art.HEAD_DOWN, art.EYE_CLOSED),
+    # Puffed up against the cold, sitting about.
+    "puffed": (*_PUFFED, art.HEAD, art.CREST),
+    "puffed_blink": (*_PUFFED, art.HEAD, art.CREST, art.EYE_CLOSED),
     # Bobbing his head along to your typing: it tips down, then dips a little.
     "bob_fwd": (*_SITTING, art.HEAD_DOWN, art.CREST.shifted(1, 1)),
     "bob": (*_SITTING, art.HEAD_DOWN.shifted(0, 1), art.CREST.shifted(1, 2)),

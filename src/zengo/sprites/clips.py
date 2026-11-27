@@ -35,6 +35,10 @@ CLIPS: dict[str, Clip] = {
         ("perch", "blink", "perch", "blink", "perch", "blink"),
         (3.2, 0.12, 2.4, 0.12, 0.18, 0.12),
     ),
+    # Winter: puffed up against the cold.
+    "puffed": Clip(("puffed", "puffed_blink", "puffed", "puffed_blink"), (2.6, 0.14, 1.8, 0.14)),
+    # A hot summer afternoon: beak open, panting.
+    "pant": Clip(("chew_a", "chew_b") * 6 + ("blink", "perch"), (0.13, 0.13) * 6 + (0.12, 1.4)),
     "alert": Clip(("alert", "blink", "alert"), (0.7, 0.1, 0.6), loop=False),
     # One step: feet together, push off with the back foot lifted, then reach
     # forward with it. The body moves a stride between push-off and reach, while

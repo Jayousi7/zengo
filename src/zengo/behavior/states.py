@@ -94,6 +94,10 @@ class State:
         return type(self).__name__
 
 
+AFTERNOON = (13, 18)
+"""Local hours [start, end) when a summer day is at its hottest."""
+
+
 class Idle(State):
     clip = "idle"
     chirpy = True
@@ -103,6 +107,8 @@ class Idle(State):
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
+        if ctx.season() == "summer" and AFTERNOON[0] <= ctx.world.local_hour() < AFTERNOON[1]:
+            ctx.animator.play("pant", restart=True)  # hot: beak open, panting
         self.duration = ctx.rng.uniform(*ctx.config.idle_seconds)
 
     def step(self, ctx: Context, dt: float) -> State | None:
@@ -133,6 +139,7 @@ def choose_activity(ctx: Context) -> State:
     if is_sleepy(ctx) and ctx.rng.random() < 0.6:
         return Sleep()
     flies = can_fly(ctx)
+    season = ctx.season()
     # Devoted, he seeks you out; grumpy, he keeps away.
     bond, cfg = ctx.bond, ctx.config
     fondness = 2.2 if bond.close(cfg) else 0.0 if bond.grumpy(cfg) else 1.0
@@ -144,6 +151,8 @@ def choose_activity(ctx: Context) -> State:
         (Fly.tour, 0.8 if flies else 0.0),
         (lambda _: Follow(), 1.5 * fondness if _cursor_on_same_screen(ctx) else 0.0),
         (lambda _: FrontIdle(), 1.2),
+        (lambda _: Puffed(), 3.0 if season == "winter" else 0.0),  # cold
+        (lambda _: Whistle(), 1.5 if season == "spring" else 0.0),  # full of song
         (Fly.to_cursor, 3.0 * fondness if flies and cursor_is_inviting(ctx) else 0.0),
         (lambda _: Sulk(), 3.0 if ctx.bond.grumpy(ctx.config) else 0.0),
         (Fly.to_branch, 6.0 if flies and branch_is_inviting(ctx) else 0.0),  # he loves it
@@ -209,6 +218,24 @@ class Sulk(State):
 
     def double_clicked(self, ctx: Context) -> State | None:
         return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        return Idle() if self.elapsed >= self.duration else None
+
+
+class Puffed(State):
+    """Winter: sitting about puffed up against the cold."""
+
+    clip = "puffed"
+    chirpy = True
+    effort = 0.8
+
+    def typing(self, ctx: Context) -> State | None:
+        return Bob()
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        self.duration = ctx.rng.uniform(6.0, 14.0)
 
     def step(self, ctx: Context, dt: float) -> State | None:
         return Idle() if self.elapsed >= self.duration else None

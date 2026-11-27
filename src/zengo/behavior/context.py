@@ -22,6 +22,7 @@ from zengo.behavior.toys import Toys
 from zengo.behavior.typing import TypingSensor
 from zengo.behavior.vocabulary import Vocabulary, garble, lessons_needed
 from zengo.behavior.voice import Voice
+from zengo.behavior.weather import Weather
 from zengo.config import Config
 from zengo.sounds import whistle_for
 from zengo.world import Area, World
@@ -69,6 +70,7 @@ class Context:
     bath: BathCycle = field(default_factory=BathCycle)
     moult: Moult = field(default_factory=Moult)
     toys: Toys = field(default_factory=Toys)
+    weather: Weather = field(default_factory=Weather)
     effects: Effects = field(default_factory=Effects)
     """Droplets, snowflakes and leaves in the air."""
     damp: float = 0.0

@@ -58,12 +58,9 @@ class Brain:
         )
         ctx.damp = max(0.0, ctx.damp - dt)
         ctx.toys.update(ctx, dt, caged=self.caged, away=self.away, at_mirror=self._state.at_mirror)
-        ctx.moult.update(
-            ctx,
-            dt,
-            free=not (self.caged or self.away),
-            on_branch=isinstance(self._state, OnBranch),
-        )
+        on_branch = isinstance(self._state, OnBranch)
+        ctx.moult.update(ctx, dt, free=not (self.caged or self.away), on_branch=on_branch)
+        ctx.weather.update(ctx, dt, on_branch=on_branch)
         if ctx.speech is not None:
             ctx.speech.remaining -= dt
             if ctx.speech.remaining <= 0:
@@ -133,6 +130,8 @@ class Brain:
         every = cfg.chirp_every * (
             0.6 if ctx.bond.close(cfg) else 2.0 if ctx.bond.grumpy(cfg) else 1.0
         )
+        if ctx.season() == "spring":
+            every *= 0.6  # full of song
         if ctx.rng.random() < dt / every:
             ctx.play(ctx.rng.choice(CHIRPS))
             ctx.say(ctx.phrase("random"), 1.4)
