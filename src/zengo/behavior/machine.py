@@ -91,6 +91,9 @@ class Brain:
         ctx.typing.update(ctx, dt)
         if ctx.typing.active and (following := self._state.typing(ctx)) is not None:
             self.transition(following)
+        ctx.wiggle.update(ctx, dt)
+        if ctx.wiggle.active and (following := self._state.wiggled(ctx)) is not None:
+            self.transition(following)
         if (following := self._state.update(ctx, dt)) is not None:
             self.transition(following)
         ctx.hunger.update(ctx, dt, self._state.effort)

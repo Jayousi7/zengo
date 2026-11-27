@@ -41,6 +41,10 @@ CLIPS: dict[str, Clip] = {
         (0.2, 0.6, 0.45, 0.4, 0.3),
         loop=False,
     ),
+    # The chasing game: crouched and ready, hopping after the pointer, pouncing.
+    "crouch": Clip(("crouch", "crouch", "alert"), (0.6, 0.12, 0.12)),
+    "chase_hop": Clip(("crouch", "hop"), (0.1, 0.2)),
+    "pounce": Clip(("pounce",), (1.0,)),
     # Winter: puffed up against the cold.
     "puffed": Clip(("puffed", "puffed_blink", "puffed", "puffed_blink"), (2.6, 0.14, 1.8, 0.14)),
     # A hot summer afternoon: beak open, panting.

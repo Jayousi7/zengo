@@ -71,6 +71,11 @@ class State:
         """You're typing. Sitting about with nothing better to do, he bobs along."""
         return None
 
+    def wiggled(self, ctx: Context) -> State | None:
+        """You've wiggled the pointer near him: a game! Pottering about on the
+        ground (or dozing), he's in; busy, held or caged, he isn't."""
+        return Crouch() if self.pottering and self.grounded else None
+
     def go_eat(self, ctx: Context) -> State | None:
         """He's hungry and there are seeds down. Settled on the ground he goes for
         them; held or mid-air, once he's landed."""
@@ -756,6 +761,9 @@ class Sleep(State):
     clip = "sleep"
     effort = 0.4  # hardly anything
     nap_seconds: ClassVar[tuple[float, float]] = (120.0, 300.0)
+
+    def wiggled(self, ctx: Context) -> State | None:
+        return Crouch()  # a game wakes him
 
     def go_eat(self, ctx: Context) -> State | None:
         return None  # hunger can wait till he wakes
@@ -1797,6 +1805,9 @@ class FocusRest(State):
     def typing(self, ctx: Context) -> State | None:
         return None
 
+    def wiggled(self, ctx: Context) -> State | None:
+        return Crouch()  # you asked for it
+
     def step(self, ctx: Context, dt: float) -> State | None:
         if not ctx.focus.focusing:
             return Idle()
@@ -1872,19 +1883,231 @@ class BreakCall(State):
         ctx.say(ctx.phrase("break"), 2.4)
         ctx.play("break")
         focus = ctx.focus
-        if not focus.suggested and ctx.rng.random() < SUGGEST_ODDS and ctx.bath.dish is None:
+        self.suggestion, self.game = "", False
+        if not focus.suggested and ctx.rng.random() < SUGGEST_ODDS:
             focus.suggested = True
-            ctx.bath.fill(ctx)
-            self.suggestion = "bath time? ♪"
+            if ctx.bath.dish is None and ctx.rng.random() < 0.5:
+                ctx.bath.fill(ctx)
+                self.suggestion = "bath time? ♪"
+            else:
+                self.suggestion, self.game = "chase me? ♪", True
         else:
-            focus.suggested, self.suggestion = False, ""
+            focus.suggested = False
 
     def step(self, ctx: Context, dt: float) -> State | None:
         if self.suggestion and self.elapsed >= 2.6:
-            if ctx.focus.on_break:  # (not if the break's over already)
-                ctx.say(self.suggestion, 2.4)
+            if not ctx.focus.on_break:  # the break's over already
+                self.suggestion = self.game = ""
+                return None
+            ctx.say(self.suggestion, 2.4)
             self.suggestion = ""
+            if self.game:
+                return Crouch(invite=True)  # ready when you are
         return Idle() if ctx.animator.finished and not self.suggestion else None
+
+
+# --- The chasing game ------------------------------------------------------------------
+
+
+class Crouch(State):
+    """Crouched low, crest up, eyes on the pointer: ready to chase. Asked to play
+    (``invite``), he waits a few seconds for the pointer to move."""
+
+    clip = "crouch"
+    ready_for: ClassVar[float] = 0.9
+    wait_for: ClassVar[float] = 6.0
+
+    def __init__(self, *, invite: bool = False) -> None:
+        super().__init__()
+        self.invite = invite
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        ctx.body.face_towards(ctx.world.cursor()[0])
+
+    def wiggled(self, ctx: Context) -> State | None:
+        return None
+
+    def typing(self, ctx: Context) -> State | None:
+        return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        ctx.body.face_towards(ctx.world.cursor()[0])
+        if not self.invite:
+            return Chase() if self.elapsed >= self.ready_for else None
+        if self.elapsed >= self.ready_for and ctx.world.user_idle_seconds() < 0.3:
+            return Chase()  # it moved: go!
+        return Idle() if self.elapsed >= self.wait_for else None
+
+
+class Chase(State):
+    """After the pointer! In hops along the ground, and short flights when it's up
+    out of reach (not when he's damp); a pounce when it stops near him. Catch it
+    and he trills, then gives you a few seconds' start. Leave the pointer
+    resting and he gives up; after about a minute he's tired out."""
+
+    clip = "chase_hop"
+    grounded = False  # hopping and fluttering: he keeps his own height
+    effort = 3.0
+    hop_seconds: ClassVar[float] = 0.3
+    hop_length: ClassVar[float] = 14.0
+    hop_height: ClassVar[float] = 5.0
+    flight_seconds: ClassVar[float] = 1.2
+    pounce_seconds: ClassVar[float] = 0.45
+    head_start: ClassVar[float] = 2.5
+    """Seconds he waits after a catch: your start."""
+    high: ClassVar[float] = 60.0
+    """Art px above the ground the pointer must be before he flies after it."""
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        self.doing = "hop"
+        self.phase_t = 0.0
+        self.hop_from = self.hop_to = ctx.body.x
+        self.catches = 0
+        self._new_hop(ctx)
+
+    def wiggled(self, ctx: Context) -> State | None:
+        return None
+
+    def typing(self, ctx: Context) -> State | None:
+        return None
+
+    def petted(self, ctx: Context) -> State | None:
+        return None
+
+    def go_eat(self, ctx: Context) -> State | None:
+        return None
+
+    def ask_for_food(self, ctx: Context) -> State | None:
+        return None
+
+    def _ground(self, ctx: Context) -> float:
+        return ctx.area().bottom
+
+    def _target(self, ctx: Context) -> tuple[float, float]:
+        cx, cy = ctx.world.cursor()
+        area = ctx.area()
+        return area.clamp_x(cx, ctx.margin), min(cy, area.bottom)
+
+    def _new_hop(self, ctx: Context) -> None:
+        tx, _ = self._target(ctx)
+        step = ctx.config.px(self.hop_length)
+        self.hop_from = ctx.body.x
+        self.hop_to = ctx.body.x + max(-step, min(step, tx - ctx.body.x))
+        self.phase_t = 0.0
+        ctx.body.face_towards(tx)
+
+    def _do(self, ctx: Context, what: str, clip: str) -> None:
+        self.doing, self.phase_t = what, 0.0
+        ctx.animator.play(clip, restart=True)
+
+    def _end(self, ctx: Context, tired: bool) -> State:
+        ctx.body.y = self._ground(ctx)
+        ctx.bond.played(ctx.config, ctx.config.bond_chase)
+        return Pant() if tired else Idle()
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        cfg, body = ctx.config, ctx.body
+        ground = self._ground(ctx)
+        tx, ty = self._target(ctx)
+        self.phase_t += dt
+        resting = ctx.world.user_idle_seconds()
+        on_ground = body.y >= ground - 1
+        if on_ground and self.doing in ("hop", "caught"):
+            if self.elapsed >= cfg.chase_seconds:
+                return self._end(ctx, tired=True)
+            if self.doing == "hop" and resting >= cfg.chase_rest:
+                return self._end(ctx, tired=False)
+
+        if self.doing == "caught":
+            body.y = ground
+            if self.phase_t >= self.head_start:
+                self._do(ctx, "hop", "chase_hop")
+                self._new_hop(ctx)
+            return None
+
+        if self.doing == "pounce":
+            t = min(1.0, self.phase_t / self.pounce_seconds)
+            body.x = self.hop_from + (self.hop_to - self.hop_from) * t
+            body.y = ground - cfg.px(12) * math.sin(math.pi * t)
+            if t >= 1.0:
+                body.y = ground
+                if self._caught(ctx, tx, ty):
+                    return self._catch(ctx)
+                self._do(ctx, "hop", "chase_hop")
+                self._new_hop(ctx)
+            return None
+
+        if self.doing == "fly":
+            speed = cfg.px(cfg.fly_speed)
+            dx, dy = tx - body.x, ty - body.y
+            dist = math.hypot(dx, dy)
+            if dist > 1:
+                move = min(dist, speed * dt)
+                body.x += dx / dist * move
+                body.y += dy / dist * move
+            body.face_towards(tx)
+            if dist <= cfg.px(8):
+                return self._catch(ctx)
+            if self.phase_t >= self.flight_seconds:
+                self._do(ctx, "down", "glide")
+            return None
+
+        if self.doing == "down":
+            body.y = min(ground, body.y + cfg.px(cfg.glide_speed) * dt)
+            body.x += (tx - body.x) * min(1.0, 2.0 * dt)
+            if body.y >= ground:
+                self._do(ctx, "hop", "chase_hop")
+                self._new_hop(ctx)
+            return None
+
+        # Hopping along the ground after it.
+        t = min(1.0, self.phase_t / self.hop_seconds)
+        body.x = self.hop_from + (self.hop_to - self.hop_from) * t
+        body.y = ground - cfg.px(self.hop_height) * math.sin(math.pi * t)
+        if t < 1.0:
+            return None
+        body.y = ground
+        if self._caught(ctx, tx, ty):
+            return self._catch(ctx)
+        near = abs(tx - body.x) <= cfg.px(60)
+        if ground - ty > cfg.px(self.high):
+            if can_fly(ctx) and near:
+                self._do(ctx, "fly", "flutter")  # up after it
+                return None
+        elif near and resting >= 0.4:
+            # It's stopped: pounce!
+            self.hop_from, self.hop_to = body.x, tx
+            self._do(ctx, "pounce", "pounce")
+            return None
+        self._new_hop(ctx)
+        return None
+
+    def _caught(self, ctx: Context, tx: float, ty: float) -> bool:
+        cfg, body = ctx.config, ctx.body
+        low = body.y - ty <= cfg.px(30)
+        return abs(tx - body.x) <= cfg.px(10) and low
+
+    def _catch(self, ctx: Context) -> State | None:
+        self.catches += 1
+        ctx.say(ctx.phrase("caught"), 2.0, mood="love")
+        ctx.play("trill")
+        if ctx.body.y < self._ground(ctx) - 1:
+            self._do(ctx, "down", "glide")  # back down, then your start
+            return None
+        self._do(ctx, "caught", "alert")
+        return None
+
+
+class Pant(State):
+    """Tired out after a game: beak open, panting, then a rest."""
+
+    clip = "pant"
+    effort = 1.5
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        return Idle() if self.elapsed >= 3.5 else None
 
 
 def go_ask(ctx: Context) -> State:

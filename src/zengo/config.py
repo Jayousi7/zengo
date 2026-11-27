@@ -79,6 +79,12 @@ class Config:
     toy_every: tuple[float, float] = (240.0, 600.0)
     """Seconds, at least, between one game with a toy and the next."""
 
+    chase_seconds: float = 60.0
+    """About how long a game of chase lasts before he's tired out."""
+
+    chase_rest: float = 4.0
+    """Seconds the pointer must rest before he gives up the chase."""
+
     damp_seconds: float = 60.0
     """How long he's damp after a bath: he won't fly till he's dry."""
 
@@ -158,6 +164,8 @@ class Config:
     """Gained each time he plays with a toy you gave him, up to so much an hour."""
     bond_focus: float = 0.006
     """Gained for a focus session finished, out of the same hourly allowance as toys."""
+    bond_chase: float = 0.006
+    """Gained for a game of chase, out of the same hourly allowance as toys."""
     bond_ignored: float = 0.04
     """Lost each time he has to ask again for food."""
     bond_dropped: float = 0.05

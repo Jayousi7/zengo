@@ -12,6 +12,7 @@ from zengo.behavior.bath import BathCycle
 from zengo.behavior.body import Body
 from zengo.behavior.bond import Bond
 from zengo.behavior.cage import Cage, EscapeProgress
+from zengo.behavior.chase import WiggleSensor
 from zengo.behavior.effects import Effects
 from zengo.behavior.focus import Focus
 from zengo.behavior.food import Food, Hunger
@@ -50,6 +51,7 @@ class Context:
     scenery: Scenery = field(default_factory=Scenery)
     petting: PettingSensor = field(default_factory=PettingSensor)
     typing: TypingSensor = field(default_factory=TypingSensor)
+    wiggle: WiggleSensor = field(default_factory=WiggleSensor)
     speech: Speech | None = None
     cage: Cage | None = None
     sounds: list[str] = field(default_factory=list)

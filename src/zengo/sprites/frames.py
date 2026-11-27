@@ -96,6 +96,20 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.WING_FOLDED,
         *_shifted(1, 0, art.HEAD_UP, art.CREST),
     ),
+    # The chasing game: crouched low, crest up, eyes on the pointer...
+    "crouch": (
+        art.LEGS,
+        *_shifted(0, 2, art.TAIL, art.BODY, art.WING_FOLDED),
+        *_shifted(2, 3, art.HEAD, art.CREST_RAISED),
+    ),
+    # ...and the pounce: springing forward, legs out, wings half open.
+    "pounce": (
+        art.LEGS_KICK_FRONT,
+        art.TAIL,
+        art.BODY,
+        art.WING_HALF,
+        *_shifted(2, 1, art.HEAD, art.CREST_RAISED),
+    ),
     # Bobbing his head along to your typing: it tips down, then dips a little.
     "bob_fwd": (*_SITTING, art.HEAD_DOWN, art.CREST.shifted(1, 1)),
     "bob": (*_SITTING, art.HEAD_DOWN.shifted(0, 1), art.CREST.shifted(1, 2)),

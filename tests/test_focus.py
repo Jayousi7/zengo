@@ -322,13 +322,18 @@ def test_hidden_he_stays_hidden(ctx):
     assert brain.away and "break" not in ctx.sounds
 
 
-def test_he_suggests_a_bath_about_one_break_in_three_never_twice_running(ctx):
-    suggested = []
+def test_he_suggests_something_about_one_break_in_three_never_twice_running(ctx):
+    suggested, kinds = [], set()
     for i in range(60):
         ctx.bath.dish, ctx.bath.phase = None, "waiting"
         ctx.rng.seed(i)
-        BreakCall().enter(ctx)
-        suggested.append(ctx.bath.dish is not None)
+        call = BreakCall()
+        call.enter(ctx)
+        suggested.append(bool(call.suggestion))
+        if call.suggestion:
+            kinds.add("chase" if call.game else "bath")
+            assert call.game or ctx.bath.dish is not None
+    assert kinds == {"bath", "chase"}
     assert 10 <= sum(suggested) <= 30
     assert not any(a and b for a, b in itertools.pairwise(suggested))
 
