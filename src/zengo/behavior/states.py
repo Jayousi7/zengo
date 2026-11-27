@@ -56,6 +56,10 @@ class State:
         """Being stroked: on the ground he settles into it, even from a nap."""
         return Petted() if self.grounded else None
 
+    def typing(self, ctx: Context) -> State | None:
+        """You're typing. Sitting about with nothing better to do, he bobs along."""
+        return None
+
     def go_eat(self, ctx: Context) -> State | None:
         """He's hungry and there are seeds down. Settled on the ground he goes for
         them; held or mid-air, once he's landed."""
@@ -76,6 +80,9 @@ class State:
 
 class Idle(State):
     clip = "idle"
+
+    def typing(self, ctx: Context) -> State | None:
+        return Bob()
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
@@ -131,6 +138,9 @@ class FrontIdle(State):
 
     clip = "front_idle"
     sit_for: ClassVar[tuple[float, float]] = (4.0, 10.0)
+
+    def typing(self, ctx: Context) -> State | None:
+        return Bob(facing_you=True)
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
@@ -776,6 +786,7 @@ class OnBranch(State):
         "alert": "branch_alert",
         "whistle": "branch_whistle",
         "petted": "branch_petted",
+        "bob": "branch_bob",
     }
 
     def __init__(self, *, settle_in: bool = False) -> None:
@@ -817,6 +828,11 @@ class OnBranch(State):
             self.contentment = _Contentment()
         return None
 
+    def typing(self, ctx: Context) -> State | None:
+        if self.doing == "sit":
+            self._do(ctx, "bob")
+        return None
+
     def step(self, ctx: Context, dt: float) -> State | None:
         branch = ctx.scenery.branch
         if branch is None or not branch.ready:  # it's going: drop off and glide down
@@ -828,6 +844,10 @@ class OnBranch(State):
         if self.doing == "petted":
             if not self.contentment.still_enjoying(ctx, dt):
                 self._do(ctx, "fluff")
+            return None
+        if self.doing == "bob":
+            if not ctx.typing.active:
+                self._do(ctx, "sit")
             return None
         if self.doing == "sleep":
             if not is_sleepy(ctx):
@@ -885,6 +905,7 @@ class Caged(State):
         "petted": "front_petted",
         "eat": "front_eat",
         "escape": "front_pick",
+        "bob": "front_bob",
     }
 
     def __init__(self, *, just_caught: bool = True) -> None:
@@ -924,6 +945,11 @@ class Caged(State):
     def effort(self) -> float:  # type: ignore[override]
         doing = getattr(self, "doing", "")
         return {"angry": 1.5, "escape": 1.5, "sleep": 0.4}.get(doing, 1.0)
+
+    def typing(self, ctx: Context) -> State | None:
+        if self.doing == "sit":
+            self._do(ctx, "bob")
+        return None
 
     def go_eat(self, ctx: Context) -> State | None:
         return None  # only his dish counts in here, and he sees to that himself
@@ -994,6 +1020,10 @@ class Caged(State):
         if self.doing == "petted":
             if not self.contentment.still_enjoying(ctx, dt):
                 self._do(ctx, "fluff")
+            return None
+        if self.doing == "bob":
+            if not ctx.typing.active:
+                self._do(ctx, "sit")
             return None
         if self.doing == "sleep":
             if not is_sleepy(ctx):
@@ -1146,3 +1176,25 @@ class Ask(State):
     def _call_out(self, ctx: Context) -> None:
         ctx.say(ctx.rng.choice(ctx.config.begging), ctx.config.complaint_seconds)
         self.next_line = ctx.rng.uniform(*ctx.config.complaint_every)
+
+
+class Bob(State):
+    """Bobbing his head along while you type: side-on, or facing you if that's how
+    he was sitting. When the typing stops, he goes back to sitting about."""
+
+    clip = "bob"
+
+    def __init__(self, *, facing_you: bool = False) -> None:
+        super().__init__()
+        self.facing_you = facing_you
+
+    def enter(self, ctx: Context) -> None:
+        ctx.animator.play("front_bob" if self.facing_you else "bob", restart=True)
+
+    def typing(self, ctx: Context) -> State | None:
+        return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        if ctx.typing.active:
+            return None
+        return FrontIdle() if self.facing_you else Idle()

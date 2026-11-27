@@ -11,6 +11,7 @@ from zengo.behavior.cage import Cage, EscapeProgress
 from zengo.behavior.food import Food, Hunger
 from zengo.behavior.petting import PettingSensor
 from zengo.behavior.scenery import Scenery
+from zengo.behavior.typing import TypingSensor
 from zengo.config import Config
 from zengo.world import Area, World
 
@@ -34,6 +35,7 @@ class Context:
     rng: random.Random
     scenery: Scenery = field(default_factory=Scenery)
     petting: PettingSensor = field(default_factory=PettingSensor)
+    typing: TypingSensor = field(default_factory=TypingSensor)
     speech: Speech | None = None
     cage: Cage | None = None
     escape: EscapeProgress = field(default_factory=EscapeProgress)

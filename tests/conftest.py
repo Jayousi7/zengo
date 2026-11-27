@@ -35,6 +35,8 @@ class FakeWorld:
     cursor_pos: tuple[float, float] = (5000.0, 5000.0)  # off-screen: out of watch range
     idle: float = 0.0
     hour: int = 12
+    input_idle: float | None = None
+    """Seconds since any input; None: the system won't say."""
 
     def area_at(self, x: float, y: float) -> Area:
         return self.area
@@ -44,6 +46,9 @@ class FakeWorld:
 
     def user_idle_seconds(self) -> float:
         return self.idle
+
+    def input_idle_seconds(self) -> float | None:
+        return self.input_idle
 
     def local_hour(self) -> int:
         return self.hour

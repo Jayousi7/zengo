@@ -8,6 +8,7 @@ from datetime import datetime
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QCursor, QGuiApplication
 
+from zengo.ui.input_idle import InputIdle
 from zengo.world import Area
 
 
@@ -22,6 +23,7 @@ class QtWorld:
     def __init__(self) -> None:
         self._last_cursor = QCursor.pos()
         self._last_activity = time.monotonic()
+        self._input = InputIdle()
 
     def sample(self) -> None:
         position = QCursor.pos()
@@ -41,6 +43,9 @@ class QtWorld:
 
     def user_idle_seconds(self) -> float:
         return time.monotonic() - self._last_activity
+
+    def input_idle_seconds(self) -> float | None:
+        return self._input.seconds()
 
     def local_hour(self) -> int:
         return datetime.now().hour

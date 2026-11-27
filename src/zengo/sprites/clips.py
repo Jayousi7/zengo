@@ -50,6 +50,8 @@ CLIPS: dict[str, Clip] = {
         ("peck_down", "peck_low", "peck_down", "chew_a", "chew_b", "chew_a", "chew_b"),
         (0.08, 0.16, 0.08, 0.18, 0.16, 0.18, 0.2),
     ),
+    # Bobbing his head along while you type.
+    "bob": Clip(("perch", "bob"), (0.16, 0.16)),
     # Petted: a slow lean into the hand and back.
     "petted": Clip(("petted_a", "petted_b"), (1.1, 0.9)),
     # Whistling: crest up, nodding to the tune.
@@ -89,6 +91,8 @@ FRONT_CLIPS: dict[str, Clip] = {
         ("front_fluff_a", "front_fluff_b") * 3 + ("front_perch",), (0.07,) * 6 + (0.3,), loop=False
     ),
     "front_sleep": Clip(("front_sleep",), (1.0,)),
+    # Bobbing his head along while you type.
+    "front_bob": Clip(("front_perch", "front_bob"), (0.16, 0.16)),
     # Working the cage latch open with his beak, glancing about to see if you notice.
     "front_pick": Clip(
         ("front_peck", "front_look_r", "front_peck", "front_look_l"), (0.25, 0.3, 0.25, 0.3)

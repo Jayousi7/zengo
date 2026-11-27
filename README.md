@@ -36,6 +36,7 @@ remembered between runs, in `~/.local/share/Zengo/state.json` (`%APPDATA%\Zengo`
 |---|---|
 | Left click | Crest up, startled |
 | Double-click | Bobs his head and whistles; the tune pops up in a cloud |
+| Type (anywhere) | Sitting about, he bobs his head along. Only the timing of your input is noticed, never the keys |
 | Stroke the mouse gently back and forth over him | Fluffs up, shuts his eyes and leans into it, with hearts; a happy shake when you stop |
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
 | Right click | Menu: a live panel of his needs, then *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Quit Zengo* |
@@ -108,6 +109,7 @@ src/zengo/
     flight.py       smooth flight paths through waypoints
     scenery.py      the branch: when it grows, stays and withdraws
     petting.py      tells gentle strokes of the pointer from passing by
+    typing.py       notices you're typing (input with the pointer still)
     cage.py         the cage: carried, hung on a chain, shelved or dropped
     food.py         seeds put out for him, and his fullness and hunger
     status.py       a read-out of his needs, for the menu
@@ -134,6 +136,7 @@ src/zengo/
     food_window.py  the seed pile's window
     status_panel.py the live needs panel in his menu
     state_file.py   the file what he remembers is kept in
+    input_idle.py   time since any input, from the system (never the keys)
 ```
 
 Only `ui/` and `app.py` import Qt. Everything else is plain Python and is

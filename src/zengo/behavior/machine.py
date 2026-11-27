@@ -41,6 +41,9 @@ class Brain:
         ctx.petting.update(ctx, dt)
         if ctx.petting.active and (following := self._state.petted(ctx)) is not None:
             self.transition(following)
+        ctx.typing.update(ctx, dt)
+        if ctx.typing.active and (following := self._state.typing(ctx)) is not None:
+            self.transition(following)
         if (following := self._state.update(ctx, dt)) is not None:
             self.transition(following)
         ctx.hunger.update(ctx, dt, self._state.effort)

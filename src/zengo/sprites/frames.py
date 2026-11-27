@@ -108,6 +108,14 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.WING_FOLDED,
         *_shifted(-1, 2, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED),
     ),
+    # Bobbing his head along to your typing: a quick nod down and forward.
+    "bob": (
+        art.LEGS,
+        art.TAIL,
+        art.BODY,
+        art.WING_FOLDED,
+        *_shifted(1, 1, art.CREST, art.HEAD),
+    ),
     # Whistling: crest up, nodding to the tune with the beak open. The head nods
     # down into the body, so no gap can open at the neck.
     "whistle_a": (
@@ -169,6 +177,7 @@ FRONT_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.FRONT_PUFF,
         *_shifted(1, 1, art.FRONT_CREST_FLAT, art.FRONT_HEAD, art.FRONT_EYES_CLOSED),
     ),
+    "front_bob": (*_FRONT_SITTING, *_shifted(0, 1, art.FRONT_CREST, art.FRONT_HEAD)),
     "front_whistle_a": (
         *_FRONT_SITTING,
         *_shifted(0, 1, art.FRONT_CREST_RAISED, art.FRONT_HEAD, art.FRONT_BEAK_OPEN),
