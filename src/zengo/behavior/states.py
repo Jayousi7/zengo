@@ -330,6 +330,8 @@ class Walk(State):
             return FocusRest() if ctx.focus.focusing else Idle()
         if self.then == "break":
             return BreakCall()
+        if self.then == "nudge":
+            return Nudge()
         return Ask() if self.then == "ask" else Idle()
 
 
@@ -615,6 +617,8 @@ class Fly(State):
                 return FocusRest() if ctx.focus.focusing else Idle()
             if self.onto == "break":
                 return BreakCall()
+            if self.onto == "nudge":
+                return Nudge()
             if self.onto == "window":
                 return OnWindow(self.window, self.offset)
             if self.onto == "away":
@@ -1010,6 +1014,7 @@ class _Perched(State):
     """
 
     chirpy = True
+    pottering = True  # sitting about, he'll gladly come when called
     grounded = False
     sit_for: ClassVar[tuple[float, float]] = (4.0, 10.0)
     clips: ClassVar[dict[str, str]]
@@ -1815,18 +1820,38 @@ class Stretch(_OneShot):
         return go_to_you(ctx) if ctx.animator.finished else None
 
 
-def go_to_you(ctx: Context) -> State:
-    """Over to where your pointer is, to land below it and call you to your break.
-    If it's on another screen, he calls from where he is."""
+def go_to_you(ctx: Context, why: str = "break") -> State:
+    """Over to where your pointer is, to land below it and call you to your break
+    (``why="break"``) or suggest one (``"nudge"``). If it's on another screen, he
+    calls from where he is."""
     cfg, body, area = ctx.config, ctx.body, ctx.area()
+    arrive: State = BreakCall() if why == "break" else Nudge()
     cx, cy = ctx.world.cursor()
     if ctx.world.area_at(cx, cy) != area:
-        return BreakCall()
+        return arrive
     x = area.clamp_x(cx, ctx.margin)
     on_ground = body.y >= area.bottom - 1
     if on_ground and (abs(x - body.x) <= cfg.px(100) or not can_fly(ctx)):
-        return Walk(x, then="break") if abs(x - body.x) > 1 else BreakCall()
-    return Fly([*_takeoff(ctx, towards=x), *_landing(ctx, x, coming_from=body.x)], onto="break")
+        return Walk(x, then=why) if abs(x - body.x) > 1 else arrive
+    return Fly([*_takeoff(ctx, towards=x), *_landing(ctx, x, coming_from=body.x)], onto=why)
+
+
+class Nudge(State):
+    """Looking up at you, crest up: "stretch?" You've been at it a long while."""
+
+    clip = "front_ask"
+    look_for: ClassVar[float] = 4.0
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        ctx.say(ctx.phrase("nudge"), 3.0, mood="love")
+        ctx.play("chirp_c")
+
+    def typing(self, ctx: Context) -> State | None:
+        return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        return Idle() if self.elapsed >= self.look_for else None
 
 
 SUGGEST_ODDS = 1 / 3

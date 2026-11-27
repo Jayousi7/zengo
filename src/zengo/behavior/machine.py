@@ -50,6 +50,7 @@ class Brain:
         self._welcome_wait = 0.0
         self._break_due = 0.0
         self._ask_back_in = 0.0
+        self._nudge_due = 0.0
 
     @property
     def state(self) -> State:
@@ -182,12 +183,32 @@ class Brain:
                 ctx.play("chirp_a")
                 self._ask_back_in = ASK_BACK_EVERY
         self._call_break(dt)
+        if ctx.reminders.update(ctx, dt):
+            self._nudge_due = 60.0
+        self._nudge(dt)
         if ctx.focus.phase == "waiting" and not self.away:
             # Still waiting for you: he asks again now and then, quietly.
             self._ask_back_in -= dt
             if self._ask_back_in <= 0 and ctx.speech is None:
                 ctx.say(ctx.phrase("back"), 4.0)
                 self._ask_back_in = ASK_BACK_EVERY
+
+    def _nudge(self, dt: float) -> None:
+        """A break reminder: over to you to suggest one, as soon as he's free (or
+        from the cage). If he's busy for a minute, never mind."""
+        if self._nudge_due <= 0:
+            return
+        self._nudge_due -= dt
+        ctx = self.ctx
+        if self.away:
+            self._nudge_due = 0.0
+        elif self.caged:
+            self._nudge_due = 0.0
+            ctx.say(ctx.phrase("nudge"), 3.0, mood="love")
+            ctx.play("chirp_c")
+        elif self._state.pottering:
+            self._nudge_due = 0.0
+            self.transition(go_to_you(ctx, "nudge"))
 
     def _call_break(self, dt: float) -> None:
         """Break time: he wakes, stretches and comes to call you, as soon as he's

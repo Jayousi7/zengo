@@ -17,6 +17,7 @@ from zengo.behavior.focus import Focus
 from zengo.behavior.food import Food, Hunger
 from zengo.behavior.moult import Moult
 from zengo.behavior.petting import PettingSensor
+from zengo.behavior.reminders import Reminders
 from zengo.behavior.scenery import Scenery
 from zengo.behavior.seasons import Seasons
 from zengo.behavior.toys import Toys
@@ -72,6 +73,7 @@ class Context:
     moult: Moult = field(default_factory=Moult)
     toys: Toys = field(default_factory=Toys)
     focus: Focus = field(default_factory=Focus)
+    reminders: Reminders = field(default_factory=Reminders)
     weather: Weather = field(default_factory=Weather)
     effects: Effects = field(default_factory=Effects)
     """Droplets, snowflakes and leaves in the air."""

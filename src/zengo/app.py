@@ -458,6 +458,7 @@ class Pet:
         seasons = self._brain.ctx.seasons
         seasons.enabled, seasons.setting = self._settings.seasons, self._settings.hemisphere
         self._brain.ctx.toys.put_out(frozenset(self._settings.toys))
+        self._brain.ctx.reminders.minutes = self._settings.reminder_minutes
 
     def _settings_window_autostart(self) -> bool | None:
         return self._autostart.enabled()
