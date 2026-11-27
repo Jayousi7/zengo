@@ -706,11 +706,11 @@ HEAD_UP = _layer(
     y=8,
 )
 
-# Singing, beak open: the lower mandible drops away.
+# Singing, beak open: a dark gap between the mandibles, kept inside the closed
+# beak's outline so the beak works without poking out of his face.
 BEAK_OPEN_UP = _layer(
     """
     K
-    .q
     """,
     x=40,
     y=10,

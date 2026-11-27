@@ -72,8 +72,13 @@ CLIPS: dict[str, Clip] = {
     ),
     # Petted: a slow lean into the hand and back.
     "petted": Clip(("petted_a", "petted_b"), (1.1, 0.9)),
-    # Whistling: crest up, nodding to the tune.
-    "whistle": Clip(("whistle_a", "alert") * 7, (0.16,) * 14, loop=False),
+    # Whistling: crest up, head tipped back once, then only the beak works with
+    # the tune; the head comes level again at the end. Same length as before.
+    "whistle": Clip(
+        ("alert", "whistle_b", *("whistle_a", "whistle_b") * 6, "alert"),
+        (0.1, 0.12, *(0.16,) * 12, 0.1),
+        loop=False,
+    ),
     # A quick ruffle after landing, then settle.
     # Turned towards you, back through the middle, away, and so on: a turn of the
     # head each way, quick but never skipping the middle.

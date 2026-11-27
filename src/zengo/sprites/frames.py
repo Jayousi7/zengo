@@ -97,6 +97,7 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     ),
     # Whistling: crest up, head tipped back to sing with the beak open.
     "whistle_a": (*_SITTING, art.HEAD_UP, art.BEAK_OPEN_UP, art.CREST_RAISED.shifted(-1, 0)),
+    "whistle_b": (*_SITTING, art.HEAD_UP, art.CREST_RAISED.shifted(-1, 0)),
     # Eating seeds off the ground: tipping forward, the beak reaching down to the
     # seeds, then back upright to crack one open, beak working, head level.
     "peck_down": (
@@ -208,7 +209,7 @@ BRANCH_LAYERS: Mapping[str, tuple[Layer, ...]] = {
 
 LEDGE_FRAMES = frozenset(
     {
-        *("perch", "blink", "alert", "sleep", "grip", "whistle_a"),
+        *("perch", "blink", "alert", "sleep", "grip", "whistle_a", "whistle_b"),
         *("preen_a", "preen_b", "shake_a", "shake_mid", "shake_b"),
         *("petted_a", "petted_b", "bob_fwd", "bob"),
     }
