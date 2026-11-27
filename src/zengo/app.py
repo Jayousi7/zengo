@@ -21,6 +21,7 @@ from zengo.behavior.body import Body, Facing
 from zengo.behavior.context import Context
 from zengo.behavior.machine import Brain
 from zengo.behavior.memory import restore, snapshot
+from zengo.behavior.seasons import SEASONS, hemisphere_of
 from zengo.behavior.states import Away
 from zengo.behavior.vocabulary import Lesson
 from zengo.behavior.voice import Voice, VoiceFiles
@@ -37,7 +38,7 @@ from zengo.ui.bubble_window import BubbleWindow
 from zengo.ui.cage_window import CageWindow, MountWindow
 from zengo.ui.catch_overlay import CatchOverlay
 from zengo.ui.food_window import FoodWindow
-from zengo.ui.qt_world import QtWorld
+from zengo.ui.qt_world import QtWorld, time_zone
 from zengo.ui.recorder import RecorderBox, microphone
 from zengo.ui.settings_window import SettingsWindow
 from zengo.ui.sheet_loader import SheetError, load_sheet
@@ -132,6 +133,9 @@ class Pet:
                 app.aboutToQuit.connect(self.save)
 
         self._brain.ctx.sound_on = self._settings.sound
+        self._brain.ctx.seasons.zone_hemisphere = hemisphere_of(time_zone())
+        self._brain.ctx.seasons.forced = self._flags.season
+        self._apply_seasons()
         self._window = PetWindow(config.drag_threshold)
         self._window.clicked.connect(self._brain.click)
         self._window.double_clicked.connect(self._brain.double_click)
@@ -374,6 +378,7 @@ class Pet:
                 self._brain.ctx.play("chirp_a")  # a little hello, so you know it's on
             self._brain.ctx.sound_on = settings.sound
             self._sound.set_volume(settings.volume)
+            self._apply_seasons()
             if self._config.scale != old_scale:
                 self._resize()
         if keep and self._settings_file is not None:
@@ -382,6 +387,10 @@ class Pet:
             # (Not while the volume is being dragged: the window's own copy has to
             # stay as it was, so letting go is seen as a change and kept.)
             self._settings_window.show_settings(settings, self._settings_window_autostart())
+
+    def _apply_seasons(self) -> None:
+        seasons = self._brain.ctx.seasons
+        seasons.enabled, seasons.setting = self._settings.seasons, self._settings.hemisphere
 
     def _settings_window_autostart(self) -> bool | None:
         return self._autostart.enabled()
@@ -570,10 +579,15 @@ def parse_args(argv: list[str]) -> Options:
         action="store_true",
         help="grow a branch for Zengo straight away instead of waiting for one",
     )
+    parser.add_argument(
+        "--season",
+        choices=SEASONS,
+        help="show this season whatever the date, to try it out",
+    )
     args = parser.parse_args(argv)
     if (args.scale is not None and args.scale < 1) or (args.fps is not None and args.fps < 1):
         parser.error("--scale and --fps must be positive")
-    flags = Flags(scale=args.scale, fps=args.fps, quick=args.quick)
+    flags = Flags(scale=args.scale, fps=args.fps, quick=args.quick, season=args.season)
     return Options(flags, args.sprites, args.branch_now)
 
 

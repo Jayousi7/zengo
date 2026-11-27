@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from datetime import datetime
 
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QPoint, QTimeZone
 from PySide6.QtGui import QCursor, QGuiApplication
 
 from zengo.ui.desktop_windows import windows_reader
@@ -14,6 +14,12 @@ from zengo.world import Area, Ledge, Window, visible_ledges
 
 LEDGES_EVERY = 0.25
 """Seconds between looks at where the other windows are."""
+
+
+def time_zone() -> str:
+    """The computer's time zone, as an IANA name (``Europe/Berlin``) where the
+    system gives one; Qt translates Windows' own names."""
+    return bytes(QTimeZone.systemTimeZoneId().data()).decode(errors="replace")
 
 
 class QtWorld:

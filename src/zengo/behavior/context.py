@@ -14,6 +14,7 @@ from zengo.behavior.cage import Cage, EscapeProgress
 from zengo.behavior.food import Food, Hunger
 from zengo.behavior.petting import PettingSensor
 from zengo.behavior.scenery import Scenery
+from zengo.behavior.seasons import Seasons
 from zengo.behavior.typing import TypingSensor
 from zengo.behavior.vocabulary import Vocabulary, garble, lessons_needed
 from zengo.behavior.voice import Voice
@@ -60,6 +61,11 @@ class Context:
     """Wall-clock time, for lessons an hour apart across restarts."""
     talking: bool = False
     """He's just said one of your words: the app shows his beak working."""
+    seasons: Seasons = field(default_factory=Seasons)
+
+    def season(self) -> str | None:
+        """The time of year as he shows it, or ``None`` with seasons turned off."""
+        return self.seasons.now(self.clock())
 
     def say(self, text: str, seconds: float, mood: str = "plain") -> None:
         self.speech = Speech(text, seconds, mood)

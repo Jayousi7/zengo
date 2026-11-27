@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, replace
 from typing import Any
 
+from zengo.behavior.seasons import HEMISPHERES, SEASONS
 from zengo.config import Config, quick
 
 MIN_SCALE, MAX_SCALE = 2, 5
@@ -43,6 +44,10 @@ class Settings:
     """How often a branch grows: a key of :data:`BRANCH_EVERY`."""
     appetite: str = "normal"
     """How fast he gets hungry: a key of :data:`APPETITE`."""
+    seasons: bool = True
+    """Seasonal outfits and effects: the scarf, snow, falling leaves."""
+    hemisphere: str = "auto"
+    """A key of :data:`zengo.behavior.seasons.HEMISPHERES`."""
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)
@@ -58,12 +63,16 @@ class Settings:
         sound = data.get("sound")
         branch = data.get("branch")
         appetite = data.get("appetite")
+        seasons = data.get("seasons")
+        hemisphere = data.get("hemisphere")
         return cls(
             scale=_whole(scale, MIN_SCALE, MAX_SCALE, default.scale),
             sound=sound if isinstance(sound, bool) else default.sound,
             volume=_fraction(volume, default.volume),
             branch=branch if branch in BRANCH_EVERY else default.branch,
             appetite=appetite if appetite in APPETITE else default.appetite,
+            seasons=seasons if isinstance(seasons, bool) else default.seasons,
+            hemisphere=hemisphere if hemisphere in HEMISPHERES else default.hemisphere,
         )
 
 
@@ -74,6 +83,12 @@ class Flags:
     scale: int | None = None
     fps: int | None = None
     quick: bool = False
+    season: str | None = None
+    """A season to show whatever the date (one of :data:`SEASONS`)."""
+
+    def __post_init__(self) -> None:
+        if self.season is not None and self.season not in SEASONS:
+            raise ValueError(f"unknown season {self.season!r}")
 
 
 def build_config(
