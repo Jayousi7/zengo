@@ -22,6 +22,8 @@ from zengo.sprites import art
 from zengo.sprites.compose import Frame, Layer, compose
 from zengo.sprites.frames import (
     ANCHOR_COLUMN,
+    ART_HEIGHT,
+    ART_WIDTH,
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
     FRAME_LAYERS,
@@ -58,115 +60,96 @@ DAMP_PALETTE: dict[str, RGBA] = {
 }
 
 # --- The scarf ---------------------------------------------------------------------
-# Red wool, ribbed here and there, round the base of his neck, its loose end
-# hanging down his chest (or his back, from behind). It belongs to his body, not
-# his head: drawn over the body and wings but under the head, so his head moves
-# above it (nodding, preening, singing) as it would over a real scarf, and it
-# stays inside his outline so he's never drawn in two pieces. Each scarf is
-# placed for its body drawn where that body's art says; moved with the body.
+# Red wool round his neck: a band across his throat, lighter along the top and
+# darker underneath so it reads as rolled wool, and the loose end trailing back
+# over his wing (or hanging down, from the front). It goes with his head, as a
+# scarf on a neck does, and is only ever drawn where he is already drawn: it
+# never changes his outline, so he never looks cut in two and his chest never
+# pokes out, whatever his head is doing.
 
 _SIDE_SCARF = Layer.parse(
     """
-    rRRrRRr
-    .rRRrRr
-    ...Rr..
-    ...rR..
-    ....r..
+    .RRRRRRRR
+    ..rrrrrrrr
+    RR
+    rR
+    .r
     """,
-    x=31,
-    y=16,
+    x=30,
+    y=15,
 )
-"""Ending two pixels short of the front of his chest: his own outline stays round
-there, even when he tips his head back to preen or sleep and it's in view."""
+"""For a side-on head where :data:`art.HEAD` is drawn."""
 
 _FLYING_SCARF = Layer.parse(
     """
-    rRRr.....
-    ...rRRrR.
-    .......Rr
-    .......rR
-    .......Rr
-    .......rR
-    .......Rr
+    ......RR
+    rRRRRRrR
+    .rrrr.Rr
+    ......rR
+    ......Rr
+    ......rr
     """,
     x=24,
-    y=16,
+    y=18,
 )
-"""Flying, his head leads the level body: a band round the neck behind it, and the
-loose end streaming back over his shoulders."""
-
-_DIP_SCARF = Layer.parse(
-    """
-    rR..
-    Rr..
-    rR..
-    Rr..
-    .rR.
-    ..Rr
-    ..r.
-    """,
-    x=33,
-    y=15,
-)
-_LOW_SCARF = Layer.parse(
-    """
-    rR..
-    Rr..
-    rR..
-    .Rr.
-    .rR.
-    ..Rr
-    """,
-    x=34,
-    y=17,
-)
-"""Bent over pecking: the neck reaches forward and down, the scarf round it."""
+"""Flying, his head leads the level body: the band rings the neck behind it, the
+loose end streaming back along his shoulders. For the head lowered to fly."""
 
 _FRONT_SCARF = Layer.parse(
     """
-    rRRrRRrRr
-    .rRRrRRr.
-    .....Rr..
-    .....rR..
-    ......r..
+    .RRRRRRR
+    rrrrrrrrr
+    .....Rr
+    .....rR
+    ......r
     """,
     x=26,
-    y=16,
+    y=15,
 )
-_BACK_SCARF = Layer.parse(
-    """
-    rRRrRRrRr
-    .rRRrRRr.
-    ...Rr....
-    ...rR....
-    ...r.....
-    """,
-    x=26,
-    y=16,
-)
+"""Facing you (or turned away): across the bottom of the face, the end down his chest."""
 
-_SCARVES = (
-    (art.BODY, _SIDE_SCARF),
-    (art.FLIGHT_BODY, _FLYING_SCARF),
-    (art.BENT_BODY_DIP, _DIP_SCARF),
-    (art.BENT_BODY, _LOW_SCARF),
-    (art.FRONT_BODY, _FRONT_SCARF),
-    (art.BACK_BODY, _BACK_SCARF),
-    (art.FRONT_FLY_BODY, _FRONT_SCARF.shifted(0, 5)),
+_BENT_SCARVES = (
+    (
+        art.BENT_BODY_DIP,
+        Layer.parse(
+            """
+            ....R
+            ...Rr
+            ..Rr.
+            .Rr..
+            Rr...
+            """,
+            x=31,
+            y=15,
+        ),
+    ),
+    (
+        art.BENT_BODY,
+        Layer.parse(
+            """
+            ....R
+            ...Rr
+            ..Rr.
+            .Rr..
+            Rr...
+            """,
+            x=33,
+            y=18,
+        ),
+    ),
 )
-"""Each body, and its scarf as placed for that body where its art puts it."""
+"""Bent over pecking, his neck reaches down and forward to his head: the scarf
+goes across it there (placed for each bent body where its art puts it)."""
 
-_HEADS = frozenset(
-    layer.rows
-    for layer in (
-        art.HEAD, art.HEAD_DOWN, art.HEAD_UP, art.HEAD_COCKED, art.HEAD_TURNED,
-        art.HEAD_AWAY, art.FRONT_HEAD, art.FRONT_HEAD_DOWN, art.FRONT_HEAD_TURN,
-        art.FRONT_HEAD_BOWED, art.BACK_HEAD, art.CREST, art.CREST_RAISED, art.CREST_FLAT,
-        art.FRONT_CREST, art.FRONT_CREST_RAISED, art.FRONT_CREST_FLAT,
-    )
+_SIDE_HEADS = (
+    art.HEAD, art.HEAD_DOWN, art.HEAD_UP, art.HEAD_COCKED, art.HEAD_TURNED, art.HEAD_AWAY,
 )  # fmt: skip
-"""Heads and crests, as drawn: the scarf goes under the first of them."""
-
+_FRONT_HEADS = (
+    art.FRONT_HEAD, art.FRONT_HEAD_DOWN, art.FRONT_HEAD_TURN, art.BACK_HEAD,
+    art.FRONT_HEAD_BOWED.shifted(0, -3),  # drawn three rows lower: its neck is too
+)  # fmt: skip
+_FLYING_LOWERED = 9
+"""Rows the head is lowered to lead the flying body (see ``frames._FLYING_HEAD``)."""
 _MIDLINE = ANCHOR_COLUMN - PADDING
 """Art column the front view is symmetric about."""
 
@@ -175,20 +158,43 @@ def _same_art(layer: Layer, other: Layer) -> bool:
     return layer.rows == other.rows
 
 
-def _is_head(layer: Layer) -> bool:
-    if layer.rows in _HEADS:
-        return True
-    mirrored = layer.mirrored(_MIDLINE).rows
-    return mirrored in _HEADS
-
-
-def _scarf_for(layers: tuple[Layer, ...]) -> Layer | None:
-    """The scarf for the body in ``layers``, placed where that body is."""
-    for layer in layers:
-        for body, scarf in _SCARVES:
-            if _same_art(layer, body):
-                return scarf.shifted(layer.x - body.x, layer.y - body.y)
+def _scarf_for(layer: Layer, flying: bool) -> Layer | None:
+    """The scarf round the neck of ``layer``, if it's a head (or the front-on
+    flying body, whose head is part of it), placed with it."""
+    if flying and _same_art(layer, art.HEAD):
+        lowered = layer.y - art.HEAD.y
+        if lowered in (_FLYING_LOWERED - 1, _FLYING_LOWERED):  # (the downstroke lifts it)
+            return _FLYING_SCARF.shifted(layer.x - art.HEAD.x, lowered - _FLYING_LOWERED)
+    for heads, scarf in ((_SIDE_HEADS, _SIDE_SCARF), (_FRONT_HEADS, _FRONT_SCARF)):
+        for head in heads:
+            for candidate, wrap in (
+                (head, scarf),
+                (head.mirrored(_MIDLINE), scarf.mirrored(_MIDLINE)),
+            ):
+                if _same_art(layer, candidate):
+                    return wrap.shifted(layer.x - candidate.x, layer.y - candidate.y)
+    if _same_art(layer, art.FRONT_FLY_BODY):
+        fly = art.FRONT_FLY_BODY
+        return _FRONT_SCARF.shifted(layer.x - fly.x, layer.y - fly.y + 5)
     return None
+
+
+def _within(scarf: Layer, layers: tuple[Layer, ...]) -> Layer:
+    """``scarf`` with every pixel that would fall outside him left out."""
+    drawn = compose(layers, ART_WIDTH, ART_HEIGHT, PALETTE)
+    rows = []
+    for r, row in enumerate(scarf.rows):
+        y = scarf.y + r
+        rows.append(
+            "".join(
+                key
+                if key != "." and 0 <= (x := scarf.x + i) < ART_WIDTH and 0 <= y < ART_HEIGHT
+                and drawn.pixel(x, y) is not None
+                else "."
+                for i, key in enumerate(row)
+            )
+        )  # fmt: skip
+    return Layer(tuple(rows), scarf.x, scarf.y)
 
 
 _SLICKED = (
@@ -212,11 +218,19 @@ def _slicked(layer: Layer) -> Layer:
 def layers_with(layers: tuple[Layer, ...], look: Look) -> tuple[Layer, ...]:
     """A pose's layers, with a slicked crest when damp and a scarf when wrapped up."""
     out = [_slicked(layer) for layer in layers] if look.damp else list(layers)
-    scarf = _scarf_for(layers) if look.scarf else None
-    if scarf is not None:
-        # Over the body and wings, under his head (and crest), wherever they are.
-        heads = [i for i, layer in enumerate(layers) if _is_head(layer)]
-        out.insert(heads[0] if heads else len(out), scarf)
+    if look.scarf:
+        flying = any(_same_art(layer, art.FLIGHT_BODY) for layer in layers)
+        placed = [(i, s) for i, layer in enumerate(layers) if (s := _scarf_for(layer, flying))]
+        for body, scarf in _BENT_SCARVES:
+            for layer in layers:
+                if _same_art(layer, body) and placed:
+                    bent = scarf.shifted(layer.x - body.x, layer.y - body.y)
+                    placed = [(placed[-1][0], bent)]
+        if placed:
+            index, scarf = placed[-1]
+            # Over his head's lower edge, under anything drawn on it after (an
+            # open beak, closed eyes), and never outside him.
+            out.insert(index + 1, _within(scarf, tuple(out)))
     return tuple(out)
 
 
