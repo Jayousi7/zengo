@@ -6,7 +6,6 @@ from dataclasses import replace
 
 from zengo import sounds
 from zengo.behavior.machine import Brain
-from zengo.behavior.memory import restore, snapshot
 from zengo.behavior.states import Fly, Idle
 from zengo.sounds import CHIRPS
 
@@ -63,18 +62,10 @@ def test_pottering_about_he_chirps_now_and_then_but_not_mid_flight(ctx):
     assert not any(s in CHIRPS for s in ctx.sounds)
 
 
-def test_sound_on_or_off_is_remembered(ctx):
-    ctx.sound_on = False
-    data = snapshot(ctx)
-    ctx.sound_on = True
-    restore(ctx, data)
-    assert ctx.sound_on is False
-
-
 def test_the_player_makes_its_files_and_tidies_them_away():
     from zengo.ui.sound import SoundPlayer
 
-    player = SoundPlayer()
+    player = SoundPlayer(0.35)
     folder = player._folder
     if folder is None:  # no Qt multimedia on this machine: quiet, and that's all
         player.play("chirp_a")
@@ -99,7 +90,7 @@ def test_without_multimedia_he_stays_quiet(monkeypatch):
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", no_multimedia)
-    player = SoundPlayer()
+    player = SoundPlayer(0.35)
     assert player._folder is None
     player.play("chirp_a")  # nothing happens, nothing breaks
     player.close()

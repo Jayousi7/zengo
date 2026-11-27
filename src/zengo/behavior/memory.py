@@ -43,7 +43,6 @@ def snapshot(ctx: Context) -> dict[str, Any]:
         },
         "food": None if food is None else {"x": round(food.x, 1), "seeds": food.pile.seeds},
         "zengo": {"x": round(ctx.body.x, 1), "facing": int(ctx.body.facing)},
-        "settings": {"sound": ctx.sound_on},
         "cage": _cage_snapshot(ctx.cage),
         "bond": round(ctx.bond.level, 4),
         "escape": {
@@ -77,10 +76,6 @@ def restore(ctx: Context, data: object) -> None:
             ctx.body.x, ctx.body.y = area.clamp_x(x, ctx.margin), area.bottom
         if zengo.get("facing") in (-1, 1):
             ctx.body.facing = Facing(zengo["facing"])
-
-    settings = data.get("settings")
-    if isinstance(settings, dict) and isinstance(settings.get("sound"), bool):
-        ctx.sound_on = settings["sound"]
 
     cage = data.get("cage")
     if isinstance(cage, dict):

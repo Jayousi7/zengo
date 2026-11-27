@@ -8,9 +8,6 @@ from pathlib import Path
 
 from zengo import sounds
 
-VOLUME = 0.35
-"""Soft: he's a pet on your desk, not an alarm."""
-
 
 class SoundPlayer:
     """Plays sounds by name. The sounds are synthesized once at start-up into a
@@ -20,7 +17,7 @@ class SoundPlayer:
     stays quiet.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, volume: float) -> None:
         self._effects: dict[str, object] = {}
         self._folder: Path | None = None
         try:
@@ -34,8 +31,12 @@ class SoundPlayer:
             path.write_bytes(sounds.wav(sounds.sound(name)))
             effect = QSoundEffect()
             effect.setSource(QUrl.fromLocalFile(str(path)))
-            effect.setVolume(VOLUME)
+            effect.setVolume(volume)
             self._effects[name] = effect
+
+    def set_volume(self, volume: float) -> None:
+        for effect in self._effects.values():
+            effect.setVolume(volume)  # type: ignore[attr-defined]
 
     def play(self, name: str) -> None:
         effect = self._effects.get(name)

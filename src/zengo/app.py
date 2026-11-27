@@ -9,7 +9,7 @@ import signal
 import sys
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt, QTimer
@@ -21,7 +21,8 @@ from zengo.behavior.body import Body, Facing
 from zengo.behavior.context import Context
 from zengo.behavior.machine import Brain
 from zengo.behavior.memory import restore, snapshot
-from zengo.config import Config, quick
+from zengo.config import Config
+from zengo.settings import Flags, Settings, build_config, migrated
 from zengo.sprites.cage import CAGE_WIDTH, FLOOR
 from zengo.sprites.clips import CLIPS
 from zengo.sprites.compose import Frame
@@ -83,8 +84,12 @@ class Pet:
         *,
         branch_now: bool = False,
         memory: StateFile | None = None,
+        settings: Settings | None = None,
+        settings_file: StateFile | None = None,
     ) -> None:
         self._config = config
+        self._settings = settings or Settings(scale=config.scale)
+        self._settings_file = settings_file
         self._world = QtWorld()
 
         area = self._world.area_at(*self._world.cursor())
@@ -103,6 +108,7 @@ class Pet:
             if app is not None:
                 app.aboutToQuit.connect(self.save)
 
+        self._brain.ctx.sound_on = self._settings.sound
         self._sheet = SpriteSheet(frames, config.scale)
         self._window = PetWindow(config.drag_threshold)
         self._window.clicked.connect(self._brain.click)
@@ -129,7 +135,7 @@ class Pet:
         self._cage.menu_requested.connect(self._show_menu)
         self._mount = MountWindow(config)
         self._food = FoodWindow(config)
-        self._sound = SoundPlayer()
+        self._sound = SoundPlayer(self._settings.volume)
         if (app := QApplication.instance()) is not None:
             app.aboutToQuit.connect(self._sound.close)  # tidy away the sound files
         self._dish = FoodWindow(config, in_front_of=self._window)
@@ -273,8 +279,24 @@ class Pet:
     def _toggle_sound(self) -> None:
         ctx = self._brain.ctx
         ctx.sound_on = not ctx.sound_on
+        self.change_settings(replace(self._settings, sound=ctx.sound_on))
         if ctx.sound_on:
             ctx.play("chirp_a")  # a little hello, so you know it's on
+
+    @property
+    def settings(self) -> Settings:
+        return self._settings
+
+    def change_settings(self, settings: Settings) -> None:
+        """Take up new settings and keep them. Only what can change while he runs
+        is applied here so far: sound and volume."""
+        if settings == self._settings:
+            return
+        self._settings = settings
+        self._brain.ctx.sound_on = settings.sound
+        self._sound.set_volume(settings.volume)
+        if self._settings_file is not None:
+            self._settings_file.save(settings.to_json())
 
     def _start_catching(self) -> None:
         body = self._brain.ctx.body
@@ -323,7 +345,8 @@ class Pet:
 
 @dataclass(frozen=True)
 class Options:
-    config: Config
+    flags: Flags
+    """What the command line says, to be laid over your settings."""
     sprites: Path | None
     """Aseprite JSON export whose frames replace the built-in ones by name."""
     branch_now: bool = False
@@ -333,9 +356,9 @@ class Options:
 def parse_args(argv: list[str]) -> Options:
     parser = argparse.ArgumentParser(prog="zengo", description="Zengo the desktop cockatiel.")
     parser.add_argument(
-        "--scale", type=int, default=Config.scale, help="screen pixels per art pixel"
+        "--scale", type=int, help="screen pixels per art pixel (overrides your settings)"
     )
-    parser.add_argument("--fps", type=int, default=Config.fps)
+    parser.add_argument("--fps", type=int, help=f"frames per second (default {Config.fps})")
     parser.add_argument(
         "--sprites",
         type=Path,
@@ -353,10 +376,10 @@ def parse_args(argv: list[str]) -> Options:
         help="grow a branch for Zengo straight away instead of waiting for one",
     )
     args = parser.parse_args(argv)
-    if args.scale < 1 or args.fps < 1:
+    if (args.scale is not None and args.scale < 1) or (args.fps is not None and args.fps < 1):
         parser.error("--scale and --fps must be positive")
-    config = Config(scale=args.scale, fps=args.fps)
-    return Options(quick(config) if args.quick else config, args.sprites, args.branch_now)
+    flags = Flags(scale=args.scale, fps=args.fps, quick=args.quick)
+    return Options(flags, args.sprites, args.branch_now)
 
 
 def quiet_bundled_libraries() -> None:
@@ -395,6 +418,21 @@ def main(argv: list[str] | None = None) -> int:
     for stop in (signal.SIGINT, signal.SIGTERM):
         signal.signal(stop, lambda *_: app.quit())
 
-    pet = Pet(options.config, frames, branch_now=options.branch_now, memory=StateFile.default())
+    memory = StateFile.default()
+    settings_file = StateFile(memory.path.with_name("settings.json"))
+    settings_data = settings_file.load()
+    settings = Settings.from_json(settings_data)
+    if (carried := migrated(settings_data, memory.load())) is not None:
+        settings = carried
+        settings_file.save(settings.to_json())  # sound on/off moved over from the state file
+    config = build_config(settings, options.flags)
+    pet = Pet(
+        config,
+        frames,
+        branch_now=options.branch_now,
+        memory=memory,
+        settings=settings,
+        settings_file=settings_file,
+    )
     pet.start()
     return app.exec()
