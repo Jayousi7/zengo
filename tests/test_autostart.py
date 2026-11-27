@@ -11,7 +11,7 @@ def test_the_desktop_file_is_written_and_removed(tmp_path):
     assert auto.enabled() is False
     auto.set(True)
     assert auto.enabled() is True
-    text = entry.path.read_text()
+    text = entry.path.read_text(encoding="utf-8")
     assert entry.path == tmp_path / "autostart" / "zengo.desktop"
     assert "Exec=/opt/zengo/zengo\n" in text and "Type=Application" in text
     auto.set(False)
@@ -22,7 +22,7 @@ def test_awkward_paths_are_quoted_and_read_back(tmp_path):
     command = ["/home/me/My Apps/py$thon", "-m", "zengo"]
     entry = DesktopEntry(tmp_path)
     entry.write(command)
-    assert 'Exec="/home/me/My Apps/py\\$thon" -m zengo' in entry.path.read_text()
+    assert 'Exec="/home/me/My Apps/py\\$thon" -m zengo' in entry.path.read_text(encoding="utf-8")
     assert entry.read() == command
 
 

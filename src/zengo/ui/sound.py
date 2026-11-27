@@ -41,8 +41,7 @@ class SoundPlayer:
         from PySide6.QtCore import QUrl
         from PySide6.QtMultimedia import QSoundEffect
 
-        for effect in self._effects.values():
-            effect.stop()  # type: ignore[attr-defined]
+        self._release()
         self._effects.clear()
         for name in sounds.names():
             path = replaced.get(name)
@@ -53,6 +52,16 @@ class SoundPlayer:
             effect.setSource(QUrl.fromLocalFile(str(path or self._folder / f"{name}.wav")))
             effect.setVolume(self._volume)
             self._effects[name] = effect
+
+    def _release(self) -> None:
+        """Stop every sound and let go of its file: Windows won't delete, or let a
+        recording replace, a file a sound effect still has open."""
+        from PySide6.QtCore import QUrl
+
+        for effect in self._effects.values():
+            effect.stop()  # type: ignore[attr-defined]
+            effect.setSource(QUrl())  # type: ignore[attr-defined]
+            effect.deleteLater()  # type: ignore[attr-defined]
 
     def preview(self, path: Path) -> None:
         """Play a file once, at his volume (trying out a recording)."""
@@ -78,9 +87,13 @@ class SoundPlayer:
             effect.play()  # type: ignore[attr-defined]
 
     def close(self) -> None:
-        for effect in self._effects.values():
-            effect.stop()  # type: ignore[attr-defined]
+        self._release()
         self._effects.clear()
+        from PySide6.QtCore import QCoreApplication, QEvent
+
+        # Destroy the released effects now, so their files are closed before
+        # the folder goes (Windows keeps open files from being deleted).
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         if self._folder is not None:
             shutil.rmtree(self._folder, ignore_errors=True)
             self._folder = None

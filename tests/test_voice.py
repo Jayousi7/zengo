@@ -22,12 +22,14 @@ def test_missing_files_are_written_out_with_the_built_ins(tmp_path):
     voice = files.load()
     assert voice == Voice()
     assert files.phrases_path.exists() and files.sounds_path.exists()
-    assert phrases_from(tomllib.loads(files.phrases_path.read_text())) == DEFAULT_PHRASES
-    assert sounds_from(tomllib.loads(files.sounds_path.read_text()), tmp_path) == {}
+    phrases = tomllib.loads(files.phrases_path.read_text(encoding="utf-8"))
+    sounds = tomllib.loads(files.sounds_path.read_text(encoding="utf-8"))
+    assert phrases_from(phrases) == DEFAULT_PHRASES
+    assert sounds_from(sounds, tmp_path) == {}
 
 
 def test_your_phrases_are_used(tmp_path, ctx):
-    (tmp_path / "phrases.toml").write_text('hungry = ["snacc?"]\nfreed = []\n')
+    (tmp_path / "phrases.toml").write_text('hungry = ["snacc?"]\nfreed = []\n', encoding="utf-8")
     voice = VoiceFiles(tmp_path).load()
     assert voice.lines("hungry") == ("snacc?",)
     assert voice.lines("freed") == DEFAULT_PHRASES["freed"]  # empty: the built-in
@@ -37,12 +39,12 @@ def test_your_phrases_are_used(tmp_path, ctx):
 
 def test_a_broken_file_is_reported_once_and_left_alone(tmp_path, capsys):
     broken = 'hungry = ["unclosed'
-    (tmp_path / "phrases.toml").write_text(broken)
+    (tmp_path / "phrases.toml").write_text(broken, encoding="utf-8")
     files = VoiceFiles(tmp_path)
     assert files.load().phrases == DEFAULT_PHRASES
     files.load()
     assert capsys.readouterr().err.count("phrases.toml") == 1
-    assert (tmp_path / "phrases.toml").read_text() == broken  # your edits survive
+    assert (tmp_path / "phrases.toml").read_text(encoding="utf-8") == broken  # your edits survive
 
 
 def test_bad_entries_fall_back_on_their_own():
