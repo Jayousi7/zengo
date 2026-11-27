@@ -135,9 +135,18 @@ FRONT_CLIPS: dict[str, Clip] = {
         (0.5, 0.2, 0.4, 0.3, 0.4, 0.2),
     ),
     # One seed: peck it up, crack it open, swallow. About a second each.
+    # Nodding down to bow over the dish, then back up through the nod to crack it.
     "front_eat": Clip(
-        ("front_peck", "front_chew", "front_perch", "front_chew", "front_perch"),
-        (0.22, 0.2, 0.18, 0.2, 0.24),
+        (
+            "front_bob",
+            "front_peck",
+            "front_bob",
+            "front_chew",
+            "front_perch",
+            "front_chew",
+            "front_perch",
+        ),
+        (0.06, 0.18, 0.06, 0.2, 0.18, 0.18, 0.18),
     ),
     # Caged and furious: crest up, puffing and shaking, glaring this way and that.
     "front_angry": Clip(

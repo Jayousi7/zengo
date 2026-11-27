@@ -803,3 +803,65 @@ TAIL_PERCHED = _layer(
     x=2,
     y=20,
 )
+
+
+# --- Eating off the ground --------------------------------------------------------
+# To peck at seeds he tips forward over his feet like a seesaw: the chest dips,
+# the tail rises, and his neck reaches down so the beak meets the ground. The
+# body, wing and tail together, tipped 10 and 20 degrees.
+
+BENT_BODY_DIP = _layer(
+    """
+    ...............................SC
+    ...........................SDSCCCCB
+    ........................SDDDCCCCCCBBBLL
+    ....................SDSDDDCCCCCCCCBBLLLWW
+    .............TTTTTSDDDDDDCCCCCCCCCBBLLLLL
+    ...ttTTTTTTTTTDDDDDDDDDDDPPPCCPPPCBBLLLLL
+    ttttttttttTTttttDDDDtSSSSSSPPPPPSBBBLLLLL
+    ....ttttttttttttttttSSSBBBBSSSBBBBBLLLLLL
+    ................tttttSSBBBBBBBBBBBLLLLL
+    ......................SSSSBBBBBBBBLL
+    ..........................SBBBBBBBBB
+    ...........................SSSSSSB
+    """,
+    x=0,
+    y=15,
+)
+
+
+BENT_BODY = _layer(
+    """
+    tttttTTTTTTTTT..........SSSDSCCCC
+    ..ttttttTTTTTTTSTSDDDDDDDDDCCCCCCB
+    ....ttttttTTtDDDDDDDDDDDDCCCCCCCCBBBL
+    .......ttttttttDDDDDDDDPCCCCCCCCCBBLLW
+    .............ttttttSSSSSSPPCCPCCCBBLLLLWW
+    ................tttSSSBBSSSPPPPPPBBLLLLL
+    ..................ttSSBBBBBSBBSBBBBLLLLL
+    .....................SSSBBBBBBBBBLLLLLLL
+    ........................BBBBBBBBLLLLLLL
+    ........................SSSBBBBBLLLLL
+    ..........................SSSBBBBB
+    .............................SS
+    """,
+    x=2,
+    y=16,
+)
+
+
+# From the front, bowed to peck at the dish: the crown towards you, the face
+# foreshortened beneath it, the beak down at the chest.
+FRONT_HEAD_BOWED = _layer(
+    """
+    .LLLLLLL
+    LLLWWWLLL
+    LWWWWWWWL
+    WKWWWWWKW
+    .WWWQWWW
+    .LWQQqWL
+    ..LWqWL
+    """,
+    x=26,
+    y=11,
+)

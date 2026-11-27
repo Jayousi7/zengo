@@ -68,3 +68,25 @@ def test_sitting_on_something_thin_his_tail_always_hangs_down():
     for name in LEDGE_CLIPS:
         for frame in CLIPS[f"ledge_{name}"].frames:
             assert frame.startswith("ledge_"), (name, frame)
+
+
+def test_eating_clips_take_one_seed_each():
+    from zengo.behavior.food import SECONDS_PER_SEED
+    from zengo.sprites.clips import CLIPS
+
+    for name in ("eat", "front_eat"):
+        assert abs(CLIPS[name].length - SECONDS_PER_SEED) < 1e-9, name
+
+
+def test_pecking_his_beak_reaches_the_seeds_on_the_ground():
+    from zengo.behavior.food import PECK_REACH
+    from zengo.sprites.frames import ANCHOR_COLUMN
+    from zengo.sprites.palette import PALETTE
+
+    frame = FRAMES["peck_low"]
+    beak = {PALETTE["Q"], PALETTE["q"]}
+    tip = [
+        (x, y) for y in range(frame.height) for x in range(frame.width) if frame.pixel(x, y) in beak
+    ]
+    assert max(x for x, _ in tip) == ANCHOR_COLUMN + PECK_REACH
+    assert GROUND_ROW - 3 <= max(y for _, y in tip) <= GROUND_ROW

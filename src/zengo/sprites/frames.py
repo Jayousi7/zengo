@@ -97,12 +97,22 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     ),
     # Whistling: crest up, head tipped back to sing with the beak open.
     "whistle_a": (*_SITTING, art.HEAD_UP, art.BEAK_OPEN_UP, art.CREST_RAISED.shifted(-1, 0)),
-    # Eating seeds off the ground: the head dips to peck one up, then comes back up
-    # to crack it, beak working.
-    "peck_down": (*_PECKING_BODY, *_shifted(5, 8, art.CREST_FLAT, art.HEAD_DOWN)),
-    "peck_low": (*_PECKING_BODY, *_shifted(6, 10, art.CREST_FLAT, art.HEAD_DOWN)),
-    "chew_a": (*_PECKING_BODY, *_shifted(2, 3, art.CREST, art.HEAD, art.BEAK_OPEN)),
-    "chew_b": (*_PECKING_BODY, *_shifted(2, 3, art.CREST, art.HEAD)),
+    # Eating seeds off the ground: tipping forward, the beak reaching down to the
+    # seeds, then back upright to crack one open, beak working, head level.
+    "peck_down": (
+        art.LEGS,
+        art.BENT_BODY_DIP,
+        art.HEAD_DOWN.shifted(3, 5),
+        art.CREST_FLAT.shifted(4, 6),
+    ),
+    "peck_low": (
+        art.LEGS,
+        art.BENT_BODY,
+        art.HEAD_DOWN.shifted(5, 11),
+        art.CREST_FLAT.shifted(6, 12),
+    ),
+    "chew_a": (*_PECKING_BODY, art.HEAD, art.BEAK_OPEN, art.CREST),
+    "chew_b": (*_PECKING_BODY, art.HEAD, art.CREST),
     # The downstroke lifts the body a pixel.
     "wings_up": (art.FLIGHT_BODY, art.WING_UP, *_FLYING_HEAD),
     "wings_level": (art.FLIGHT_BODY, art.WING_LEVEL, *_FLYING_HEAD),
@@ -170,13 +180,10 @@ FRONT_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.FRONT_HEAD,
         art.FRONT_BEAK_OPEN,
     ),
-    "front_peck": (*_FRONT_SITTING, *_shifted(0, 3, art.FRONT_CREST, art.FRONT_HEAD_DOWN)),
-    "front_chew": (
-        *_FRONT_SITTING,
-        art.FRONT_CREST.shifted(0, 1),
-        art.FRONT_HEAD_DOWN,
-        art.FRONT_BEAK_OPEN.shifted(0, 1),
-    ),
+    # Bowing his head to the dish (or the cage latch): the crown towards you.
+    "front_peck": (*_FRONT_SITTING, art.FRONT_CREST_FLAT.shifted(0, 4), art.FRONT_HEAD_BOWED),
+    # Cracking a seed: head level, beak working.
+    "front_chew": (*_FRONT_SITTING, *_FRONT_UP, art.FRONT_BEAK_OPEN),
     "front_sleep": (
         *_FRONT_SITTING,
         art.FRONT_PUFF,
