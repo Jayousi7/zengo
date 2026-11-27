@@ -90,6 +90,32 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.WING_FOLDED,
         *_shifted(1, 0, art.HEAD, art.CREST_RAISED),
     ),
+    # Petted: fluffed up, eyes shut, crest relaxed, leaning into the hand.
+    "petted_a": (
+        art.LEGS,
+        art.TAIL,
+        art.BODY,
+        art.PUFF,
+        art.WING_FOLDED,
+        *_shifted(0, 1, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED),
+    ),
+    "petted_b": (
+        art.LEGS,
+        art.TAIL,
+        art.BODY,
+        art.PUFF,
+        art.WING_FOLDED,
+        *_shifted(-1, 2, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED),
+    ),
+    # Whistling: crest up, head bobbing.
+    "whistle_a": (
+        art.LEGS,
+        art.TAIL,
+        art.BODY,
+        art.WING_FOLDED,
+        art.CREST_RAISED,
+        art.HEAD.shifted(0, -1),  # the crest is already as high as the canvas allows
+    ),
     # The downstroke lifts the body a pixel.
     "wings_up": (art.FLIGHT_BODY, art.WING_UP, *_FLYING_HEAD),
     "wings_level": (art.FLIGHT_BODY, art.WING_LEVEL, *_FLYING_HEAD),
@@ -126,6 +152,17 @@ FRONT_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.FRONT_PUFF,
         *_shifted(1, 0, art.FRONT_CREST_RAISED, art.FRONT_HEAD),
     ),
+    "front_petted_a": (
+        *_FRONT_SITTING,
+        art.FRONT_PUFF,
+        *_shifted(-1, 1, art.FRONT_CREST_FLAT, art.FRONT_HEAD, art.FRONT_EYES_CLOSED),
+    ),
+    "front_petted_b": (
+        *_FRONT_SITTING,
+        art.FRONT_PUFF,
+        *_shifted(1, 1, art.FRONT_CREST_FLAT, art.FRONT_HEAD, art.FRONT_EYES_CLOSED),
+    ),
+    "front_whistle_a": (*_FRONT_SITTING, art.FRONT_CREST_RAISED, art.FRONT_HEAD.shifted(0, -1)),
     "front_sleep": (
         *_FRONT_SITTING,
         art.FRONT_PUFF,

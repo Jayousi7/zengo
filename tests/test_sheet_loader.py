@@ -1,17 +1,10 @@
 import json
-import os
 
 import pytest
-from PySide6.QtGui import QColor, QGuiApplication, QImage
+from PySide6.QtGui import QColor, QImage
 
 from zengo.sprites.frames import CANVAS_HEIGHT, CANVAS_WIDTH
 from zengo.ui.sheet_loader import SheetError, load_sheet
-
-
-@pytest.fixture(scope="module", autouse=True)
-def qt_app():
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")  # no display needed
-    return QGuiApplication.instance() or QGuiApplication([])
 
 
 def write_sheet(tmp_path, frames, layout="hash"):

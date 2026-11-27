@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, QPointF, Qt, Signal
+from PySide6.QtCore import QPoint, QPointF, Qt, QTimer, Signal
 from PySide6.QtGui import QContextMenuEvent, QMouseEvent, QPainter, QPaintEvent
-from PySide6.QtWidgets import QMenu, QWidget
+from PySide6.QtWidgets import QApplication, QMenu, QWidget
 
 from zengo.ui.sprites import Sprite
 
@@ -12,11 +12,14 @@ from zengo.ui.sprites import Sprite
 class PetWindow(QWidget):
     """Displays one sprite and translates raw mouse input into pet gestures.
 
-    The window knows nothing about behaviour: it reports clicks and drags in
-    screen coordinates and draws whatever it is told to.
+    The window knows nothing about behaviour: it reports clicks, double-clicks
+    and drags in screen coordinates and draws whatever it is told to. A single
+    click is held back for the double-click interval, so the first click of a
+    double-click doesn't also count as a poke.
     """
 
     clicked = Signal()
+    double_clicked = Signal()
     grabbed = Signal(float, float)
     dragged = Signal(float, float)
     released = Signal()
@@ -38,6 +41,10 @@ class PetWindow(QWidget):
         self._sprite: Sprite | None = None
         self._press: QPointF | None = None
         self._dragging = False
+        self._double = False
+        self._pending_click = QTimer(self, singleShot=True)
+        self._pending_click.setInterval(QApplication.styleHints().mouseDoubleClickInterval())
+        self._pending_click.timeout.connect(self.clicked.emit)
 
     def show_sprite(self, sprite: Sprite, top_left: QPoint) -> None:
         if sprite is not self._sprite:
@@ -75,10 +82,18 @@ class PetWindow(QWidget):
             return
         if self._dragging:
             self.released.emit()
+        elif self._double:
+            self._double = False  # the release that ends a double-click
         else:
-            self.clicked.emit()
+            self._pending_click.start()
         self._press = None
         self._dragging = False
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._pending_click.stop()
+            self._double = True
+            self.double_clicked.emit()
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
         menu = QMenu(self)

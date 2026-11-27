@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import random
 from dataclasses import dataclass, field
 
@@ -11,6 +12,19 @@ from zengo.behavior.context import Context
 from zengo.config import Config
 from zengo.sprites.clips import CLIPS
 from zengo.world import Area
+
+
+@pytest.fixture(scope="session", autouse=True)
+def qt_app():
+    """One full Qt application for the whole run, created before any test needs one.
+
+    Widget tests need a QApplication; if a test made a plain QGuiApplication first,
+    widgets would crash. The behaviour tests never touch Qt; it costs them nothing.
+    """
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")  # no display needed
+    from PySide6.QtWidgets import QApplication
+
+    return QApplication.instance() or QApplication([])
 
 
 @dataclass

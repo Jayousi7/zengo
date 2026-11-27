@@ -16,6 +16,8 @@ it and he grabs it. Now and then he sits facing you on the ground too.
 | Input | Reaction |
 |---|---|
 | Left click | Crest up, startled |
+| Double-click | Bobs his head and whistles; the tune pops up in a cloud |
+| Stroke the mouse gently back and forth over him | Fluffs up, shuts his eyes and leans into it, with hearts; a happy shake when you stop |
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
 | Right click | Menu with *Quit Zengo* |
 
@@ -83,6 +85,7 @@ src/zengo/
     states.py       one class per behaviour
     flight.py       smooth flight paths through waypoints
     scenery.py      the branch: when it grows, stays and withdraws
+    petting.py      tells gentle strokes of the pointer from passing by
     machine.py      Brain: runs states, routes mouse input
   sprites/
     palette.py      Zengo's colours
@@ -97,6 +100,7 @@ src/zengo/
     window.py       translucent always-on-top window, gestures
     sheet_loader.py Aseprite JSON + PNG -> frames
     branch_window.py click-through window the branch is drawn in
+    bubble_window.py the speech cloud above his head
 ```
 
 Only `ui/` and `app.py` import Qt. Everything else is plain Python and is
@@ -134,7 +138,8 @@ each frame after the one it replaces (`perch`, `blink`, `alert`, `step_back`,
 `held_look`, `held_flick`, `shake_a`, `shake_b`, `turn_up`, `turn_down`, the
 front views `front_perch`, `front_blink`, `front_look_l`, `front_look_r`,
 `front_alert`, `front_preen_a`, `front_preen_b`, `front_fluff_a`, `front_fluff_b`,
-`front_sleep`, and the same front views on the branch as `branch_...`) and export a sprite sheet with JSON data, hash or array layout.
+`front_sleep`, `front_petted_a`, `front_petted_b`, `front_whistle_a`, `petted_a`,
+`petted_b`, `whistle_a`, and the same front views on the branch as `branch_...`) and export a sprite sheet with JSON data, hash or array layout.
 Frames not in the sheet keep the built-in art. Run with
 `zengo --sprites sheet.json`. Draw your own outline here; generated outlines
 only apply to the built-in art.

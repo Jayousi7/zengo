@@ -7,9 +7,18 @@ from dataclasses import dataclass, field
 
 from zengo.animation import Animator
 from zengo.behavior.body import Body
+from zengo.behavior.petting import PettingSensor
 from zengo.behavior.scenery import Scenery
 from zengo.config import Config
 from zengo.world import Area, World
+
+
+@dataclass
+class Speech:
+    """Words in a cloud above his head: a whistle, or a heart when petted."""
+
+    text: str
+    remaining: float
 
 
 @dataclass
@@ -20,6 +29,11 @@ class Context:
     config: Config
     rng: random.Random
     scenery: Scenery = field(default_factory=Scenery)
+    petting: PettingSensor = field(default_factory=PettingSensor)
+    speech: Speech | None = None
+
+    def say(self, text: str, seconds: float) -> None:
+        self.speech = Speech(text, seconds)
 
     def area(self) -> Area:
         # Probe slightly above the feet: the ground line is the area's exclusive bottom edge.

@@ -70,6 +70,19 @@ class Config:
     branch_visit: tuple[float, float] = (40.0, 150.0)
     """Seconds Zengo sits on the branch before flying off."""
 
+    whistles: tuple[str, ...] = (
+        "♪ fweet-fweet! ♪",
+        "♫ wheee-ooo! ♫",
+        "♪ tu-tu-tweeet ♪",
+        "Zengo! ♪",
+        "pretty bird! ♫",
+        "♪ ♫ ♪",
+    )
+    """What a double-click gets out of him, shown in a cloud above his head."""
+
+    speech_seconds: float = 2.6
+    """How long a whistle's cloud stays up."""
+
     sleep_after: float = 300.0
     """Seconds of user inactivity after which Zengo becomes sleepy."""
 

@@ -26,6 +26,13 @@ class Brain:
         ctx = self.ctx
         ctx.animator.update(dt)
         ctx.scenery.update(ctx, dt, occupied=self._state.holds_branch)
+        if ctx.speech is not None:
+            ctx.speech.remaining -= dt
+            if ctx.speech.remaining <= 0:
+                ctx.speech = None
+        ctx.petting.update(ctx, dt)
+        if ctx.petting.active and (following := self._state.petted(ctx)) is not None:
+            self.transition(following)
         if (following := self._state.update(ctx, dt)) is not None:
             self.transition(following)
         if self._state.grounded:
@@ -50,6 +57,11 @@ class Brain:
     def click(self) -> None:
         """A poke: what it does depends on what he's doing (see :meth:`State.clicked`)."""
         if (following := self._state.clicked(self.ctx)) is not None:
+            self.transition(following)
+
+    def double_click(self) -> None:
+        """Double-clicked: a whistle, when he's settled (see :meth:`State.double_clicked`)."""
+        if (following := self._state.double_clicked(self.ctx)) is not None:
             self.transition(following)
 
     def grab(self, x: float, y: float) -> None:

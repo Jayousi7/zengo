@@ -44,6 +44,14 @@ class State:
         he doesn't notice."""
         return Alert() if self.grounded else None
 
+    def double_clicked(self, ctx: Context) -> State | None:
+        """Double-clicked: on the ground he whistles a tune."""
+        return Whistle() if self.grounded else None
+
+    def petted(self, ctx: Context) -> State | None:
+        """Being stroked: on the ground he settles into it, even from a nap."""
+        return Petted() if self.grounded else None
+
     @property
     def holds_branch(self) -> bool:
         """He's on the branch or on his way to it, so it mustn't withdraw yet."""
@@ -472,6 +480,56 @@ class Shake(_OneShot):
     clip = "shake"
 
 
+class Whistle(_OneShot):
+    """Double-clicked: he bobs his head, crest up, and whistles (shown in a cloud)."""
+
+    clip = "whistle"
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        ctx.say(ctx.rng.choice(ctx.config.whistles), ctx.config.speech_seconds)
+
+
+class _Contentment:
+    """Hearts now and then while he's being petted, and noticing when it stops."""
+
+    heart_every: ClassVar[float] = 1.6
+    stop_after: ClassVar[float] = 1.2
+    """Seconds without a stroke before he decides the petting is over."""
+
+    def __init__(self) -> None:
+        self.since_heart = math.inf
+        self.unpetted = 0.0
+
+    def still_enjoying(self, ctx: Context, dt: float) -> bool:
+        self.since_heart += dt
+        if ctx.petting.active:
+            self.unpetted = 0.0
+            if self.since_heart >= self.heart_every:
+                ctx.say("♥", 1.0)
+                self.since_heart = 0.0
+        else:
+            self.unpetted += dt
+        return self.unpetted < self.stop_after
+
+
+class Petted(State):
+    """Being stroked: fluffed up, eyes shut, leaning into the hand. When the
+    petting stops he gives a happy shake."""
+
+    clip = "petted"
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        self.contentment = _Contentment()
+
+    def petted(self, ctx: Context) -> State | None:
+        return None  # already enjoying it
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        return None if self.contentment.still_enjoying(ctx, dt) else Shake()
+
+
 class Dragged(State):
     """Held by the mouse, hanging from the grab point on a damped spring.
 
@@ -647,7 +705,8 @@ class OnBranch(State):
 
     He looks about, preens, fluffs up, and naps when sleepy, then after a while
     flies off, down to the ground or on a tour. If the branch goes, he drops off
-    and glides down. A poke startles him, but he stays put.
+    and glides down. A poke startles him, but he stays put; a double-click gets
+    a whistle and petting works here too.
     """
 
     clip = "branch_idle"
@@ -659,6 +718,8 @@ class OnBranch(State):
         "fluff": "branch_fluff",
         "sleep": "branch_sleep",
         "alert": "branch_alert",
+        "whistle": "branch_whistle",
+        "petted": "branch_petted",
     }
 
     def __init__(self, *, settle_in: bool = False) -> None:
@@ -679,6 +740,17 @@ class OnBranch(State):
         self._do(ctx, "alert")
         return None
 
+    def double_clicked(self, ctx: Context) -> State | None:
+        self._do(ctx, "whistle")
+        ctx.say(ctx.rng.choice(ctx.config.whistles), ctx.config.speech_seconds)
+        return None
+
+    def petted(self, ctx: Context) -> State | None:
+        if self.doing != "petted":
+            self._do(ctx, "petted")
+            self.contentment = _Contentment()
+        return None
+
     def step(self, ctx: Context, dt: float) -> State | None:
         branch = ctx.scenery.branch
         if branch is None or not branch.ready:  # it's going: drop off and glide down
@@ -687,6 +759,10 @@ class OnBranch(State):
         lo, hi = branch.perch_span(ctx.config)
         ctx.body.x, ctx.body.y = min(max(ctx.body.x, lo), hi), branch.top
 
+        if self.doing == "petted":
+            if not self.contentment.still_enjoying(ctx, dt):
+                self._do(ctx, "fluff")
+            return None
         if self.doing == "sleep":
             if not is_sleepy(ctx):
                 self._do(ctx, "sit")

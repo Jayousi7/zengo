@@ -11,7 +11,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, Qt, QTimer
+from PySide6.QtCore import QPoint, QRect, Qt, QTimer
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication
 
 from zengo.animation import Animator
@@ -23,6 +24,7 @@ from zengo.sprites.clips import CLIPS
 from zengo.sprites.compose import Frame
 from zengo.sprites.frames import ANCHOR_COLUMN, CANVAS_WIDTH, GROUND_ROW, build_frames
 from zengo.ui.branch_window import BranchWindow
+from zengo.ui.bubble_window import BubbleWindow
 from zengo.ui.qt_world import QtWorld
 from zengo.ui.sheet_loader import SheetError, load_sheet
 from zengo.ui.sprites import SpriteSheet
@@ -30,6 +32,9 @@ from zengo.ui.window import PetWindow
 
 MAX_FRAME_DT = 0.1
 """Cap on simulated time per tick, so a suspended laptop doesn't fling Zengo off-screen."""
+
+FACING_YOU = ("front_", "branch_", "turn_")
+"""Frames drawn facing the viewer, with the head straight above the anchor."""
 
 
 class Pet:
@@ -54,11 +59,13 @@ class Pet:
         self._sheet = SpriteSheet(frames, config.scale)
         self._window = PetWindow(config.drag_threshold)
         self._window.clicked.connect(self._brain.click)
+        self._window.double_clicked.connect(self._brain.double_click)
         self._window.grabbed.connect(self._brain.grab)
         self._window.dragged.connect(self._brain.drag)
         self._window.released.connect(self._brain.release)
         self._branch = BranchWindow(config)
         self._window.released.connect(self._branch.keep_in_front)
+        self._bubble = BubbleWindow(config.scale)
         self._window.quit_requested.connect(QApplication.quit)
 
         self._timer = QTimer(timerType=Qt.TimerType.PreciseTimer, interval=1000 // config.fps)
@@ -89,6 +96,19 @@ class Pet:
         top = body.y - self._config.px(GROUND_ROW + 1)
         self._window.show_sprite(sprite, QPoint(round(left), round(top)))
         self._branch.show_branch(ctx.scenery.branch)
+        self._show_speech()
+
+    def _show_speech(self) -> None:
+        ctx = self._brain.ctx
+        if ctx.speech is None:
+            self._bubble.say(None, QPoint(), QRect())
+            return
+        body, px = ctx.body, self._config.px
+        # The head is just ahead of the anchor side-on, straight above it facing you.
+        ahead = 0 if ctx.animator.frame.startswith(FACING_YOU) else px(6) * int(body.facing)
+        head = QPoint(round(body.x + ahead), round(body.y - px(30)))
+        screen = QGuiApplication.screenAt(head) or QGuiApplication.primaryScreen()
+        self._bubble.say(ctx.speech.text, head, screen.availableGeometry())
 
 
 @dataclass(frozen=True)
