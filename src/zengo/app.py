@@ -19,6 +19,7 @@ from zengo.animation import Animator
 from zengo.behavior.body import Body, Facing
 from zengo.behavior.context import Context
 from zengo.behavior.machine import Brain
+from zengo.behavior.memory import restore, snapshot
 from zengo.config import Config, quick
 from zengo.sprites.cage import CAGE_WIDTH, FLOOR
 from zengo.sprites.clips import CLIPS
@@ -33,6 +34,7 @@ from zengo.ui.food_window import FoodWindow
 from zengo.ui.qt_world import QtWorld
 from zengo.ui.sheet_loader import SheetError, load_sheet
 from zengo.ui.sprites import SpriteSheet
+from zengo.ui.state_file import StateFile
 from zengo.ui.window import PetWindow
 
 MAX_FRAME_DT = 0.1
@@ -41,6 +43,9 @@ MAX_FRAME_DT = 0.1
 SPEECH_HEIGHT = 32
 """Art px above his feet where a speech cloud's tail points: just over his crest
 at its tallest, so no pose of his pokes into the cloud."""
+
+SAVE_EVERY_MS = 15_000
+"""How often what he remembers is written down, besides when he quits."""
 
 SPEECH_GLIDE = 0.3
 """Share of the way a speech cloud moves towards where it belongs each frame."""
@@ -54,6 +59,7 @@ class Pet:
         rng: random.Random | None = None,
         *,
         branch_now: bool = False,
+        memory: StateFile | None = None,
     ) -> None:
         self._config = config
         self._world = QtWorld()
@@ -64,6 +70,14 @@ class Pet:
         self._brain = Brain(Context(body, self._world, animator, config, rng or random.Random()))
         if branch_now:
             self._brain.ctx.scenery.grow(self._brain.ctx)
+        self._memory = memory
+        if memory is not None:
+            restore(self._brain.ctx, memory.load())
+            self._save_timer = QTimer(interval=SAVE_EVERY_MS)
+            self._save_timer.timeout.connect(self.save)
+            app = QApplication.instance()
+            if app is not None:
+                app.aboutToQuit.connect(self.save)
 
         self._sheet = SpriteSheet(frames, config.scale)
         self._window = PetWindow(config.drag_threshold)
@@ -98,6 +112,13 @@ class Pet:
         self._window.show()
         self._last_tick = time.monotonic()
         self._timer.start()
+        if self._memory is not None:
+            self._save_timer.start()
+
+    def save(self) -> None:
+        """Write down what he remembers: fullness, hunger, the seeds put out."""
+        if self._memory is not None:
+            self._memory.save(snapshot(self._brain.ctx))
 
     def _tick(self) -> None:
         now = time.monotonic()
@@ -251,9 +272,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"zengo: cannot load sprites from {options.sprites}: {error}", file=sys.stderr)
             return 2
 
-    # Let Ctrl+C in a terminal quit cleanly; the frame timer gives Python a chance to run it.
-    signal.signal(signal.SIGINT, lambda *_: app.quit())
+    # Quit cleanly on Ctrl+C in a terminal, and when the session ends (logout and
+    # shutdown send SIGTERM), so what he remembers gets saved. The frame timer gives
+    # Python a chance to run the handlers.
+    for stop in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(stop, lambda *_: app.quit())
 
-    pet = Pet(options.config, frames, branch_now=options.branch_now)
+    pet = Pet(options.config, frames, branch_now=options.branch_now, memory=StateFile.default())
     pet.start()
     return app.exec()
