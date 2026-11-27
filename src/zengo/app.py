@@ -34,6 +34,7 @@ from zengo.ui.cage_window import CageWindow, MountWindow
 from zengo.ui.catch_overlay import CatchOverlay
 from zengo.ui.food_window import FoodWindow
 from zengo.ui.qt_world import QtWorld
+from zengo.ui.settings_window import SettingsWindow
 from zengo.ui.sheet_loader import SheetError, load_sheet
 from zengo.ui.sound import SoundPlayer
 from zengo.ui.sprites import SpriteSheet
@@ -86,10 +87,14 @@ class Pet:
         memory: StateFile | None = None,
         settings: Settings | None = None,
         settings_file: StateFile | None = None,
+        flags: Flags | None = None,
     ) -> None:
         self._config = config
+        self._frames = frames
         self._settings = settings or Settings(scale=config.scale)
         self._settings_file = settings_file
+        self._flags = flags or Flags()
+        self._settings_window: SettingsWindow | None = None
         self._world = QtWorld()
 
         area = self._world.area_at(*self._world.cursor())
@@ -109,7 +114,6 @@ class Pet:
                 app.aboutToQuit.connect(self.save)
 
         self._brain.ctx.sound_on = self._settings.sound
-        self._sheet = SpriteSheet(frames, config.scale)
         self._window = PetWindow(config.drag_threshold)
         self._window.clicked.connect(self._brain.click)
         self._window.double_clicked.connect(self._brain.double_click)
@@ -126,19 +130,11 @@ class Pet:
         for gesture in (self._window.clicked, self._window.double_clicked, self._window.released):
             gesture.connect(self.restack)
         self._window.grabbed.connect(lambda *_: self.restack())
-        self._bubble = BubbleWindow(config.scale, in_front_of=self._window)
         self._window.menu_requested.connect(self._show_menu)
-        self._cage = CageWindow(config, config.drag_threshold, in_front_of=self._window)
-        self._cage.grabbed.connect(self._brain.cage_grab)
-        self._cage.dragged.connect(self._brain.cage_drag)
-        self._cage.released.connect(self._brain.cage_release)
-        self._cage.menu_requested.connect(self._show_menu)
-        self._mount = MountWindow(config)
-        self._food = FoodWindow(config)
+        self._build_windows()
         self._sound = SoundPlayer(self._settings.volume)
         if (app := QApplication.instance()) is not None:
             app.aboutToQuit.connect(self._sound.close)  # tidy away the sound files
-        self._dish = FoodWindow(config, in_front_of=self._window)
         self._overlay: CatchOverlay | None = None
         self._door_was_open = False
         self._restacked = -RESTACK_EVERY
@@ -149,6 +145,42 @@ class Pet:
         self._timer = QTimer(timerType=Qt.TimerType.PreciseTimer, interval=1000 // config.fps)
         self._timer.timeout.connect(self._tick)
         self._last_tick = time.monotonic()
+
+    def _build_windows(self) -> None:
+        """Make the windows drawn at his size: everything but his own window,
+        which simply takes whatever sprite it's given."""
+        config = self._config
+        self._sheet = SpriteSheet(self._frames, config.scale)
+        self._branch = BranchWindow(config, in_front_of=self._window)
+        self._bubble = BubbleWindow(config.scale, in_front_of=self._window)
+        self._cage = CageWindow(config, config.drag_threshold, in_front_of=self._window)
+        self._cage.grabbed.connect(self._brain.cage_grab)
+        self._cage.dragged.connect(self._brain.cage_drag)
+        self._cage.released.connect(self._brain.cage_release)
+        self._cage.menu_requested.connect(self._show_menu)
+        self._mount = MountWindow(config)
+        self._food = FoodWindow(config)
+        self._dish = FoodWindow(config, in_front_of=self._window)
+
+    def _resize(self) -> None:
+        """He's changed size: redraw everything at the new scale and put him and
+        his cage where they belong at it."""
+        for window in (self._branch, self._bubble, self._cage, self._mount, self._food, self._dish):
+            window.hide()
+            window.deleteLater()
+        self._build_windows()
+        self._speech_at = None
+        ctx = self._brain.ctx
+        area = ctx.area()
+        ctx.body.x = area.clamp_x(ctx.body.x, ctx.margin)
+        cage = ctx.cage
+        if cage is not None and cage.mount in ("chain", "shelf"):
+            cage.grab(cage.x, cage.y)  # hang it again, or shelve it, at the new size
+            cage.release(ctx)
+            cage.sway_speed = 0.0
+            cage.events.clear()
+        self._showing = ()
+        self._render()
 
     def start(self) -> None:
         self._render()
@@ -271,6 +303,7 @@ class Pet:
         sound = menu.addAction("Sounds", self._toggle_sound)
         sound.setCheckable(True)
         sound.setChecked(self._brain.ctx.sound_on)
+        menu.addAction("Settings…", self.open_settings)
         menu.addSeparator()
         menu.addAction("Quit Zengo", QApplication.quit)
         menu.aboutToShow.connect(menu.raise_)
@@ -287,16 +320,44 @@ class Pet:
     def settings(self) -> Settings:
         return self._settings
 
-    def change_settings(self, settings: Settings) -> None:
-        """Take up new settings and keep them. Only what can change while he runs
-        is applied here so far: sound and volume."""
-        if settings == self._settings:
-            return
-        self._settings = settings
-        self._brain.ctx.sound_on = settings.sound
-        self._sound.set_volume(settings.volume)
-        if self._settings_file is not None:
+    def change_settings(self, settings: Settings, *, keep: bool = True) -> None:
+        """Take up new settings at once, and keep them unless ``keep`` is false
+        (a volume slider still being dragged)."""
+        if settings != self._settings:
+            old_scale = self._config.scale
+            self._settings = settings
+            self._config = build_config(settings, self._flags)
+            self._brain.ctx.config = self._config
+            self._brain.ctx.sound_on = settings.sound
+            self._sound.set_volume(settings.volume)
+            if self._config.scale != old_scale:
+                self._resize()
+        if keep and self._settings_file is not None:
             self._settings_file.save(settings.to_json())
+        if self._settings_window is not None:
+            self._settings_window.show_settings(settings, self._settings_window_autostart())
+
+    def _settings_window_autostart(self) -> bool | None:
+        return None
+
+    def open_settings(self) -> None:
+        """Show the settings window: one, reused, brought to the front."""
+        if self._settings_window is None:
+            window = SettingsWindow(self._settings, scale_locked=self._flags.scale is not None)
+            window.changed.connect(self.change_settings)
+            window.previewed.connect(lambda s: self.change_settings(s, keep=False))
+            window.reset_confirmed.connect(self.reset)
+            self._settings_window = window
+        self._settings_window.show_settings(self._settings, self._settings_window_autostart())
+        self._settings_window.show()
+        self._settings_window.raise_()
+        self._settings_window.activateWindow()
+
+    def reset(self) -> None:
+        """Start over: he forgets everything he remembers (your settings stay)."""
+        self._brain.forget()
+        self.save()
+        self._render()
 
     def _start_catching(self) -> None:
         body = self._brain.ctx.body
@@ -433,6 +494,7 @@ def main(argv: list[str] | None = None) -> int:
         memory=memory,
         settings=settings,
         settings_file=settings_file,
+        flags=options.flags,
     )
     pet.start()
     return app.exec()

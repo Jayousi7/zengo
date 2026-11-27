@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from zengo.behavior.cage import BELOW_FLOOR, Cage, caught_in
+from zengo.behavior.bond import Bond
+from zengo.behavior.cage import BELOW_FLOOR, Cage, EscapeProgress, caught_in
 from zengo.behavior.context import Context
-from zengo.behavior.food import STAND_OFF, Food
+from zengo.behavior.food import STAND_OFF, Food, Hunger
 from zengo.behavior.states import (
     Alert,
     Caged,
@@ -169,6 +170,17 @@ class Brain:
         in his cage if he was caged, otherwise just settled where he is."""
         if self.ctx.cage is not None and not self.caged:
             self.transition(Caged(just_caught=False))
+
+    def forget(self) -> None:
+        """Start over, as a new bird: his bond, hunger, seeds, cage and escape
+        progress all back to how they are the first time he runs."""
+        ctx = self.ctx
+        ctx.bond, ctx.hunger, ctx.escape = Bond(), Hunger(), EscapeProgress()
+        ctx.cage = ctx.food = ctx.speech = None
+        self._asks = 0
+        self._welcome_wait = 0.0
+        ctx.body.vx = ctx.body.vy = 0.0
+        self.transition(Fall() if ctx.body.y < ctx.area().bottom - 1 else Idle())
 
     @property
     def caged(self) -> bool:
