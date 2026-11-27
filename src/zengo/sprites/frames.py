@@ -33,6 +33,7 @@ _UPPER = (art.TAIL, art.BODY, art.WING_FOLDED, art.HEAD, art.CREST)
 _FLYING_HEAD = _shifted(0, 9, art.CREST_FLAT, art.HEAD)
 """Head lowered to lead the level flying body, crest laid back in the airflow."""
 
+_PECKING_BODY = (art.LEGS, art.TAIL, art.BODY, art.WING_FOLDED)
 _HELD_BODY = (art.TAIL_HANGING, art.BODY, art.WING_FOLDED)
 _HELD_HEAD = (art.HEAD, art.CREST_RAISED)
 
@@ -116,6 +117,12 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
         art.WING_FOLDED,
         *_shifted(1, 1, art.CREST_RAISED, art.HEAD, art.BEAK_OPEN),
     ),
+    # Eating seeds off the ground: the head dips to peck one up, then comes back up
+    # to crack it, beak working.
+    "peck_down": (*_PECKING_BODY, *_shifted(5, 9, art.CREST_FLAT, art.HEAD)),
+    "peck_low": (*_PECKING_BODY, *_shifted(6, 11, art.CREST_FLAT, art.HEAD)),
+    "chew_a": (*_PECKING_BODY, *_shifted(2, 3, art.CREST, art.HEAD, art.BEAK_OPEN)),
+    "chew_b": (*_PECKING_BODY, *_shifted(2, 3, art.CREST, art.HEAD)),
     # The downstroke lifts the body a pixel.
     "wings_up": (art.FLIGHT_BODY, art.WING_UP, *_FLYING_HEAD),
     "wings_level": (art.FLIGHT_BODY, art.WING_LEVEL, *_FLYING_HEAD),
@@ -165,6 +172,11 @@ FRONT_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     "front_whistle_a": (
         *_FRONT_SITTING,
         *_shifted(0, 1, art.FRONT_CREST_RAISED, art.FRONT_HEAD, art.FRONT_BEAK_OPEN),
+    ),
+    "front_peck": (*_FRONT_SITTING, *_shifted(0, 4, art.FRONT_CREST, art.FRONT_HEAD)),
+    "front_chew": (
+        *_FRONT_SITTING,
+        *_shifted(0, 1, art.FRONT_CREST, art.FRONT_HEAD, art.FRONT_BEAK_OPEN),
     ),
     "front_sleep": (
         *_FRONT_SITTING,

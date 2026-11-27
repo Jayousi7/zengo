@@ -45,6 +45,11 @@ CLIPS: dict[str, Clip] = {
     # Front view, banking round to fly the other way.
     "turn": Clip(("turn_up", "turn_down"), (0.12, 0.12)),
     "held": Clip(*zip(*_HELD_FIDGETS, strict=True)),
+    # One seed: peck it up, crack it open, swallow. About a second each.
+    "eat": Clip(
+        ("peck_down", "peck_low", "peck_down", "chew_a", "chew_b", "chew_a", "chew_b"),
+        (0.08, 0.16, 0.08, 0.18, 0.16, 0.18, 0.2),
+    ),
     # Petted: a slow lean into the hand and back.
     "petted": Clip(("petted_a", "petted_b"), (1.1, 0.9)),
     # Whistling: crest up, nodding to the tune.
@@ -84,6 +89,11 @@ FRONT_CLIPS: dict[str, Clip] = {
         ("front_fluff_a", "front_fluff_b") * 3 + ("front_perch",), (0.07,) * 6 + (0.3,), loop=False
     ),
     "front_sleep": Clip(("front_sleep",), (1.0,)),
+    # One seed: peck it up, crack it open, swallow. About a second each.
+    "front_eat": Clip(
+        ("front_peck", "front_chew", "front_perch", "front_chew", "front_perch"),
+        (0.22, 0.2, 0.18, 0.2, 0.24),
+    ),
     # Caged and furious: crest up, puffing and shaking, glaring this way and that.
     "front_angry": Clip(
         (

@@ -17,6 +17,7 @@ from typing import ClassVar
 from zengo.behavior.body import Facing
 from zengo.behavior.context import Context
 from zengo.behavior.flight import FlightPath, Point, ease
+from zengo.behavior.food import PECK_REACH, SECONDS_PER_SEED
 from zengo.behavior.scenery import Branch
 
 
@@ -51,6 +52,11 @@ class State:
     def petted(self, ctx: Context) -> State | None:
         """Being stroked: on the ground he settles into it, even from a nap."""
         return Petted() if self.grounded else None
+
+    def food_nearby(self, ctx: Context) -> State | None:
+        """Seeds are down. Settled on the ground, he goes straight for them; held
+        or mid-air, he gets to them once he's landed."""
+        return go_to_food(ctx) if self.grounded else None
 
     @property
     def holds_branch(self) -> bool:
@@ -132,9 +138,14 @@ class Walk(State):
 
     clip = "walk"
 
-    def __init__(self, target: float | None = None) -> None:
+    def __init__(self, target: float | None = None, *, eat: bool = False) -> None:
         super().__init__()
         self.target = target
+        self.eat = eat
+        """Walking to the seeds: eat them on arrival."""
+
+    def food_nearby(self, ctx: Context) -> State | None:
+        return None if self.eat else super().food_nearby(ctx)
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
@@ -146,7 +157,9 @@ class Walk(State):
 
     def step(self, ctx: Context, dt: float) -> State | None:
         assert self.target is not None
-        return Idle() if _walk_towards(ctx, self.target, dt) else None
+        if not _walk_towards(ctx, self.target, dt):
+            return None
+        return Eat() if self.eat and ctx.food is not None else Idle()
 
 
 class Follow(State):
@@ -232,6 +245,9 @@ class Fly(State):
     @property
     def holds_branch(self) -> bool:
         return self.onto == "branch"
+
+    def food_nearby(self, ctx: Context) -> State | None:
+        return None  # lands first; flying to the seeds already, or will after
 
     # --- Planners -----------------------------------------------------------
 
@@ -344,6 +360,8 @@ class Fly(State):
             body.x, body.y = landing_spot
             if self.onto == "cursor":
                 return CursorPerch()
+            if self.onto == "food":
+                return Eat() if ctx.food is not None else Idle()
             return OnBranch() if self.onto == "branch" else Idle()
 
         self._choose_glide(dx, dy, seconds_left=(1.0 - p) * self.duration, dt=dt)
@@ -421,6 +439,9 @@ class CursorPerch(State):
     stay: ClassVar[tuple[float, float]] = (6.0, 20.0)
     startle_hop: ClassVar[float] = 60.0
     """Art px/s upwards when the pointer moves out from under him."""
+
+    def food_nearby(self, ctx: Context) -> State | None:
+        return go_to_food(ctx)
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
@@ -731,6 +752,9 @@ class OnBranch(State):
     def holds_branch(self) -> bool:
         return True
 
+    def food_nearby(self, ctx: Context) -> State | None:
+        return go_to_food(ctx)  # seeds beat a branch
+
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
         self.stay = ctx.rng.uniform(*ctx.config.branch_visit)
@@ -817,11 +841,13 @@ class Caged(State):
         "fluff": "front_fluff",
         "sleep": "front_sleep",
         "petted": "front_petted",
+        "eat": "front_eat",
     }
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
         self.until = 0.0
+        self.next_seed = 0.0
         self._provoked(ctx, ctx.rng.choice(ctx.config.complaints))
         self.anger = ctx.rng.uniform(*self.tantrum)
         self._place(ctx)
@@ -833,11 +859,14 @@ class Caged(State):
         return None
 
     def petted(self, ctx: Context) -> State | None:
-        if self.doing != "petted":
+        if self.doing not in ("petted", "eat"):
             self._do(ctx, "petted")
             self.contentment = _Contentment()
             self.anger = 0.0
         return None
+
+    def food_nearby(self, ctx: Context) -> State | None:
+        return None  # only seeds on his tray, which he sees to himself
 
     def step(self, ctx: Context, dt: float) -> State | None:
         cage = ctx.cage
@@ -847,6 +876,10 @@ class Caged(State):
         if cage.door_open:
             cage.left = True
             return self._fly_out(ctx, cage.x)
+        food = ctx.food
+        if food is not None and food.in_cage and self.doing != "eat":
+            self._do(ctx, "eat")  # seeds! all is forgiven, for now
+            self.anger, self.next_seed = 0.0, 0.22
         for event in cage.take_events():
             self._provoked(ctx, "ow!" if event == "bump" else None)
         if cage.mount == "held" and self.doing != "angry":
@@ -860,6 +893,18 @@ class Caged(State):
                 self.next_complaint = ctx.rng.uniform(2.0, 3.5)
             if self.anger <= 0 and cage.mount != "held":
                 self._do(ctx, "sit")
+            return None
+        if self.doing == "eat":
+            self.next_seed -= dt
+            if food is None or not food.in_cage:
+                self._do(ctx, "sit")
+            elif self.next_seed <= 0:
+                food.seeds -= 1
+                self.next_seed += SECONDS_PER_SEED
+                if food.seeds <= 0:
+                    ctx.food = None
+                    ctx.say("yum! ♥", 1.8, mood="love")
+                    self._do(ctx, "fluff")
             return None
         if self.doing == "petted":
             if not self.contentment.still_enjoying(ctx, dt):
@@ -911,3 +956,52 @@ class Caged(State):
         self.doing = what
         ctx.animator.play(self.clips[what], restart=True)
         self.until = self.elapsed + ctx.rng.uniform(*self.sit_for)
+
+
+def go_to_food(ctx: Context) -> State:
+    """Head for the seeds: walk if they're near, fly if they're far or he's up high.
+
+    He stands beside the pile on the side he comes from, so that pecking puts his
+    beak right on it.
+    """
+    food, cfg, body, area = ctx.food, ctx.config, ctx.body, ctx.area()
+    assert food is not None
+    side = -1 if body.x > food.x else 1
+    spot = food.x - side * cfg.px(PECK_REACH)
+    on_ground = body.y >= area.bottom - 1
+    if on_ground and abs(spot - body.x) <= cfg.px(160):
+        return Walk(spot, eat=True)
+    return Fly(
+        [*_takeoff(ctx, towards=spot), *_landing(ctx, spot, coming_from=body.x)], onto="food"
+    )
+
+
+class Eat(State):
+    """Pecking up the seeds one by one, cracking each open. When they're gone he's
+    very pleased with himself."""
+
+    clip = "eat"
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        if ctx.food is not None:
+            ctx.body.face_towards(ctx.food.x)
+        self.next_seed = 0.24  # the first peck lands this far into the clip
+
+    def food_nearby(self, ctx: Context) -> State | None:
+        return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        food = ctx.food
+        if food is None or food.in_cage:
+            return Idle()
+        self.next_seed -= dt
+        if self.next_seed > 0:
+            return None
+        food.seeds -= 1
+        self.next_seed += SECONDS_PER_SEED
+        if food.seeds > 0:
+            return None
+        ctx.food = None
+        ctx.say("yum! ♥", 1.8, mood="love")
+        return Shake()

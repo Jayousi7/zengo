@@ -28,6 +28,7 @@ from zengo.ui.branch_window import BranchWindow
 from zengo.ui.bubble_window import BubbleWindow
 from zengo.ui.cage_window import CageWindow, MountWindow
 from zengo.ui.catch_overlay import CatchOverlay
+from zengo.ui.food_window import FoodWindow
 from zengo.ui.qt_world import QtWorld
 from zengo.ui.sheet_loader import SheetError, load_sheet
 from zengo.ui.sprites import SpriteSheet
@@ -76,6 +77,7 @@ class Pet:
         self._cage.released.connect(self._brain.cage_release)
         self._cage.menu_requested.connect(self._show_menu)
         self._mount = MountWindow(config)
+        self._food = FoodWindow(config)
         self._overlay: CatchOverlay | None = None
         self._door_was_open = False
 
@@ -107,6 +109,8 @@ class Pet:
         top = body.y - self._config.px(GROUND_ROW + 1)
         self._window.show_sprite(sprite, QPoint(round(left), round(top)))
         self._branch.show_branch(ctx.scenery.branch)
+        if self._food.show_food(ctx.food) and ctx.cage is not None:
+            self._cage.raise_()  # seeds on the tray stay behind the bars
         self._show_cage()
         self._show_speech()
 
@@ -123,6 +127,7 @@ class Pet:
 
     def _show_menu(self, where: QPoint) -> None:
         menu = QMenu()
+        menu.addAction("Feed Zengo", self._brain.feed)
         if self._brain.caged:
             menu.addAction("Let Zengo out", self._brain.let_out)
         else:

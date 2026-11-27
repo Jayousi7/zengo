@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from zengo.behavior.cage import BELOW_FLOOR, Cage, caught_in
 from zengo.behavior.context import Context
+from zengo.behavior.food import PECK_REACH, Food
 from zengo.behavior.states import Caged, Dragged, Fall, Idle, State
 
 
@@ -40,12 +41,26 @@ class Brain:
             self.transition(following)
         if (following := self._state.update(ctx, dt)) is not None:
             self.transition(following)
+        self._mind_the_food()
         if self._state.grounded:
             self._settle()
             if ctx.body.facing is not self._facing:
                 # Turning round on the ground: a glimpse of his front, not a flip.
                 ctx.animator.interject("ground_turn")
         self._facing = ctx.body.facing
+
+    def _mind_the_food(self) -> None:
+        """Seeds in the cage go where the cage goes; seeds on the ground draw him."""
+        ctx, food = self.ctx, self.ctx.food
+        if food is None:
+            return
+        if food.in_cage:
+            if ctx.cage is None or ctx.cage.door_open:
+                ctx.food = None  # out with the tray
+            else:
+                food.x, food.y = ctx.cage.shown_x, ctx.cage.y
+        elif (following := self._state.food_nearby(ctx)) is not None:
+            self.transition(following)
 
     def _settle(self) -> None:
         """Keep a grounded pet on the ground line and on-screen.
@@ -89,6 +104,21 @@ class Brain:
             ctx.cage.y = area.bottom - ctx.config.px(BELOW_FLOOR)
         self.transition(Caged())
         return True
+
+    def feed(self) -> None:
+        """Put down sunflower seeds: in front of him, or on his tray if he's caged.
+        More seeds while there are some left just tops the pile up."""
+        ctx, cfg = self.ctx, self.ctx.config
+        if ctx.food is not None:
+            ctx.food = Food(ctx.food.x, ctx.food.y, in_cage=ctx.food.in_cage)
+        elif ctx.cage is not None and not ctx.cage.door_open:
+            ctx.food = Food(ctx.cage.shown_x, ctx.cage.y, in_cage=True)
+        else:
+            area, reach = ctx.area(), cfg.px(PECK_REACH)
+            x = ctx.body.x + int(ctx.body.facing) * cfg.px(45)
+            lo, hi = area.left + ctx.margin + reach, area.right - ctx.margin - reach
+            ctx.food = Food(min(max(x, lo), hi), area.bottom)
+        ctx.say("seeds!! ♥", 1.6, mood="love")
 
     def let_out(self) -> None:
         """Open the cage door; he flies out and the cage goes."""
