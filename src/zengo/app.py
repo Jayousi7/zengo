@@ -21,6 +21,7 @@ from zengo.behavior.body import Body, Facing
 from zengo.behavior.context import Context
 from zengo.behavior.machine import Brain
 from zengo.behavior.memory import restore, snapshot
+from zengo.behavior.states import Away
 from zengo.config import Config
 from zengo.settings import Flags, Settings, build_config, migrated
 from zengo.sprites.cage import CAGE_WIDTH, FLOOR
@@ -41,6 +42,7 @@ from zengo.ui.sound import SoundPlayer
 from zengo.ui.sprites import SpriteSheet
 from zengo.ui.state_file import StateFile
 from zengo.ui.status_panel import StatusPanel
+from zengo.ui.tray import Tray
 from zengo.ui.window import PetWindow
 
 MAX_FRAME_DT = 0.1
@@ -145,6 +147,21 @@ class Pet:
         self._speech_at: QPointF | None = None
         self._speech_of: object = None
 
+        self._tray: Tray | None = None
+        if Tray.available():
+            self._tray = Tray(
+                frames,
+                {
+                    "summon": self._brain.summon,
+                    "show": self._brain.show,
+                    "hide": self._brain.hide,
+                    "feed": self._brain.feed,
+                    "settings": self.open_settings,
+                    "quit": QApplication.quit,
+                },
+                MENU_STYLE,
+            )
+
         self._timer = QTimer(timerType=Qt.TimerType.PreciseTimer, interval=1000 // config.fps)
         self._timer.timeout.connect(self._tick)
         self._last_tick = time.monotonic()
@@ -187,7 +204,10 @@ class Pet:
 
     def start(self) -> None:
         self._render()
-        self._window.show()
+        if not self._brain.away:
+            self._window.show()
+        if self._tray is not None:
+            self._tray.show()
         self.restack()  # windows restored from memory came up before his
         self._last_tick = time.monotonic()
         self._timer.start()
@@ -209,6 +229,11 @@ class Pet:
 
     def _render(self) -> None:
         ctx = self._brain.ctx
+        self._update_tray()
+        if isinstance(self._brain.state, Away):
+            self._window.hide()  # out of sight; the rest follows as it would
+        elif not self._window.isVisible() and self._timer.isActive():
+            self._window.show()
         body = ctx.body
         sprite = self._sheet.get(ctx.animator.frame, body.facing)
         # Mirroring flips the anchor column too; +0.5 centres on the column.
@@ -237,6 +262,17 @@ class Pet:
         elif showing != self._showing or time.monotonic() - self._restacked >= RESTACK_EVERY:
             self._showing = showing  # one has just come or gone: order them at once
             self.restack()
+
+    def _update_tray(self) -> None:
+        if self._tray is None:
+            return
+        brain = self._brain
+        self._tray.update(
+            needs_you=brain.ctx.hunger.hungry or brain.caged,
+            away=isinstance(brain.state, Away),
+            can_hide=brain.can_hide(),
+            can_feed=brain.food_stacks < MAX_STACKS,
+        )
 
     def _layers(self) -> list:
         return [

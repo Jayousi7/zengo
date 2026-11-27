@@ -18,7 +18,7 @@ from zengo.behavior.body import Facing
 from zengo.behavior.context import Context
 from zengo.behavior.flight import FlightPath, Point, ease
 from zengo.behavior.food import SECONDS_PER_SEED, SEEDS_PER_STACK, STAND_OFF
-from zengo.world import Ledge
+from zengo.world import Area, Ledge
 
 
 class State:
@@ -345,7 +345,10 @@ class Fly(State):
         """Going to a window (``onto="window"``): which, and how far along it."""
         self.onto = onto
         """Where he's going: ``"ground"``, ``"cursor"``, ``"branch"``, to the seeds
-        (``"food"``) or to you to ask for some (``"ask"``)."""
+        (``"food"``), to you to ask for some (``"ask"``), or off the screen
+        (``"away"``)."""
+        self.away_side = 1
+        self.away_area: Area | None = None
 
     @property
     def holds_branch(self) -> bool:
@@ -426,6 +429,38 @@ class Fly(State):
         return flight
 
     @classmethod
+    def to_middle(cls, ctx: Context) -> Fly:
+        """Fly to the middle of the screen and land there: here I am!"""
+        area = ctx.area()
+        x = (area.left + area.right) / 2
+        top = area.top + 0.45 * (area.bottom - area.top)
+        return cls([*_takeoff(ctx, towards=x), (x, top), *_landing(ctx, x, coming_from=ctx.body.x)])
+
+    @classmethod
+    def away(cls, ctx: Context) -> Fly:
+        """Fly up and off the nearer side of the screen, out of sight."""
+        cfg, area = ctx.config, ctx.area()
+        side = -1 if ctx.body.x - area.left < area.right - ctx.body.x else 1
+        edge = area.left if side < 0 else area.right
+        height = area.bottom - area.top
+        out = (edge + side * cfg.px(OFF_SCREEN), area.top + 0.3 * height)
+        flight = cls([*_takeoff(ctx, towards=edge), out], onto="away")
+        flight.away_side, flight.away_area = side, area
+        return flight
+
+    @classmethod
+    def back(cls, ctx: Context, away: Away) -> Fly:
+        """In from the side he left by, to land a little way in."""
+        cfg = ctx.config
+        area = away.area or ctx.area()
+        edge = area.left if away.side < 0 else area.right
+        height = area.bottom - area.top
+        ctx.body.x, ctx.body.y = edge + away.side * cfg.px(OFF_SCREEN), area.top + 0.3 * height
+        x = edge - away.side * ctx.rng.uniform(cfg.px(120), cfg.px(260))
+        x = area.clamp_x(x, ctx.margin)
+        return cls(_landing(ctx, x, coming_from=ctx.body.x))
+
+    @classmethod
     def down(cls, ctx: Context) -> Fly:
         """Hop off a perch and glide down to the ground a little way ahead."""
         cfg, body = ctx.config, ctx.body
@@ -488,6 +523,8 @@ class Fly(State):
                 return Ask()
             if self.onto == "window":
                 return OnWindow(self.window, self.offset)
+            if self.onto == "away":
+                return Away(self.away_side, self.away_area)
             return OnBranch() if self.onto == "branch" else Idle()
 
         self._choose_glide(dx, dy, seconds_left=(1.0 - p) * self.duration, dt=dt)
@@ -1422,3 +1459,26 @@ class Bob(State):
         if ctx.typing.active:
             return None
         return FrontIdle() if self.facing_you else Idle()
+
+
+OFF_SCREEN = 60.0
+"""Art px past the screen's edge where he waits, out of sight, while away."""
+
+
+class Away(State):
+    """Out of sight, off the side of the screen (hidden from the tray), until he's
+    asked back. His needs go on as if he were resting; nothing reaches him."""
+
+    clip = "glide"
+    effort = 0.5
+    grounded = False
+
+    def __init__(self, side: int = 1, area: Area | None = None) -> None:
+        super().__init__()
+        self.side, self.area = side, area
+
+    def go_eat(self, ctx: Context) -> State | None:
+        return None
+
+    def ask_for_food(self, ctx: Context) -> State | None:
+        return None

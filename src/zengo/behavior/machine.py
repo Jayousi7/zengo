@@ -8,6 +8,7 @@ from zengo.behavior.context import Context
 from zengo.behavior.food import STAND_OFF, Food, Hunger
 from zengo.behavior.states import (
     Alert,
+    Away,
     Caged,
     Dragged,
     Fall,
@@ -170,6 +171,48 @@ class Brain:
         in his cage if he was caged, otherwise just settled where he is."""
         if self.ctx.cage is not None and not self.caged:
             self.transition(Caged(just_caught=False))
+
+    # --- From the tray ------------------------------------------------------------
+
+    @property
+    def away(self) -> bool:
+        """Out of sight, sent off by Hide."""
+        state = self._state
+        return isinstance(state, Away) or (isinstance(state, Fly) and state.onto == "away")
+
+    def can_hide(self) -> bool:
+        """He flies off unless he's caged or being carried."""
+        return not (self.caged or self.away or isinstance(self._state, Dragged))
+
+    def hide(self) -> bool:
+        if not self.can_hide():
+            return False
+        self.transition(Fly.away(self.ctx))
+        return True
+
+    def show(self) -> None:
+        """Back in from the side he left by."""
+        if isinstance(self._state, Away):
+            self.transition(Fly.back(self.ctx, self._state))
+
+    def summon(self) -> None:
+        """Here I am! He flies to the middle of the screen (in his cage, he just calls)."""
+        ctx = self.ctx
+        if isinstance(self._state, Away):
+            self.show()
+        if self.caged or isinstance(self._state, Dragged):
+            ctx.say("here I am! ♪", 2.0)
+            ctx.play("chirp_a")
+            return
+        if isinstance(self._state, Fly) and self._state.onto == "away":
+            return  # leaving: Show brings him back
+        ctx.say("here I am! ♪", 2.0)
+        ctx.play("chirp_a")
+        area = ctx.area()
+        middle = (area.left + area.right) / 2
+        near = abs(ctx.body.x - middle) < ctx.config.px(30)
+        if not (near and self._state.grounded and ctx.body.y >= area.bottom - 1):
+            self.transition(Fly.to_middle(ctx))
 
     def forget(self) -> None:
         """Start over, as a new bird: his bond, hunger, seeds, cage and escape
