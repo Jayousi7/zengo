@@ -889,8 +889,12 @@ class Caged(State):
             self.anger -= dt
             self.next_complaint -= dt
             if self.next_complaint <= 0:
-                ctx.say(ctx.rng.choice(ctx.config.complaints), 2.0, mood="angry")
-                self.next_complaint = ctx.rng.uniform(2.0, 3.5)
+                ctx.say(
+                    ctx.rng.choice(ctx.config.complaints),
+                    ctx.config.complaint_seconds,
+                    mood="angry",
+                )
+                self.next_complaint = ctx.rng.uniform(*ctx.config.complaint_every)
             if self.anger <= 0 and cage.mount != "held":
                 self._do(ctx, "sit")
             return None
@@ -934,8 +938,12 @@ class Caged(State):
     def _provoked(self, ctx: Context, text: str | None = None) -> None:
         self.anger = max(getattr(self, "anger", 0.0), 3.0)
         self._do(ctx, "angry")
-        ctx.say(text or ctx.rng.choice(ctx.config.complaints), 2.0, mood="angry")
-        self.next_complaint = ctx.rng.uniform(2.0, 3.5)
+        ctx.say(
+            text or ctx.rng.choice(ctx.config.complaints),
+            ctx.config.complaint_seconds,
+            mood="angry",
+        )
+        self.next_complaint = ctx.rng.uniform(*ctx.config.complaint_every)
 
     def _place(self, ctx: Context) -> None:
         if ctx.cage is not None:

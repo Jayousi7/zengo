@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QBitmap, QImage, QPixmap, QRegion
 
 from zengo.behavior.body import Facing
@@ -49,3 +49,18 @@ class SpriteSheet:
 def _sprite(image: QImage) -> Sprite:
     pixmap = QPixmap.fromImage(image)
     return Sprite(pixmap, QRegion(QBitmap(pixmap.mask())))
+
+
+def clip_to(full: QRect, bounds: QRect | None) -> tuple[QRect, QPoint]:
+    """Trim a window's rectangle to the desktop.
+
+    Window managers push windows that stick off the screen back onto it, which
+    would shift Zengo away from where he should be (out of his cage, say).
+    Instead the window is trimmed to the desktop and the picture drawn offset
+    inside it. Returns the rectangle to give the window, and where the
+    picture's top-left corner falls in it.
+    """
+    shown = full.intersected(bounds) if bounds is not None else full
+    if shown.isEmpty():
+        shown = full
+    return shown, full.topLeft() - shown.topLeft()

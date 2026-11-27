@@ -27,7 +27,7 @@ from zengo.sprites.cage import (
     build_chain_link,
     build_shelf,
 )
-from zengo.ui.sprites import frame_to_image
+from zengo.ui.sprites import clip_to, frame_to_image
 
 _FLAGS = (
     Qt.WindowType.FramelessWindowHint
@@ -70,29 +70,34 @@ class CageWindow(QWidget):
         self._pixmaps = {door: QPixmap.fromImage(image) for door, image in images.items()}
         self._mask = _silhouette(images[False])
         self._door = False
+        self._offset = QPoint()
         self._press: QPointF | None = None
         self._dragging = False
         self.resize(self._pixmaps[False].size())
         self.setMask(self._mask)
 
-    def show_cage(self, cage: Cage | None) -> None:
+    def show_cage(self, cage: Cage | None, bounds: QRect | None = None) -> None:
+        """Show ``cage``, trimmed to ``bounds`` (the desktop) so no window manager moves
+        it off from round Zengo."""
         if cage is None:
             self.hide()
             return
         px = self._config.px
         left = round(cage.shown_x - px(CENTRE + 1 + 0.5))
         top = round(cage.y - px(FLOOR + 1))
-        if cage.door_open != self._door:
-            self._door = cage.door_open
+        shown, offset = clip_to(QRect(QPoint(left, top), self._pixmaps[False].size()), bounds)
+        if cage.door_open != self._door or offset != self._offset:
+            self._door, self._offset = cage.door_open, offset
+            self.setMask(self._mask.translated(offset))
             self.update()
-        if self.pos() != QPoint(left, top):
-            self.move(left, top)
+        if self.geometry() != shown:
+            self.setGeometry(shown)
         if not self.isVisible():
             self.show()
             self.raise_()  # in front of him: he's behind the bars
 
     def paintEvent(self, event: QPaintEvent) -> None:
-        QPainter(self).drawPixmap(0, 0, self._pixmaps[self._door])
+        QPainter(self).drawPixmap(self._offset, self._pixmaps[self._door])
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:

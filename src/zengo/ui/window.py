@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, QPointF, Qt, QTimer, Signal
+from PySide6.QtCore import QPoint, QPointF, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import QContextMenuEvent, QMouseEvent, QPainter, QPaintEvent
 from PySide6.QtWidgets import QApplication, QWidget
 
-from zengo.ui.sprites import Sprite
+from zengo.ui.sprites import Sprite, clip_to
 
 
 class PetWindow(QWidget):
@@ -40,6 +40,7 @@ class PetWindow(QWidget):
 
         self._drag_threshold = drag_threshold
         self._sprite: Sprite | None = None
+        self._offset = QPoint()
         self._press: QPointF | None = None
         self._dragging = False
         self._double = False
@@ -47,18 +48,20 @@ class PetWindow(QWidget):
         self._pending_click.setInterval(QApplication.styleHints().mouseDoubleClickInterval())
         self._pending_click.timeout.connect(self.clicked.emit)
 
-    def show_sprite(self, sprite: Sprite, top_left: QPoint) -> None:
-        if sprite is not self._sprite:
-            self._sprite = sprite
-            self.resize(sprite.pixmap.size())
-            self.setMask(sprite.mask)
+    def show_sprite(self, sprite: Sprite, top_left: QPoint, bounds: QRect | None = None) -> None:
+        """Show ``sprite`` with its top-left corner at ``top_left``, trimmed to ``bounds``
+        (the desktop) so no window manager moves it."""
+        shown, offset = clip_to(QRect(top_left, sprite.pixmap.size()), bounds)
+        if sprite is not self._sprite or offset != self._offset:
+            self._sprite, self._offset = sprite, offset
+            self.setMask(sprite.mask.translated(offset))
             self.update()
-        if self.pos() != top_left:
-            self.move(top_left)
+        if self.geometry() != shown:
+            self.setGeometry(shown)
 
     def paintEvent(self, event: QPaintEvent) -> None:
         if self._sprite is not None:
-            QPainter(self).drawPixmap(0, 0, self._sprite.pixmap)
+            QPainter(self).drawPixmap(self._offset, self._sprite.pixmap)
 
     # --- Gestures ----------------------------------------------------------
 

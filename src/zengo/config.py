@@ -100,6 +100,11 @@ class Config:
     complaints: tuple[str, ...] = ("HEY!!", "let me out!", "squawk!!", "rude.", ">:(", "not cool!")
     """What a caged Zengo has to say about it."""
 
+    complaint_every: tuple[float, float] = (4.5, 7.0)
+    complaint_seconds: float = 2.5
+    """While he's angry: seconds between complaints, and how long each cloud stays up.
+    Clearly apart, so each one can be read."""
+
     sleep_after: float = 300.0
     """Seconds of user inactivity after which Zengo becomes sleepy."""
 

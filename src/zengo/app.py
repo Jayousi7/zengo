@@ -107,7 +107,8 @@ class Pet:
         anchor = ANCHOR_COLUMN if body.facing is Facing.RIGHT else CANVAS_WIDTH - 1 - ANCHOR_COLUMN
         left = body.x - self._config.px(anchor + 0.5)
         top = body.y - self._config.px(GROUND_ROW + 1)
-        self._window.show_sprite(sprite, QPoint(round(left), round(top)))
+        desktop = QGuiApplication.primaryScreen().virtualGeometry()
+        self._window.show_sprite(sprite, QPoint(round(left), round(top)), desktop)
         self._branch.show_branch(ctx.scenery.branch)
         if self._food.show_food(ctx.food) and ctx.cage is not None:
             self._cage.raise_()  # seeds on the tray stay behind the bars
@@ -117,7 +118,7 @@ class Pet:
     def _show_cage(self) -> None:
         cage = self._brain.ctx.cage
         self._mount.show_mount(cage)
-        self._cage.show_cage(cage)
+        self._cage.show_cage(cage, QGuiApplication.primaryScreen().virtualGeometry())
         door_open = cage is not None and cage.door_open
         if door_open and not self._door_was_open:
             self._window.raise_()  # out through the door, in front of the bars

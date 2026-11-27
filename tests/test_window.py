@@ -104,3 +104,20 @@ def test_the_cage_window_reports_drags():
     QTest.mouseRelease(cage, Qt.MouseButton.LeftButton, pos=middle + QPoint(30, -40))
     assert events[0] == "grab" and "drag" in events and events[-1] == "release"
     cage.close()
+
+
+def test_a_sprite_near_the_desktop_edge_is_trimmed_not_moved():
+    """A window manager would push a window that sticks off the screen back on,
+    shifting him; so the window is trimmed and the sprite drawn offset in it."""
+    from PySide6.QtCore import QRect
+
+    pixmap = QPixmap(40, 40)
+    pixmap.fill(Qt.GlobalColor.red)
+    win = PetWindow(drag_threshold=4)
+    desktop = QRect(0, 0, 800, 600)
+    win.show_sprite(Sprite(pixmap, QRegion(0, 0, 40, 40)), QPoint(-15, 100), desktop)
+    assert win.geometry() == QRect(0, 100, 25, 40)
+    win.show_sprite(Sprite(pixmap, QRegion(0, 0, 40, 40)), QPoint(780, 100), desktop)
+    assert win.geometry() == QRect(780, 100, 20, 40)
+    win.show_sprite(Sprite(pixmap, QRegion(0, 0, 40, 40)), QPoint(300, 100), desktop)
+    assert win.geometry() == QRect(300, 100, 40, 40)

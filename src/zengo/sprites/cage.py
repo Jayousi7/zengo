@@ -141,18 +141,19 @@ SHELF = Layer.parse(
     OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
     nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn
-    .mMMMMMMMM
-    .m.M
-    .m..M
-    .m...M
-    .m....M
-    .m.....M
-    .m......M
+    .mMMMMMMMMM
     .m.......M
-    .m........m
+    .m......M
+    .m.....M
+    .m....M
+    .m...M
+    .m..M
+    .m.M
+    .mm
     """
 )
-"""A plank on a bracket, the bracket at column 0 against the screen edge."""
+"""A plank on a bracket: a plate against the screen edge at column 1, an arm under
+the plank, and a brace from low on the wall up to the end of the arm."""
 
 SHELF_WIDTH = max(len(row) for row in SHELF.rows)
 SHELF_HEIGHT = len(SHELF.rows)

@@ -1,5 +1,6 @@
 """Catching Zengo in a cage, moving the cage about, and letting him out."""
 
+import itertools
 import math
 
 import pytest
@@ -201,3 +202,32 @@ def test_cage_art_sits_him_on_the_tray():
     assert set(CAGE.rows[FLOOR]) == {"h"}  # brass lip all along the floor
     for row in CAGE.rows[FLOOR - 28 : FLOOR - 12]:  # his crest and face, front on
         assert row[CENTRE] == "."  # no bar or band across the middle of his face
+
+
+def test_carried_about_his_complaints_come_one_at_a_time(ctx):
+    brain = Brain(ctx, Idle())
+    cage = catch(ctx, brain)
+    brain.cage_grab(cage.x, cage.y - 30)
+    started, last = [], None
+    for i in range(round(20 / DT)):
+        brain.cage_drag(cage.x + (i % 20), cage.y - 30)
+        brain.tick(DT)
+        if ctx.speech is not None and ctx.speech is not last:
+            started.append(i * DT)
+        last = ctx.speech
+    gaps = [b - a for a, b in itertools.pairwise(started)]
+    assert len(started) <= 20 / ctx.config.complaint_every[0] + 1
+    assert min(gaps) >= ctx.config.complaint_every[0] - DT
+
+
+def test_shelf_bracket_braces_up_from_the_wall():
+    from zengo.sprites.cage import SHELF
+
+    below_plank = [row for row in SHELF.rows[3:] if row.strip(".")]
+    arm, brace = below_plank[0], below_plank[1:]
+    assert arm.rstrip(".").endswith("M")  # an arm under the plank, out from the wall
+    ends = [len(row.rstrip(".")) - 1 for row in brace]
+    assert ends == sorted(ends, reverse=True)  # the brace drops towards the wall
+    arm_end = len(arm.rstrip(".")) - 1
+    assert arm_end - 1 <= ends[0] <= arm_end  # meets the end of the arm, diagonally
+    assert ends[-1] <= 2  # and comes down to the wall
