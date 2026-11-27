@@ -104,6 +104,25 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     # ...then saying it, beak working, crest still up.
     "talk_a": (*_SITTING, art.HEAD, art.BEAK_OPEN, art.CREST_RAISED),
     "talk_b": (*_SITTING, art.HEAD, art.CREST_RAISED),
+    # In his bath: a hop in and out, legs tucked and a wing flicked out for balance...
+    "hop": (art.LEGS_DANGLE, art.TAIL, art.BODY, art.WING_HALF, art.HEAD, art.CREST_RAISED),
+    # ...and splashing: fluffed, head down in the water, wings flicking.
+    "splash_a": (
+        art.LEGS,
+        art.TAIL,
+        art.BODY,
+        art.PUFF,
+        art.WING_HALF,
+        *_shifted(1, 3, art.CREST_FLAT, art.HEAD_DOWN),
+    ),
+    "splash_b": (
+        art.LEGS,
+        art.TAIL,
+        art.BODY,
+        art.PUFF,
+        art.WING_FOLDED,
+        *_shifted(1, 4, art.CREST_FLAT, art.HEAD_DOWN),
+    ),
     # Eating seeds off the ground: tipping forward, the beak reaching down to the
     # seeds, then back upright to crack one open, beak working, head level.
     "peck_down": (

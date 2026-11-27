@@ -86,6 +86,14 @@ CLIPS: dict[str, Clip] = {
     # A quick ruffle after landing, then settle.
     # Turned towards you, back through the middle, away, and so on: a turn of the
     # head each way, quick but never skipping the middle.
+    # His bath: hopping in or out, dipping his head in, and splashing.
+    "bath_hop": Clip(("hop",), (1.0,)),
+    "bath_dip": Clip(
+        ("peck_down", "peck_low", "peck_down", "perch") * 2,
+        (0.2, 0.35, 0.15, 0.3) * 2,
+        loop=False,
+    ),
+    "bath_splash": Clip(("splash_a", "splash_b"), (0.09, 0.09)),
     "shake": Clip(
         ("shake_mid",) + ("shake_a", "shake_mid", "shake_b", "shake_mid") * 2 + ("perch",),
         (0.12,) + (0.07, 0.05, 0.07, 0.05) * 2 + (0.25,),

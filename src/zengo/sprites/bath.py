@@ -1,8 +1,8 @@
 """His bath dish: a shallow glazed dish, water rippling in it.
 
 Seen side on, like him: the rim and a sliver of water above it. Standing in it,
-he's drawn behind the dish, so the rim hides his feet and the water comes up
-round him.
+he's drawn behind the dish, so its rim (taller than his legs) hides his feet and
+the water comes up round him.
 """
 
 from __future__ import annotations
@@ -41,9 +41,6 @@ SPLASHING = Layer.parse(
 DISH_WIDTH = len(DISH.rows[0])
 DISH_HEIGHT = 6
 """Rows, from the splash at the top to the foot of the dish."""
-
-SUNK = 2
-"""Art px he stands lower than the ground, in the water."""
 
 RIPPLES = len(WATER)
 

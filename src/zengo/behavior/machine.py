@@ -17,6 +17,8 @@ from zengo.behavior.states import (
     Idle,
     Listen,
     State,
+    Walk,
+    can_fly,
     cursor_is_inviting,
 )
 from zengo.behavior.status import Status
@@ -109,7 +111,7 @@ class Brain:
             return
         ctx.say(ctx.phrase("greeting"), 2.2, mood="love")
         ctx.play("greeting")
-        if cursor_is_inviting(ctx):
+        if can_fly(ctx) and cursor_is_inviting(ctx):
             self.transition(Fly.to_cursor(ctx))
         elif self._state.grounded:
             self.transition(Follow())
@@ -202,10 +204,15 @@ class Brain:
         return isinstance(state, Away) or (isinstance(state, Fly) and state.onto == "away")
 
     def can_hide(self) -> bool:
-        """He flies off unless he's caged or being carried."""
-        return not (self.caged or self.away or isinstance(self._state, Dragged))
+        """He flies off unless he's caged, being carried, or damp from his bath."""
+        return not (
+            self.caged or self.away or isinstance(self._state, Dragged) or not can_fly(self.ctx)
+        )
 
     def hide(self) -> bool:
+        if not can_fly(self.ctx) and not self.away:
+            self.ctx.say("still drying off!", 1.8)
+            return False
         if not self.can_hide():
             return False
         self.transition(Fly.away(self.ctx))
@@ -232,8 +239,15 @@ class Brain:
         area = ctx.area()
         middle = (area.left + area.right) / 2
         near = abs(ctx.body.x - middle) < ctx.config.px(30)
-        if not (near and self._state.grounded and ctx.body.y >= area.bottom - 1):
-            self.transition(Fly.to_middle(ctx))
+        on_ground = self._state.grounded and ctx.body.y >= area.bottom - 1
+        if near and on_ground:
+            return
+        if not can_fly(ctx):
+            # Damp: he can't fly, so he waddles over (or finishes his bath first).
+            if on_ground:
+                self.transition(Walk(middle))
+            return
+        self.transition(Fly.to_middle(ctx))
 
     # --- Lessons -------------------------------------------------------------------
 

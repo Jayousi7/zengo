@@ -92,3 +92,138 @@ def test_the_bath_now_flag(make_pet):
     pet._brain.tick(0.5)
     pet._render()
     assert pet._bath.isVisible()
+
+
+# --- Bathing ---------------------------------------------------------------------
+
+from zengo.behavior.states import (  # noqa: E402
+    Bathe,
+    Fly,
+    Idle,
+    Preen,
+    Walk,
+    choose_activity,
+    go_to_bath,
+    go_to_food,
+)
+from zengo.behavior.voice import Voice  # noqa: E402
+
+
+def _bath_out(ctx, x=1100.0):
+    dish = BathCycle().fill(ctx)
+    ctx.bath.dish, ctx.bath.phase = dish, "out"
+    ctx.bath._timer = 1000.0
+    dish.x, dish.shown = x, 1.0
+    return dish
+
+
+def test_he_walks_over_and_hops_in(ctx):
+    dish = _bath_out(ctx)
+    brain = Brain(ctx, initial=go_to_bath(ctx))
+    assert isinstance(brain.state, Walk) and brain.state.holds_bath
+    for _ in range(400):
+        brain.tick(0.05)
+        if isinstance(brain.state, Bathe):
+            break
+    assert isinstance(brain.state, Bathe)
+    for _ in range(12):
+        brain.tick(0.05)
+    assert ctx.body.x == pytest.approx(dish.x)
+    assert ctx.body.y == pytest.approx(ctx.area().bottom)
+
+
+def test_a_whole_bath(ctx):
+    dish = _bath_out(ctx, x=ctx.body.x)
+    brain = Brain(ctx, initial=Bathe())
+    drops = 0
+    for _ in range(300):
+        brain.tick(0.05)
+        drops = max(drops, len(ctx.effects.particles))
+        if not isinstance(brain.state, Bathe):
+            break
+    assert isinstance(brain.state, Preen)
+    assert drops >= 10  # splashing, and shaking himself dry
+    assert dish.used and not ctx.bath.usable
+    assert ctx.damp > 0
+    assert ctx.body.y == ctx.area().bottom
+    assert abs(ctx.body.x - dish.x) > ctx.config.px(10)  # hopped out the far side
+    assert ctx.speech is not None
+
+
+def test_the_dish_waits_for_him_to_finish(ctx):
+    _bath_out(ctx, x=ctx.body.x)
+    ctx.bath._timer = 0.01
+    brain = Brain(ctx, initial=Bathe())
+    for _ in range(40):
+        brain.tick(0.05)
+    assert ctx.bath.phase == "out"
+
+
+def test_if_the_dish_goes_he_lands_on_his_feet(ctx):
+    _bath_out(ctx, x=ctx.body.x)
+    brain = Brain(ctx, initial=Bathe())
+    for _ in range(20):
+        brain.tick(0.05)
+    ctx.bath.dish = None
+    brain.tick(0.05)
+    assert not isinstance(brain.state, Bathe)
+    assert ctx.body.y == ctx.area().bottom
+
+
+def test_he_heads_for_a_new_bath(ctx):
+    _bath_out(ctx)
+    picks = [type(choose_activity(ctx)).__name__ for _ in range(60)]
+    assert picks.count("Walk") > 20
+
+
+def test_he_flies_to_a_far_bath(ctx):
+    _bath_out(ctx, x=200)
+    ctx.body.x = 1700
+    flight = go_to_bath(ctx)
+    assert isinstance(flight, Fly) and flight.holds_bath
+
+
+# --- Damp ------------------------------------------------------------------------
+
+
+def test_damp_he_never_flies_off(ctx):
+    ctx.damp = 30.0
+    ctx.world.idle = 5.0
+    ctx.world.cursor_pos = (1000.0, 600.0)  # an inviting pointer
+    ctx.scenery.grow(ctx).shown = 1.0
+    for _ in range(200):
+        assert not isinstance(choose_activity(ctx), Fly)
+
+
+def test_damp_he_walks_to_far_seeds(ctx):
+    from zengo.behavior.food import Food
+
+    ctx.damp = 30.0
+    ctx.food = Food(100, ctx.area().bottom)
+    ctx.food.pile.add_stack()
+    assert isinstance(go_to_food(ctx), Walk)
+
+
+def test_damp_he_wont_hide_and_walks_when_called(ctx):
+    brain = Brain(ctx)
+    ctx.damp = 30.0
+    ctx.body.x = 300
+    assert not brain.can_hide()
+    assert not brain.hide()
+    assert ctx.speech is not None
+    brain.summon()
+    assert isinstance(brain.state, Walk)
+
+
+def test_he_dries_off(ctx):
+    brain = Brain(ctx, initial=Idle())
+    ctx.damp = 1.0
+    for _ in range(12):
+        brain.tick(0.1)
+    assert ctx.damp == 0
+    assert brain.can_hide()
+
+
+def test_an_old_phrases_file_still_has_something_for_after_a_bath():
+    old = Voice(phrases={"random": ("hi",)})
+    assert old.lines("bathed")

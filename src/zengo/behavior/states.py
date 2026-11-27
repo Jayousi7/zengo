@@ -18,6 +18,7 @@ from zengo.behavior.body import Facing
 from zengo.behavior.context import Context
 from zengo.behavior.flight import FlightPath, Point, ease
 from zengo.behavior.food import SECONDS_PER_SEED, SEEDS_PER_STACK, STAND_OFF
+from zengo.sprites.bath import DISH_WIDTH
 from zengo.world import Area, Ledge
 
 
@@ -77,8 +78,10 @@ class State:
         """He's on the branch or on his way to it, so it mustn't withdraw yet."""
         return False
 
-    holds_bath: ClassVar[bool] = False
-    """He's in his bath or on his way to it, so it mustn't go yet."""
+    @property
+    def holds_bath(self) -> bool:
+        """He's in his bath or on his way to it, so it mustn't go yet."""
+        return False
 
     def __repr__(self) -> str:
         return type(self).__name__
@@ -113,10 +116,16 @@ def is_sleepy(ctx: Context) -> bool:
     return ctx.world.user_idle_seconds() >= cfg.sleep_after or cfg.is_night(ctx.world.local_hour())
 
 
+def can_fly(ctx: Context) -> bool:
+    """Not while he's damp from his bath: he walks till he's dry."""
+    return ctx.damp <= 0
+
+
 def choose_activity(ctx: Context) -> State:
     """Weighted pick of what to do after idling."""
     if is_sleepy(ctx) and ctx.rng.random() < 0.6:
         return Sleep()
+    flies = can_fly(ctx)
     # Devoted, he seeks you out; grumpy, he keeps away.
     bond, cfg = ctx.bond, ctx.config
     fondness = 2.2 if bond.close(cfg) else 0.0 if bond.grumpy(cfg) else 1.0
@@ -124,14 +133,15 @@ def choose_activity(ctx: Context) -> State:
         (lambda _: Idle(), 1.0),
         (lambda _: Walk(), 4.0),
         (lambda _: Preen(), 2.0),
-        (Fly.hop, 0.6),
-        (Fly.tour, 0.8),
+        (Fly.hop, 0.6 if flies else 0.0),
+        (Fly.tour, 0.8 if flies else 0.0),
         (lambda _: Follow(), 1.5 * fondness if _cursor_on_same_screen(ctx) else 0.0),
         (lambda _: FrontIdle(), 1.2),
-        (Fly.to_cursor, 3.0 * fondness if cursor_is_inviting(ctx) else 0.0),
+        (Fly.to_cursor, 3.0 * fondness if flies and cursor_is_inviting(ctx) else 0.0),
         (lambda _: Sulk(), 3.0 if ctx.bond.grumpy(ctx.config) else 0.0),
-        (Fly.to_branch, 6.0 if branch_is_inviting(ctx) else 0.0),  # he loves the branch
-        (Fly.to_window, 2.5 if perchable_ledges(ctx) else 0.0),
+        (Fly.to_branch, 6.0 if flies and branch_is_inviting(ctx) else 0.0),  # he loves it
+        (Fly.to_window, 2.5 if flies and perchable_ledges(ctx) else 0.0),
+        (go_to_bath, 8.0 if ctx.bath.usable else 0.0),  # and he loves a bath
     ]
     makers, weights = zip(*options, strict=True)
     return ctx.rng.choices(makers, weights)[0](ctx)
@@ -225,7 +235,11 @@ class Walk(State):
         super().__init__()
         self.target = target
         self.then = then
-        """On arrival: ``"eat"`` the seeds, or ``"ask"`` you for some."""
+        """On arrival: ``"eat"`` the seeds, ``"ask"`` you for some, or ``"bathe"``."""
+
+    @property
+    def holds_bath(self) -> bool:
+        return self.then == "bathe"
 
     def go_eat(self, ctx: Context) -> State | None:
         return None if self.then == "eat" else super().go_eat(ctx)
@@ -256,6 +270,8 @@ class Walk(State):
             return None
         if self.then == "eat" and ctx.food is not None:
             return Eat()
+        if self.then == "bathe":
+            return Bathe() if ctx.bath.usable else Idle()
         return Ask() if self.then == "ask" else Idle()
 
 
@@ -356,6 +372,10 @@ class Fly(State):
     @property
     def holds_branch(self) -> bool:
         return self.onto == "branch"
+
+    @property
+    def holds_bath(self) -> bool:
+        return self.onto == "bath"
 
     def go_eat(self, ctx: Context) -> State | None:
         return None  # lands first: flying to the seeds already, or will after
@@ -524,6 +544,8 @@ class Fly(State):
                 return Eat() if ctx.food is not None else Idle()
             if self.onto == "ask":
                 return Ask()
+            if self.onto == "bath":
+                return Bathe() if ctx.bath.usable else Idle()
             if self.onto == "window":
                 return OnWindow(self.window, self.offset)
             if self.onto == "away":
@@ -1351,7 +1373,7 @@ def go_to_food(ctx: Context) -> State:
     side = -1 if body.x > food.x else 1
     spot = food.x - side * cfg.px(STAND_OFF)
     on_ground = body.y >= area.bottom - 1
-    if on_ground and abs(spot - body.x) <= cfg.px(160):
+    if on_ground and (abs(spot - body.x) <= cfg.px(160) or not can_fly(ctx)):
         return Walk(spot, then="eat")
     return Fly(
         [*_takeoff(ctx, towards=spot), *_landing(ctx, spot, coming_from=body.x)], onto="food"
@@ -1397,6 +1419,146 @@ class Eat(State):
         return Shake()
 
 
+BATH_STAND = DISH_WIDTH / 2 + 7
+"""Art px from the middle of his bath to where he stands to hop in."""
+
+
+def go_to_bath(ctx: Context) -> State:
+    """Head for his bath: walk if it's near (or he's damp), fly if it's far or
+    he's up high. He stops beside it, on the side he comes from, to hop in."""
+    dish, cfg, body, area = ctx.bath.dish, ctx.config, ctx.body, ctx.area()
+    assert dish is not None
+    side = -1 if body.x > dish.x else 1
+    spot = area.clamp_x(dish.x - side * cfg.px(BATH_STAND), ctx.margin)
+    on_ground = body.y >= area.bottom - 1
+    if on_ground and (abs(spot - body.x) <= cfg.px(160) or not can_fly(ctx)):
+        return Walk(spot, then="bathe")
+    return Fly(
+        [*_takeoff(ctx, towards=spot), *_landing(ctx, spot, coming_from=body.x)], onto="bath"
+    )
+
+
+class Bathe(State):
+    """His bath: he hops in, dips his head, splashes with flicking wings (water
+    flying), dips and splashes again, hops out the far side, and shakes himself
+    dry in a spray of droplets. Then he's damp for a while, and preens."""
+
+    clip = "bath_hop"
+    grounded = False  # hopping in and out
+    effort = 1.4
+    hop_seconds: ClassVar[float] = 0.45
+    hop_height: ClassVar[float] = 9.0
+    """Art px he rises hopping in or out."""
+    PLAN: ClassVar[tuple[tuple[str, float], ...]] = (
+        ("in", hop_seconds),
+        ("dip", 2.3),
+        ("splash", 2.6),
+        ("dip", 1.2),
+        ("splash", 1.8),
+        ("out", hop_seconds),
+        ("shake", 1.3),
+    )
+    drops_every: ClassVar[float] = 0.12
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.step_index = -1
+        self.step_left = 0.0
+        self.drops_in = 0.0
+        self.start_x = 0.0
+        self.end_x = 0.0
+
+    @property
+    def holds_bath(self) -> bool:
+        return True
+
+    @property
+    def doing(self) -> str:
+        return self.PLAN[self.step_index][0]
+
+    def enter(self, ctx: Context) -> None:
+        dish = ctx.bath.dish
+        if dish is not None:
+            ctx.body.face_towards(dish.x)
+        self._next(ctx)
+
+    def clicked(self, ctx: Context) -> State | None:
+        return None  # busy
+
+    def double_clicked(self, ctx: Context) -> State | None:
+        return None
+
+    def petted(self, ctx: Context) -> State | None:
+        return None
+
+    def go_eat(self, ctx: Context) -> State | None:
+        return None
+
+    def ask_for_food(self, ctx: Context) -> State | None:
+        return None
+
+    def _next(self, ctx: Context) -> None:
+        self.step_index += 1
+        if self.step_index >= len(self.PLAN):
+            return
+        what, self.step_left = self.PLAN[self.step_index]
+        body, cfg, dish = ctx.body, ctx.config, ctx.bath.dish
+        if what in ("in", "out"):
+            self.start_x = body.x
+            if what == "in" and dish is not None:
+                self.end_x = dish.x
+            else:
+                self.end_x = ctx.area().clamp_x(
+                    body.x + int(body.facing) * cfg.px(BATH_STAND), ctx.margin
+                )
+            ctx.animator.play("bath_hop", restart=True)
+        elif what == "dip":
+            ctx.animator.play("bath_dip", restart=True)
+        elif what == "splash":
+            ctx.animator.play("bath_splash", restart=True)
+            self.drops_in = 0.0
+        elif what == "shake":
+            ctx.animator.play("shake", restart=True)
+            area = ctx.area()
+            ctx.effects.splash(body.x, body.y - cfg.px(14), area.bottom, ctx.rng, cfg.scale, 12)
+        if what == "out":
+            ctx.damp = cfg.damp_seconds
+            if dish is not None:
+                dish.used = True
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        body, cfg, area = ctx.body, ctx.config, ctx.area()
+        ground = area.bottom
+        dish = ctx.bath.dish
+        if dish is None and self.doing not in ("out", "shake"):
+            body.y = ground  # it's gone from under him
+            return Shake()
+        self.step_left -= dt
+        what = self.doing
+        if what in ("in", "out"):
+            t = min(1.0, 1.0 - self.step_left / self.hop_seconds)
+            body.x = self.start_x + (self.end_x - self.start_x) * t
+            body.y = ground - cfg.px(self.hop_height) * math.sin(math.pi * t)
+        elif what == "splash":
+            assert dish is not None
+            dish.splash = 0.3
+            self.drops_in -= dt
+            if self.drops_in <= 0:
+                self.drops_in += self.drops_every
+                front = body.x + int(body.facing) * cfg.px(ctx.rng.uniform(-6, 10))
+                ctx.effects.splash(front, ground - cfg.px(6), ground, ctx.rng, cfg.scale, 2)
+        else:
+            body.y = ground
+        if self.step_left > 0:
+            return None
+        if what == "shake":
+            ctx.say(ctx.phrase("bathed"), 2.0)
+            ctx.play("trill")
+            return Preen()
+        self._next(ctx)
+        return None
+
+
 def go_ask(ctx: Context) -> State:
     """Hungry with nothing to eat: he comes over to where your pointer is, lands
     below it and asks. If it's on another screen, he asks from where he is."""
@@ -1406,7 +1568,7 @@ def go_ask(ctx: Context) -> State:
         return Ask()
     x = area.clamp_x(cx, ctx.margin)
     on_ground = body.y >= area.bottom - 1
-    if on_ground and abs(x - body.x) <= cfg.px(100):
+    if on_ground and (abs(x - body.x) <= cfg.px(100) or not can_fly(ctx)):
         return Walk(x, then="ask") if abs(x - body.x) > 1 else Ask()
     return Fly([*_takeoff(ctx, towards=x), *_landing(ctx, x, coming_from=body.x)], onto="ask")
 
