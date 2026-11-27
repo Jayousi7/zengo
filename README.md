@@ -75,24 +75,27 @@ tested headless against a fake `World`.
 
 ### Editing the art
 
-Frames are text in `sprites/art.py`, drawn facing right on a 26x28 grid. Each
+Frames are text in `sprites/art.py`, drawn facing right on a 42x34 grid. Each
 character is a palette key from `sprites/palette.py`; `.` leaves the pixel
 below untouched and `_` erases it. Don't draw outlines: they are generated,
 each edge taking a dark shade of the colour it borders.
 
-Perched poses are the base drawing (`BODY`, `HEAD`, `CREST`, `LEGS`) plus small
-overlays: a shifted head, another crest, closed eyes. Flight reuses the head on
-a forward-leaning body with a wing in one of four beat positions (up, level,
-down, recover); the glide holds the wing level and the landing flares it up. `frames.py` stacks
-layers into named frames and `clips.py` sequences them. `tests/test_sprites.py`
-checks that frames line up with the ground row and that every clip refers to a
-real frame.
+Zengo is drawn to a real cockatiel's proportions: a small white-faced head with
+a tall crest, a slim body sloping back and a tail as long as the rest of him.
+Perched poses are the base drawing (`BODY`, `WING_FOLDED`, `HEAD`, `CREST`,
+`LEGS`) plus small overlays: a shifted head, another crest, closed eyes. Flight
+has its own level body with the head moved forward and a long pointed wing in
+one of four beat positions (up, level, down, recover); the glide holds the wing
+level and the landing flares it up. The rows below the ground row are only used
+by the downstroke. `frames.py` stacks layers into named frames and `clips.py`
+sequences them. `tests/test_sprites.py` checks that frames line up with the
+ground row and that every clip refers to a real frame.
 
 ### Hand-drawn frames
 
 Any frame can be replaced by art from a pixel editor. In Aseprite (or
-LibreSprite), draw on a 28x30 canvas facing right, with the feet's lowest
-pixel on row 25 and the gap between the feet on column 20 (zero-based). Name
+LibreSprite), draw on a 44x36 canvas facing right, with the feet's lowest
+pixel on row 29 and the gap between the feet on column 31 (zero-based). Name
 each frame after the one it replaces (`perch`, `blink`, `alert`, `step_back`,
 `step_front`, `preen_a`, `preen_b`, `sleep`, `wings_up`, `wings_level`,
 `wings_down`, `wings_recover`) and export a sprite sheet with JSON data, hash or array layout.

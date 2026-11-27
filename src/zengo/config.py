@@ -32,7 +32,7 @@ class Config:
     night: tuple[int, int] = (23, 6)
     """Local hours [start, end) during which Zengo naps readily, wrapping midnight."""
 
-    edge_margin: float = 11.0
+    edge_margin: float = 31.0
     """Art pixels kept between the anchor and a screen edge; the tail reaches this far back."""
 
     drag_threshold: int = 4

@@ -1,13 +1,14 @@
-"""Zengo's pixel art, facing right.
+"""Zengo's pixel art, facing right, on a 42x34 grid.
 
-Every pose is the perched bird plus small overlays: a shifted head, a different
-crest, a wing swapped in. Keeping one base drawing means every frame stays on
-model; only the parts that move are drawn again.
+Proportions follow a real cockatiel in side view: a small white-faced head with
+a tall crest, a slim body sloping back, and a tail as long as the rest of him.
+Rows below the ground row are left free for the wing's downstroke in flight.
 
-Layers are written in the perched bird's local grid and placed on the shared
-canvas by :func:`_layer`, which leaves headroom for the raised crest and wings.
-Outlines are generated (see :func:`zengo.sprites.palette.outline_for`), so only
-fill colours are drawn here.
+Every perched pose is the base drawing plus small overlays: a shifted head, a
+different crest, closed eyes. Flight has its own level body, with the head
+moved forward and one of four wing positions on top. Layers are written in
+grid coordinates. Outlines are generated (see
+:func:`zengo.sprites.palette.outline_for`), so only fill colours are drawn here.
 
 Palette keys: W face, P wing patch, L/B/S fawn light to shadow, C/D cinnamon,
 T/t tail, K eye, Q/q beak, F feet. ``.`` keeps, ``_`` erases.
@@ -15,107 +16,121 @@ T/t tail, K eye, Q/q beak, F feet. ``.`` keeps, ``_`` erases.
 
 from zengo.sprites.compose import Layer
 
-ORIGIN_X, ORIGIN_Y = 9, 2
-"""Canvas position of the local grid's (0, 0)."""
-
 
 def _layer(art: str, x: int, y: int) -> Layer:
-    return Layer.parse(art, ORIGIN_X + x, ORIGIN_Y + y)
+    return Layer.parse(art, x, y)
 
 
 # --- Base pose -------------------------------------------------------------
 
 HEAD = _layer(
     """
-    ...LLLWW
-    ..LLLWWWW
-    .LLLWWWKWQ
-    .LLLWWWKWQq
-    .BLLWWWWWq
-    SBLLLWWWW
+    ....LWWWW
+    ...LLWWWWW
+    ..BLWWWWWW
+    ..BLLWWWWW
+    ..BLLWWKWW
+    ..BBLWWWWQQ
+    .SBBLWWWWQq
+    SBBBLLWWW.q
     """,
-    x=5,
-    y=6,
+    x=30,
+    y=8,
 )
 
 BODY = _layer(
     """
-    ....SCCBLLLLLL
-    ....SCCPBLLLLL
-    ...SCCCPBLLLLLL
-    ...SDCCPBBLLLLL
-    ...SDCCPBBLLLLL
-    ...SDDCPBBLLLL
-    ...SDDCSBBBLLL
-    ...SDDSSBBBB
-    ...tDDSSBBBB
-    ..tTDSS
-    ..tTD
-    .tTt
-    .tTt
-    tTt
+    .............................SCCBBBLLWWW
+    ...........................SCCCBBBBLLLLL
+    .........................SCCCCBBBBBLLLLL
+    .......................SCCCCCBBBBBBLLLLL
+    .....................SCCCCCCBBBBBBBLLLLL
+    ..............TTTTTTTSCCCBBBBBBBBBLLLLL
+    ......ttTTTTTTTTTTTTSSCBBBBBBBBBBBLLLL
+    ttttttTTTTTTTTTTTTTTSSBBBBBBBBBBBLLL
+    ....ttttttttttttttttSSSBBBBBBBBBBBBB
+    ............tttttttttSSSSSBBBBBBBB
+    ..........................SSSSSSS
     """,
     x=0,
-    y=12,
+    y=16,
+)
+
+# The white covert patch shows as a stripe along the lower edge of the folded wing.
+WING_FOLDED = _layer(
+    """
+    ................SC
+    ..............SCCCC
+    ............SDCCCCCC
+    ..........SDDCCCCCCC
+    ........SDDDCCCCCCCC
+    ......SDDDDCCCCCPPPP
+    ....SDDDDDDPPPPPPPS
+    ..SDDDDDDSSSSSSS
+    DDDDDD
+    """,
+    x=13,
+    y=15,
 )
 
 LEGS = _layer(
     """
-    FF.
-    F.F
+    .F..F
+    FF.FF
     """,
-    x=9,
-    y=21,
+    x=28,
+    y=27,
 )
 
 # --- Head and crest variants ----------------------------------------------
 
+# Relaxed: three strands curling forward.
 CREST = _layer(
     """
-    .LL
-    P..L
-    ...LL
-    ....LL.P
-    ....LBL
-    ...LLLL
+    ......B
+    ...B.B
+    .B.B.L
+    B.L.L
+    L.L.L
+    LLLLL
+    LLLLL
     """,
-    x=7,
+    x=34,
+    y=1,
+)
+
+# Alert: strands fanned up and out.
+CREST_RAISED = _layer(
+    """
+    ....B...B
+    B...B...B
+    .B..B..B
+    .L..L..L
+    ..L.L.L
+    ..L.L.L
+    ..LLLLL
+    ..LLLLL
+    """,
+    x=32,
     y=0,
 )
 
-CREST_RAISED = _layer(
-    """
-    ...L
-    ..LL..P
-    ..L..L
-    .P.L.L
-    ...LLL
-    ...LBL
-    ...LLL
-    ..LLLL
-    """,
-    x=8,
-    y=-2,
-)
-
-# Lowered and swept back against the head, as when relaxed or asleep.
+# Laid back along the head, as when asleep or in flight.
 CREST_FLAT = _layer(
     """
-    .LL
-    ..LLLL
-    ....LLLL
+    BBLLLL
+    ..LLL
     """,
-    x=3,
-    y=4,
+    x=29,
+    y=7,
 )
 
 EYE_CLOSED = _layer(
     """
-    WW
     DD
     """,
-    x=11,
-    y=8,
+    x=36,
+    y=12,
 )
 
 # --- Walking ---------------------------------------------------------------
@@ -123,145 +138,139 @@ EYE_CLOSED = _layer(
 
 LEGS_STEP_BACK = _layer(
     """
-    FF.
-    F..
-    FF.
+    ..F..F
+    FF...F
+    ....FF
     """,
-    x=9,
-    y=20,
+    x=27,
+    y=26,
 )
 
 LEGS_STEP_FRONT = _layer(
     """
-    FF.
-    .F.
-    .FF
+    .F..F
+    .F...FF
+    FF
     """,
-    x=9,
-    y=20,
+    x=28,
+    y=26,
 )
 
 # --- Sleeping --------------------------------------------------------------
 
-# Feathers fluffed out by a pixel around the chest and back. No breathing frame:
-# a one-pixel chest pulse reads as a twitch at this size.
+# Feathers fluffed out by a pixel around the chest and back.
 PUFF = _layer(
     """
-    ............L
-    ............L
-    .............L
-    S............L
-    S............L
-    S...........L
-    S...........L
-    ..........B
-    ..........B
+    ........S...........L
+    ......S.............L
+    ....S...............L
+    ..S.................L
+    S...................L
+    ...................L
+    ..................L
+    ................L
+    ................B
+    ..............BB
     """,
-    x=2,
-    y=12,
+    x=20,
+    y=16,
 )
 
 
 # --- Flying ----------------------------------------------------------------
-# Body leaning forward with the tail streaming behind; the head and the
-# laid-back crest are the perched ones. The near wing beats through three
-# positions; long pointed wings are what read as a parrot rather than an insect.
+# Stretched level with the legs hanging, so the feet are on the ground row at
+# takeoff and landing. The wing is long, joins just behind the head and ends in
+# fanned primaries; the white patch shows by the shoulder. Only the near wing
+# is drawn: from the side the far one is hidden behind the body.
 
 FLIGHT_BODY = _layer(
     """
-    ..........SSBBBBBBLLLLLL
-    ....tTTTSSSBBBBBBBLLLLLL
-    .ttTTTTTTSSBBBBBBBLLLLLL
-    tttTTTTTTTSBBBBBBBLLLLL
-    ..ttttTTTTSSBBBBBBLLLL
-    ............SBBBBBLL
-    ..............BBBBB
-    ................FF
+    .....................SCCCCCCCCC
+    ...............ttTTSSCCCCCCCCCCCB
+    .....tttTTTTTTTTTTSSCCCCCCCCBBBBB
+    tttttTTTTTTTTTTTTTSSBBBBBBBBBBBBBB
+    ....tttttttttttTTTTSSBBBBBBBBBBBBBLL
+    ............tttttttSSSBBBBBBBBBBBLLLLL
+    ....................SSBBBBBBBBBLLLL
+    ........................SSSSBBBBBB
+    .............................F
+    ............................FF
     """,
-    x=-9,
-    y=12,
+    x=0,
+    y=19,
 )
 
 WING_UP = _layer(
     """
-    ..D.DS
-    .DSDDSS
-    DSDDSDDS
-    .DDSDDSCC
-    .DSDDSCCSC
-    .DDDSCCSCC
-    ..DSCCSCCSP
-    ...SCSCCSCCP
-    ....SCCCCCCCP
-    ....SCCCCCCCP
-    .....SCCCCCCCP
-    ......SCCCCCCCP
-    .......SCCCCCCP
+    ......D
+    .....DD
+    ....DDD..D
+    ...SDDD.DD
+    ..SDDDDDDD
+    ...DDDDDDD
+    ..SDDDDDDDC
+    .SDDDDDDDCC
+    ..DDDDDDCCC
+    .SDDDDDCCCCP
+    SDDDDDCCCCCP
+    .SDDDCCCCCCPP
+    ..SDCCCCCCCPP
+    .SSCCCCCCCCPP
+    ..SCCCCCCCPPP
+    ...SCCCCCCPPP
+    ....SCCCCCPPPP
+    .....SCCCCPPPP
+    .......SCCPPPP
     """,
-    x=-6,
-    y=0,
-)
-
-WING_UP_FAR = _layer(
-    """
-    ..tDDD
-    .tDDDDD
-    tDDDDDDD
-    .DDDDDDDD
-    .tDDDDDDD
-    ..tDDDDDDD
-    ...tDDDDDDD
-    ....tDDDDDD
-    .....tDDDDDD
-    ......tDDDDDD
-    .......tDDDDDD
-    ........tDD
-    """,
-    x=-9,
-    y=2,
+    x=18,
+    y=1,
 )
 
 WING_LEVEL = _layer(
     """
-    SSSSSSCC
-    ..DDSDCSCCP
-    ..DSDCSCCCCPPP
-    ...DDSCCSCCCCCPPP
-    .....SSSCCCCCCSSS
-    ........SSSSSS
+    DD
+    .DDDDDDCCCCCCCPPPPPP
+    ..SDSDDDCCCCCCCCCPPP
+    ....S.SDSDCCCCCCCCCCP
+    ..........SSSSCCCCCC
     """,
-    x=-9,
-    y=7,
+    x=13,
+    y=17,
 )
 
 WING_DOWN = _layer(
     """
-    ....SCCCCCCP
-    ....SCCCCCP
-    ...SCCCCCCP
-    ..SCCCCCCP
-    ..SCSCCCP
-    .SCSCCSCC
-    .DSCCSCC
-    DSDDSCC
-    SDDSDDS
-    DDSDDS
-    .D.S
+    ........SCCCPPPP
+    .......SCCCPPPPP
+    ......SCCCCPPPPC
+    ......SCCCCPPCC
+    .....SCCCCCCCCC
+    .....SDCCCCCCD
+    ....SDDCCCCCDD
+    ....SDDDCCCDD
+    ...SDDDDDDDD
+    ..SDDDDDDD.D
+    .SDDDDDD.D
+    .SDD.DD.D
+    SD.D..D
+    D..D
     """,
-    x=-3,
-    y=13,
+    x=17,
+    y=20,
 )
 
 WING_RECOVER = _layer(
     """
-    .SSS
-    SDSDCC
-    DSDDSCP
-    .DDSCCCPP
-    .DSCCCCCCPP
-    ..SCSCCCSSSP
-    ...SSSSS
+    D
+    SDD
+    .SDDD.D
+    ..SDDDDD
+    ...SDDDDCC
+    ....SDDCCCCP
+    .....SSCCCCPPP
+    .......SSCCCPPPP
+    .........SSCCPPP
     """,
-    x=-3,
-    y=6,
+    x=16,
+    y=11,
 )
