@@ -98,6 +98,12 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
     # Whistling: crest up, head tipped back to sing with the beak open.
     "whistle_a": (*_SITTING, art.HEAD_UP, art.BEAK_OPEN_UP, art.CREST_RAISED.shifted(-1, 0)),
     "whistle_b": (*_SITTING, art.HEAD_UP, art.CREST_RAISED.shifted(-1, 0)),
+    # A lesson: turning to you, crest up, and cocking his head to listen...
+    "listen_turn": (*_SITTING, art.HEAD_TURNED, art.CREST_RAISED),
+    "listen_cock": (*_SITTING, art.HEAD_COCKED, art.CREST_RAISED.shifted(1, 0)),
+    # ...then saying it, beak working, crest still up.
+    "talk_a": (*_SITTING, art.HEAD, art.BEAK_OPEN, art.CREST_RAISED),
+    "talk_b": (*_SITTING, art.HEAD, art.CREST_RAISED),
     # Eating seeds off the ground: tipping forward, the beak reaching down to the
     # seeds, then back upright to crack one open, beak working, head level.
     "peck_down": (

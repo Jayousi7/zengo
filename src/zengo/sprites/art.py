@@ -716,6 +716,23 @@ BEAK_OPEN_UP = _layer(
     y=10,
 )
 
+# Cocked to listen: turned towards you with the head tipped over, one eye
+# higher than the other, the beak swung towards the lower one.
+HEAD_COCKED = _layer(
+    """
+    ....LWWWW
+    ...LWWWWWW
+    ..BLWWWWKWL
+    ..BLWWWWWWL
+    ..BLKWQWWWL
+    ..BBLQQqWWL
+    .SBBLWqWWW
+    SBBBLLWWW
+    """,
+    x=30,
+    y=8,
+)
+
 # Turned towards you: both eyes, the beak pointing your way.
 HEAD_TURNED = _layer(
     """

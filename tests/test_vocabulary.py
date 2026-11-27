@@ -157,3 +157,45 @@ def test_lessons_show_in_the_words_tab_and_can_be_forgotten_there(tmp_path):
     finally:
         pet._settings_window.close()
         pet._window.close()
+
+
+def test_he_cocks_his_head_to_listen_and_his_beak_works_as_he_tries_it(ctx):
+    ctx.clock = lambda: 0.0
+    brain = Brain(ctx, Idle())
+    brain.lesson("hello", "random")
+    brain.tick(DT)
+    assert ctx.animator.clip_name == "listen"
+    seen = set()
+    for _ in range(round(1.4 / DT)):
+        brain.tick(DT)
+        seen.add(ctx.animator.frame)
+    assert {"listen_turn", "listen_cock"} <= seen
+    for _ in range(round(0.5 / DT)):
+        brain.tick(DT)
+        seen.add(ctx.animator.frame)
+    assert {"talk_a", "talk_b"} <= seen
+
+
+def test_saying_a_taught_word_works_his_beak(ctx):
+    from dataclasses import replace
+
+    for i in range(5):
+        ctx.vocabulary.teach("hi there", "random", i * HOUR, 5, ctx.rng)
+    ctx.config = replace(ctx.config, chirp_every=0.01)
+    brain = Brain(ctx, Idle())
+    for _ in range(300):
+        brain.tick(DT)
+        if ctx.speech is not None and ctx.speech.text == "hi there":
+            break
+    assert ctx.speech.text == "hi there"
+    frames = set()
+    for _ in range(10):
+        frames.add(ctx.animator.frame)
+        brain.tick(DT)
+    assert frames & {"talk_a", "talk_b"}
+
+
+def test_no_lessons_up_on_a_perch(ctx):
+    brain = Brain(ctx, Idle())
+    ctx.body.y -= 200  # up on a window, say
+    assert "settled on the ground" in brain.can_learn()

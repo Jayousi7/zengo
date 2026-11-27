@@ -71,6 +71,7 @@ class Brain:
             ctx.food.pile.update(dt)
         self._mind_the_food()
         self._maybe_chirp(dt)
+        self._show_talking()
         if self._state.grounded:
             self._settle()
             if ctx.body.facing is not self._facing:
@@ -119,6 +120,18 @@ class Brain:
         if ctx.rng.random() < dt / every:
             ctx.play(ctx.rng.choice(CHIRPS))
             ctx.say(ctx.phrase("random"), 1.4)
+
+    def _show_talking(self) -> None:
+        """He's just said one of your words: his beak works as he says it, if he's
+        sitting side-on on the ground (other poses keep their own beaks)."""
+        ctx = self.ctx
+        if not ctx.talking:
+            return
+        ctx.talking = False
+        clip = ctx.animator.clip_name
+        side_on = not clip.startswith(("front_", "branch_", "back_", "ledge_"))
+        if side_on and self._state.grounded and not isinstance(self._state, Listen):
+            ctx.animator.interject("talk")
 
     def _mind_the_food(self) -> None:
         """Hunger, and what he does about it given what he's up to."""
@@ -226,8 +239,9 @@ class Brain:
             return "Not while he's caged: let him out first."
         if isinstance(self._state, Listen):
             return "He's still on the last one."
-        if not self._state.grounded:
-            return "He's busy. Try again when he's settled."
+        on_ground = self.ctx.body.y >= self.ctx.area().bottom - 1
+        if not (self._state.grounded and on_ground):
+            return "He's busy. Try again when he's settled on the ground."
         return None
 
     def lesson(self, text: str, moment: str) -> Lesson | None:
