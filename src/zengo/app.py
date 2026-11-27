@@ -19,10 +19,11 @@ from zengo.animation import Animator
 from zengo.behavior.body import Body, Facing
 from zengo.behavior.context import Context
 from zengo.behavior.machine import Brain
-from zengo.config import Config
+from zengo.config import Config, quick
 from zengo.sprites.cage import CAGE_WIDTH, FLOOR
 from zengo.sprites.clips import CLIPS
 from zengo.sprites.compose import Frame
+from zengo.sprites.food import MAX_STACKS
 from zengo.sprites.frames import ANCHOR_COLUMN, CANVAS_WIDTH, GROUND_ROW, build_frames
 from zengo.ui.branch_window import BranchWindow
 from zengo.ui.bubble_window import BubbleWindow
@@ -78,6 +79,7 @@ class Pet:
         self._cage.menu_requested.connect(self._show_menu)
         self._mount = MountWindow(config)
         self._food = FoodWindow(config)
+        self._dish = FoodWindow(config)
         self._overlay: CatchOverlay | None = None
         self._door_was_open = False
 
@@ -110,8 +112,16 @@ class Pet:
         desktop = QGuiApplication.primaryScreen().virtualGeometry()
         self._window.show_sprite(sprite, QPoint(round(left), round(top)), desktop)
         self._branch.show_branch(ctx.scenery.branch)
-        if self._food.show_food(ctx.food) and ctx.cage is not None:
-            self._cage.raise_()  # seeds on the tray stay behind the bars
+        food = ctx.food
+        if food is None:
+            self._food.show_pile(None)
+        else:
+            self._food.show_pile(food.pile, food.x, food.y)
+        cage = ctx.cage
+        if cage is None or cage.door_open:
+            self._dish.show_pile(None)
+        elif self._dish.show_pile(cage.dish, cage.shown_x, cage.y):
+            self._cage.raise_()  # the dish sits behind the bars
         self._show_cage()
         self._show_speech()
 
@@ -128,7 +138,9 @@ class Pet:
 
     def _show_menu(self, where: QPoint) -> None:
         menu = QMenu()
-        menu.addAction("Feed Zengo", self._brain.feed)
+        stacks = self._brain.food_stacks
+        feed = menu.addAction(f"Feed Zengo ({stacks}/{MAX_STACKS})", self._brain.feed)
+        feed.setEnabled(stacks < MAX_STACKS)
         if self._brain.caged:
             menu.addAction("Let Zengo out", self._brain.let_out)
         else:
@@ -197,6 +209,11 @@ def parse_args(argv: list[str]) -> Options:
         help="Aseprite JSON export overriding built-in frames by name",
     )
     parser.add_argument(
+        "--quick",
+        action="store_true",
+        help="short timers for trying things out: escapes within seconds, hunger every 20 s",
+    )
+    parser.add_argument(
         "--branch-now",
         action="store_true",
         help="grow a branch for Zengo straight away instead of waiting for one",
@@ -204,7 +221,8 @@ def parse_args(argv: list[str]) -> Options:
     args = parser.parse_args(argv)
     if args.scale < 1 or args.fps < 1:
         parser.error("--scale and --fps must be positive")
-    return Options(Config(scale=args.scale, fps=args.fps), args.sprites, args.branch_now)
+    config = Config(scale=args.scale, fps=args.fps)
+    return Options(quick(config) if args.quick else config, args.sprites, args.branch_now)
 
 
 def main(argv: list[str] | None = None) -> int:

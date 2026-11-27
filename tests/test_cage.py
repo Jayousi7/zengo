@@ -265,3 +265,69 @@ def test_the_cage_stops_at_the_screen_edges_and_corners(ctx, to):
     area, px = ctx.world.area, ctx.config.px
     assert area.left <= cage.x - px(CAGE_WIDTH / 2) and cage.x + px(CAGE_WIDTH / 2) <= area.right
     assert area.top <= cage.top(ctx) and cage.y + px(BELOW_FLOOR) <= area.bottom
+
+
+# --- Escaping ------------------------------------------------------------------
+
+
+def test_escape_odds_start_at_15_percent_after_5_minutes_and_rise_1_percent_a_minute(ctx):
+    from zengo.behavior.cage import escape_chance
+
+    cfg = ctx.config
+    assert escape_chance(cfg, 4 * 60, 0) == 0
+    assert escape_chance(cfg, 5 * 60, 0) == pytest.approx(0.15)
+    assert escape_chance(cfg, 6 * 60, 0) == pytest.approx(0.16)
+    assert escape_chance(cfg, 10 * 60 + 30, 0) == pytest.approx(0.20)
+    assert escape_chance(cfg, 10 * 60, 2) == pytest.approx(0.14)  # fed twice: 3% off each
+    assert escape_chance(cfg, 5 * 60, 10) == 0  # never below nothing
+
+
+def test_he_tries_once_a_minute_from_five_minutes(ctx):
+    from dataclasses import replace
+
+    ctx.config = replace(ctx.config, escape_chance=0.0, escape_chance_rise=0.0)
+    brain = Brain(ctx, Idle())
+    cage = catch(ctx, brain)
+    tries = []
+    original = cage.tries_to_escape
+
+    def counting(c):
+        result = original(c)
+        if cage._next_try is not None and (not tries or tries[-1] != cage._next_try):
+            tries.append(cage._next_try)
+        return result
+
+    cage.tries_to_escape = counting
+    run(brain, 8 * 60)
+    assert isinstance(brain.state, Caged)  # 0%: he never gets out
+    attempts = [t - ctx.config.escape_every for t in tries[1:]]
+    assert attempts[0] == pytest.approx(5 * 60, abs=0.1)
+    assert {round(b - a) for a, b in itertools.pairwise(attempts)} == {60}
+
+
+def test_with_quick_timers_he_works_the_latch_and_escapes_within_seconds(ctx):
+    from zengo.config import quick
+
+    ctx.config = quick(ctx.config)
+    brain = Brain(ctx, Idle())
+    catch(ctx, brain)
+    run(brain, ctx.config.escape_after + 0.5)
+    assert ctx.animator.clip_name == "front_pick"  # working the latch...
+    run_until(brain, Fly, limit=4)
+    assert ctx.cage.escaped and ctx.speech.text.startswith("freedom")
+    run_until(brain, Idle, limit=15)
+    run(brain, 2)
+    assert ctx.cage is None  # the empty cage goes
+
+
+def test_no_escaping_while_the_cage_is_carried(ctx):
+    from zengo.config import quick
+
+    ctx.config = quick(ctx.config)
+    brain = Brain(ctx, Idle())
+    cage = catch(ctx, brain)
+    brain.cage_grab(cage.x, cage.y - 30)
+    for i in range(round(15 / DT)):
+        brain.cage_drag(cage.x + i % 3, cage.y - 30)
+        brain.tick(DT)
+    assert isinstance(brain.state, Caged) and not cage.door_open

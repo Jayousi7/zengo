@@ -13,6 +13,12 @@ flies over and sits on it facing you: looking about, preening, fluffing up,
 napping if it's late, until he flies off and it withdraws. Drop him just above
 it and he grabs it. Now and then he sits facing you on the ground too.
 
+Every 5 minutes there's an even chance he gets hungry. Then he eats a stack of
+seeds if you've put some out; if not, he flies over to your pointer and asks for
+some (from a cage, he just asks), and asks again every couple of minutes till fed.
+Caged, after 5 minutes he tries the latch once a minute: 15% the first time, 1%
+more each try, 3% less for every time you've fed him in there.
+
 | Input | Reaction |
 |---|---|
 | Left click | Crest up, startled |
@@ -20,7 +26,7 @@ it and he grabs it. Now and then he sits facing you on the ground too.
 | Stroke the mouse gently back and forth over him | Fluffs up, shuts his eyes and leans into it, with hearts; a happy shake when you stop |
 | Left drag | Picked up: hangs from the cursor, swings, flaps if moved fast. Let go and he keeps his momentum, glides in and shakes it off |
 | Right click | Menu: *Feed Zengo*, *Catch Zengo* (or *Let Zengo out*), *Quit Zengo* |
-| *Feed Zengo* | A pile of sunflower seeds, his favourite. He walks over (or flies down) and pecks them up one by one; caged, he eats them off his tray |
+| *Feed Zengo (n/3)* | Pours out a stack of sunflower seeds, his favourite: up to three stacks, the pile filling as you add. He eats one stack whenever he gets hungry; caged, they go in his dish |
 | *Catch Zengo*, then drag a box around him | Caged where he is, and furious about it. Drag the cage: let go near the top and it hangs from a chain, near a side and it sits on a shelf, anywhere else it falls to the ground. Petting him through the bars calms him; *Let Zengo out* opens the door |
 
 ## Download
@@ -38,6 +44,7 @@ python -m venv .venv
 .venv/bin/zengo --scale 3               # bigger bird
 .venv/bin/zengo --sprites art.json      # use hand-drawn frames (see below)
 .venv/bin/zengo --branch-now            # grow a branch straight away
+.venv/bin/zengo --quick                 # short timers: cage escapes in seconds, hunger every 20 s
 ```
 
 Requires Python 3.11+. On Linux, Qt's X11 plugin needs `libxcb-cursor0`

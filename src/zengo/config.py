@@ -105,6 +105,25 @@ class Config:
     """While he's angry: seconds between complaints, and how long each cloud stays up.
     Clearly apart, so each one can be read."""
 
+    escape_after: float = 300.0
+    escape_every: float = 60.0
+    escape_chance: float = 0.15
+    escape_chance_rise: float = 0.01
+    escape_feed_penalty: float = 0.03
+    """Caged, after ``escape_after`` seconds he tries to escape every ``escape_every``:
+    ``escape_chance`` at the first try, ``escape_chance_rise`` more each try after,
+    less ``escape_feed_penalty`` for every time he's been fed in the cage."""
+
+    hunger_every: float = 300.0
+    hunger_chance: float = 0.5
+    """Every ``hunger_every`` seconds, the chance he gets hungry and eats a stack."""
+
+    nag_every: float = 120.0
+    """Hungry with nothing to eat, how often he asks you for food."""
+
+    begging: tuple[str, ...] = ("feed me!!", "seeds pls? ♥", "hungryyy...", "*stares*")
+    """What he says asking for food."""
+
     sleep_after: float = 300.0
     """Seconds of user inactivity after which Zengo becomes sleepy."""
 
@@ -123,3 +142,18 @@ class Config:
     def is_night(self, hour: int) -> bool:
         start, end = self.night
         return start <= hour or hour < end if start > end else start <= hour < end
+
+
+def quick(config: Config) -> Config:
+    """Timers shortened for trying things out: he escapes a cage within seconds,
+    and gets hungry every 20 s at the usual 50%."""
+    from dataclasses import replace
+
+    return replace(
+        config,
+        escape_after=5.0,
+        escape_every=5.0,
+        escape_chance=1.0,
+        hunger_every=20.0,
+        nag_every=20.0,
+    )

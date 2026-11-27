@@ -17,7 +17,7 @@ from typing import ClassVar
 from zengo.behavior.body import Facing
 from zengo.behavior.context import Context
 from zengo.behavior.flight import FlightPath, Point, ease
-from zengo.behavior.food import PECK_REACH, SECONDS_PER_SEED
+from zengo.behavior.food import SECONDS_PER_SEED, SEEDS_PER_STACK, STAND_OFF
 from zengo.behavior.scenery import Branch
 
 
@@ -53,10 +53,14 @@ class State:
         """Being stroked: on the ground he settles into it, even from a nap."""
         return Petted() if self.grounded else None
 
-    def food_nearby(self, ctx: Context) -> State | None:
-        """Seeds are down. Settled on the ground, he goes straight for them; held
-        or mid-air, he gets to them once he's landed."""
+    def go_eat(self, ctx: Context) -> State | None:
+        """He's hungry and there are seeds down. Settled on the ground he goes for
+        them; held or mid-air, once he's landed."""
         return go_to_food(ctx) if self.grounded else None
+
+    def ask_for_food(self, ctx: Context) -> State | None:
+        """He's hungry and there's nothing to eat: he comes to you and asks."""
+        return go_ask(ctx) if self.grounded else None
 
     @property
     def holds_branch(self) -> bool:
@@ -138,14 +142,17 @@ class Walk(State):
 
     clip = "walk"
 
-    def __init__(self, target: float | None = None, *, eat: bool = False) -> None:
+    def __init__(self, target: float | None = None, *, then: str | None = None) -> None:
         super().__init__()
         self.target = target
-        self.eat = eat
-        """Walking to the seeds: eat them on arrival."""
+        self.then = then
+        """On arrival: ``"eat"`` the seeds, or ``"ask"`` you for some."""
 
-    def food_nearby(self, ctx: Context) -> State | None:
-        return None if self.eat else super().food_nearby(ctx)
+    def go_eat(self, ctx: Context) -> State | None:
+        return None if self.then == "eat" else super().go_eat(ctx)
+
+    def ask_for_food(self, ctx: Context) -> State | None:
+        return None if self.then in ("eat", "ask") else super().ask_for_food(ctx)
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
@@ -159,7 +166,9 @@ class Walk(State):
         assert self.target is not None
         if not _walk_towards(ctx, self.target, dt):
             return None
-        return Eat() if self.eat and ctx.food is not None else Idle()
+        if self.then == "eat" and ctx.food is not None:
+            return Eat()
+        return Ask() if self.then == "ask" else Idle()
 
 
 class Follow(State):
@@ -240,14 +249,18 @@ class Fly(State):
         super().__init__()
         self.waypoints = None if waypoints is None else tuple(waypoints)
         self.onto = onto
-        """What he lands on: ``"ground"``, ``"cursor"`` or ``"branch"``."""
+        """Where he's going: ``"ground"``, ``"cursor"``, ``"branch"``, to the seeds
+        (``"food"``) or to you to ask for some (``"ask"``)."""
 
     @property
     def holds_branch(self) -> bool:
         return self.onto == "branch"
 
-    def food_nearby(self, ctx: Context) -> State | None:
-        return None  # lands first; flying to the seeds already, or will after
+    def go_eat(self, ctx: Context) -> State | None:
+        return None  # lands first: flying to the seeds already, or will after
+
+    def ask_for_food(self, ctx: Context) -> State | None:
+        return None
 
     # --- Planners -----------------------------------------------------------
 
@@ -362,6 +375,8 @@ class Fly(State):
                 return CursorPerch()
             if self.onto == "food":
                 return Eat() if ctx.food is not None else Idle()
+            if self.onto == "ask":
+                return Ask()
             return OnBranch() if self.onto == "branch" else Idle()
 
         self._choose_glide(dx, dy, seconds_left=(1.0 - p) * self.duration, dt=dt)
@@ -440,8 +455,11 @@ class CursorPerch(State):
     startle_hop: ClassVar[float] = 60.0
     """Art px/s upwards when the pointer moves out from under him."""
 
-    def food_nearby(self, ctx: Context) -> State | None:
+    def go_eat(self, ctx: Context) -> State | None:
         return go_to_food(ctx)
+
+    def ask_for_food(self, ctx: Context) -> State | None:
+        return go_ask(ctx)
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
@@ -484,6 +502,12 @@ class Sleep(State):
 
     clip = "sleep"
     nap_seconds: ClassVar[tuple[float, float]] = (120.0, 300.0)
+
+    def go_eat(self, ctx: Context) -> State | None:
+        return None  # hunger can wait till he wakes
+
+    def ask_for_food(self, ctx: Context) -> State | None:
+        return None
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
@@ -752,8 +776,11 @@ class OnBranch(State):
     def holds_branch(self) -> bool:
         return True
 
-    def food_nearby(self, ctx: Context) -> State | None:
-        return go_to_food(ctx)  # seeds beat a branch
+    def go_eat(self, ctx: Context) -> State | None:
+        return go_to_food(ctx)
+
+    def ask_for_food(self, ctx: Context) -> State | None:
+        return go_ask(ctx)  # seeds beat a branch
 
     def enter(self, ctx: Context) -> None:
         super().enter(ctx)
@@ -842,6 +869,7 @@ class Caged(State):
         "sleep": "front_sleep",
         "petted": "front_petted",
         "eat": "front_eat",
+        "escape": "front_pick",
     }
 
     def enter(self, ctx: Context) -> None:
@@ -867,8 +895,11 @@ class Caged(State):
             self.anger = 0.0
         return None
 
-    def food_nearby(self, ctx: Context) -> State | None:
-        return None  # only seeds on his tray, which he sees to himself
+    def go_eat(self, ctx: Context) -> State | None:
+        return None  # only his dish counts in here, and he sees to that himself
+
+    def ask_for_food(self, ctx: Context) -> State | None:
+        return None
 
     def step(self, ctx: Context, dt: float) -> State | None:
         cage = ctx.cage
@@ -878,10 +909,27 @@ class Caged(State):
         if cage.door_open:
             cage.left = True
             return self._fly_out(ctx, cage.x)
-        food = ctx.food
-        if food is not None and food.in_cage and self.doing != "eat":
-            self._do(ctx, "eat")  # seeds! all is forgiven, for now
-            self.anger, self.next_seed = 0.0, 0.22
+        hunger, dish = ctx.hunger, cage.dish
+        busy = self.doing in ("eat", "escape")
+        if hunger.hungry and dish.seeds > 0 and not busy:
+            self._do(ctx, "eat")  # dinner! all is forgiven, for now
+            self.anger, self.next_seed, self.to_eat = 0.0, 0.22, SEEDS_PER_STACK
+        elif hunger.wants_to_ask and not busy and self.doing != "sleep":
+            ctx.say(ctx.rng.choice(ctx.config.begging), ctx.config.complaint_seconds)
+            hunger.asked(ctx)  # all he can do from in here
+        if self.doing == "escape":
+            if self.elapsed >= self.door_at:
+                cage.door_open = cage.escaped = True
+            return None
+        if (
+            cage.mount != "held"
+            and self.doing not in ("eat", "sleep", "petted")
+            and cage.tries_to_escape(ctx)
+        ):
+            self._do(ctx, "escape")  # working the latch...
+            self.door_at = self.elapsed + 2.2
+            ctx.say("hmm...", 2.0)
+            return None
         for event in cage.take_events():
             self._provoked(ctx, "ow!" if event == "bump" else None)
         if cage.mount == "held" and self.doing != "angry":
@@ -902,13 +950,12 @@ class Caged(State):
             return None
         if self.doing == "eat":
             self.next_seed -= dt
-            if food is None or not food.in_cage:
-                self._do(ctx, "sit")
-            elif self.next_seed <= 0:
-                food.seeds -= 1
+            if self.next_seed <= 0:
                 self.next_seed += SECONDS_PER_SEED
-                if food.seeds <= 0:
-                    ctx.food = None
+                if dish.take_seed():
+                    self.to_eat -= 1
+                if self.to_eat <= 0 or dish.seeds <= 0:
+                    hunger.fed()
                     ctx.say("yum! ♥", 1.8, mood="love")
                     self._do(ctx, "fluff")
             return None
@@ -957,7 +1004,8 @@ class Caged(State):
         cfg, body, area = ctx.config, ctx.body, ctx.area()
         d = 1 if cage_x < (area.left + area.right) / 2 else -1
         body.facing = Facing(d)
-        ctx.say("hmph.", 1.5)
+        assert ctx.cage is not None
+        ctx.say("freedom!! ♪" if ctx.cage.escaped else "hmph.", 2.0)
         x1 = area.clamp_x(body.x + d * ctx.rng.uniform(cfg.px(70), cfg.px(160)), ctx.margin)
         hop = (body.x + d * cfg.px(18), body.y - cfg.px(16))
         return Fly([hop, *_landing(ctx, x1, coming_from=body.x)])
@@ -972,23 +1020,23 @@ def go_to_food(ctx: Context) -> State:
     """Head for the seeds: walk if they're near, fly if they're far or he's up high.
 
     He stands beside the pile on the side he comes from, so that pecking puts his
-    beak right on it.
+    beak just inside its near edge.
     """
     food, cfg, body, area = ctx.food, ctx.config, ctx.body, ctx.area()
     assert food is not None
     side = -1 if body.x > food.x else 1
-    spot = food.x - side * cfg.px(PECK_REACH)
+    spot = food.x - side * cfg.px(STAND_OFF)
     on_ground = body.y >= area.bottom - 1
     if on_ground and abs(spot - body.x) <= cfg.px(160):
-        return Walk(spot, eat=True)
+        return Walk(spot, then="eat")
     return Fly(
         [*_takeoff(ctx, towards=spot), *_landing(ctx, spot, coming_from=body.x)], onto="food"
     )
 
 
 class Eat(State):
-    """Pecking up the seeds one by one, cracking each open. When they're gone he's
-    very pleased with himself."""
+    """Hungry, he pecks up one stack of seeds one by one, cracking each open, and
+    then he's had enough and is very pleased with himself."""
 
     clip = "eat"
 
@@ -997,21 +1045,70 @@ class Eat(State):
         if ctx.food is not None:
             ctx.body.face_towards(ctx.food.x)
         self.next_seed = 0.24  # the first peck lands this far into the clip
+        self.to_eat = SEEDS_PER_STACK
 
-    def food_nearby(self, ctx: Context) -> State | None:
+    def go_eat(self, ctx: Context) -> State | None:
+        return None
+
+    def ask_for_food(self, ctx: Context) -> State | None:
         return None
 
     def step(self, ctx: Context, dt: float) -> State | None:
         food = ctx.food
-        if food is None or food.in_cage:
+        if food is None:
             return Idle()
         self.next_seed -= dt
         if self.next_seed > 0:
             return None
-        food.seeds -= 1
         self.next_seed += SECONDS_PER_SEED
-        if food.seeds > 0:
+        if food.pile.take_seed():
+            self.to_eat -= 1
+        if self.to_eat > 0 and food.pile.seeds > 0:
             return None
-        ctx.food = None
+        ctx.hunger.fed()
         ctx.say("yum! ♥", 1.8, mood="love")
         return Shake()
+
+
+def go_ask(ctx: Context) -> State:
+    """Hungry with nothing to eat: he comes over to where your pointer is, lands
+    below it and asks. If it's on another screen, he asks from where he is."""
+    cfg, body, area = ctx.config, ctx.body, ctx.area()
+    cx, cy = ctx.world.cursor()
+    if ctx.world.area_at(cx, cy) != area:
+        return Ask()
+    x = area.clamp_x(cx, ctx.margin)
+    on_ground = body.y >= area.bottom - 1
+    if on_ground and abs(x - body.x) <= cfg.px(100):
+        return Walk(x, then="ask") if abs(x - body.x) > 1 else Ask()
+    return Fly([*_takeoff(ctx, towards=x), *_landing(ctx, x, coming_from=body.x)], onto="ask")
+
+
+class Ask(State):
+    """Looking up at you, crest up, calling for seeds. Feed him and he goes
+    straight to them; ignored for a while, he gives up and asks again later."""
+
+    clip = "front_ask"
+    gives_up_after: ClassVar[float] = 40.0
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        self._call_out(ctx)  # the moment he's in front of you
+
+    def ask_for_food(self, ctx: Context) -> State | None:
+        return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        if not ctx.hunger.hungry:
+            return Idle()
+        if self.elapsed >= self.gives_up_after:
+            ctx.hunger.asked(ctx)  # he'll try you again in a while
+            return Idle()
+        self.next_line -= dt
+        if self.next_line <= 0:
+            self._call_out(ctx)
+        return None
+
+    def _call_out(self, ctx: Context) -> None:
+        ctx.say(ctx.rng.choice(ctx.config.begging), ctx.config.complaint_seconds)
+        self.next_line = ctx.rng.uniform(*ctx.config.complaint_every)

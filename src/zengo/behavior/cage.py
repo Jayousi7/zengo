@@ -11,10 +11,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from zengo.behavior.food import Pile
 from zengo.sprites.cage import CAGE_HEIGHT, CAGE_WIDTH, FLOOR, SHELF_WIDTH
 
 if TYPE_CHECKING:
     from zengo.behavior.context import Context
+    from zengo.config import Config
     from zengo.world import Area
 
 BELOW_FLOOR = CAGE_HEIGHT - FLOOR
@@ -41,6 +43,14 @@ class Cage:
     door_open: bool = False
     left: bool = False
     """He has flown out through the open door."""
+    escaped: bool = False
+    """He opened the door himself."""
+    dish: Pile = field(default_factory=Pile)
+    """Seeds on the tray."""
+    caged_for: float = 0.0
+    feedings: int = 0
+    """Times he's been fed in here: each makes him less keen to escape."""
+    _next_try: float | None = None
     empty_for: float = 0.0
     """Seconds since he left through the open door; the cage goes soon after."""
     events: list[str] = field(default_factory=list)
@@ -140,9 +150,41 @@ class Cage:
             self.y = self._area(ctx).bottom - cfg.px(BELOW_FLOOR)  # follows the desktop
         if self.door_open and self.left:
             self.empty_for += dt
+        elif not self.door_open:
+            self.caged_for += dt
+        self.dish.update(dt)
+
+    # --- Escaping ------------------------------------------------------------
+
+    def tries_to_escape(self, ctx: Context) -> bool:
+        """Called while he's free to try (awake, not being carried): is this the
+        moment he gets the door open? He tries once a minute after five, with the
+        odds of :func:`escape_chance`."""
+        cfg = ctx.config
+        if self._next_try is None:
+            self._next_try = cfg.escape_after
+        if self.caged_for < self._next_try:
+            return False
+        self._next_try = self.caged_for + cfg.escape_every
+        return ctx.rng.random() < escape_chance(cfg, self.caged_for, self.feedings)
 
     def _area(self, ctx: Context) -> Area:
         return ctx.world.area_at(self.x, self.y - ctx.config.px(4))
+
+
+def escape_chance(cfg: Config, caged_for: float, feedings: int) -> float:
+    """Odds he gets out at a try: ``escape_chance`` at the first, rising by
+    ``escape_chance_rise`` with every try after, less ``escape_feed_penalty`` for each
+    time he's been fed in the cage."""
+    if caged_for < cfg.escape_after:
+        return 0.0
+    tries_before = int((caged_for - cfg.escape_after) // cfg.escape_every)
+    chance = (
+        cfg.escape_chance
+        + tries_before * cfg.escape_chance_rise
+        - feedings * cfg.escape_feed_penalty
+    )
+    return min(max(chance, 0.0), 1.0)
 
 
 def caught_in(ctx: Context, left: float, top: float, right: float, bottom: float) -> bool:

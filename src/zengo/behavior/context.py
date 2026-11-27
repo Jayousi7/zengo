@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from zengo.animation import Animator
 from zengo.behavior.body import Body
 from zengo.behavior.cage import Cage
-from zengo.behavior.food import Food
+from zengo.behavior.food import Food, Hunger
 from zengo.behavior.petting import PettingSensor
 from zengo.behavior.scenery import Scenery
 from zengo.config import Config
@@ -37,6 +37,7 @@ class Context:
     speech: Speech | None = None
     cage: Cage | None = None
     food: Food | None = None
+    hunger: Hunger = field(default_factory=Hunger)
 
     def say(self, text: str, seconds: float, mood: str = "plain") -> None:
         self.speech = Speech(text, seconds, mood)

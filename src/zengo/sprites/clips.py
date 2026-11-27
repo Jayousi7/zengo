@@ -89,6 +89,22 @@ FRONT_CLIPS: dict[str, Clip] = {
         ("front_fluff_a", "front_fluff_b") * 3 + ("front_perch",), (0.07,) * 6 + (0.3,), loop=False
     ),
     "front_sleep": Clip(("front_sleep",), (1.0,)),
+    # Working the cage latch open with his beak, glancing about to see if you notice.
+    "front_pick": Clip(
+        ("front_peck", "front_look_r", "front_peck", "front_look_l"), (0.25, 0.3, 0.25, 0.3)
+    ),
+    # Asking for food: crest up, looking up at you, beak opening to call.
+    "front_ask": Clip(
+        (
+            "front_alert",
+            "front_whistle_a",
+            "front_alert",
+            "front_look_l",
+            "front_alert",
+            "front_whistle_a",
+        ),
+        (0.5, 0.2, 0.4, 0.3, 0.4, 0.2),
+    ),
     # One seed: peck it up, crack it open, swallow. About a second each.
     "front_eat": Clip(
         ("front_peck", "front_chew", "front_perch", "front_chew", "front_perch"),

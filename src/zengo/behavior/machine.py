@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from zengo.behavior.cage import BELOW_FLOOR, Cage, caught_in
 from zengo.behavior.context import Context
-from zengo.behavior.food import PECK_REACH, Food
+from zengo.behavior.food import STAND_OFF, Food
 from zengo.behavior.states import Caged, Dragged, Fall, Idle, State
 
 
@@ -41,6 +41,9 @@ class Brain:
             self.transition(following)
         if (following := self._state.update(ctx, dt)) is not None:
             self.transition(following)
+        ctx.hunger.update(ctx, dt)
+        if ctx.food is not None:
+            ctx.food.pile.update(dt)
         self._mind_the_food()
         if self._state.grounded:
             self._settle()
@@ -50,16 +53,21 @@ class Brain:
         self._facing = ctx.body.facing
 
     def _mind_the_food(self) -> None:
-        """Seeds in the cage go where the cage goes; seeds on the ground draw him."""
-        ctx, food = self.ctx, self.ctx.food
-        if food is None:
+        """Hunger, and what he does about it given what he's up to."""
+        ctx = self.ctx
+        food = ctx.food
+        if food is not None and food.pile.seeds <= 0 and food.pile.shown <= 0:
+            ctx.food = food = None  # all eaten
+        if not ctx.hunger.hungry:
             return
-        if food.in_cage:
-            if ctx.cage is None or ctx.cage.door_open:
-                ctx.food = None  # out with the tray
-            else:
-                food.x, food.y = ctx.cage.shown_x, ctx.cage.y
-        elif (following := self._state.food_nearby(ctx)) is not None:
+        following = None
+        if food is not None and food.pile.seeds > 0:
+            following = self._state.go_eat(ctx)
+        elif ctx.hunger.wants_to_ask:
+            following = self._state.ask_for_food(ctx)
+            if following is not None:
+                ctx.hunger.asked(ctx)
+        if following is not None:
             self.transition(following)
 
     def _settle(self) -> None:
@@ -105,20 +113,38 @@ class Brain:
         self.transition(Caged())
         return True
 
-    def feed(self) -> None:
-        """Put down sunflower seeds: in front of him, or on his tray if he's caged.
-        More seeds while there are some left just tops the pile up."""
+    def feed(self) -> bool:
+        """Pour out a stack of sunflower seeds: in front of him, or into his dish if
+        he's caged (which puts him off escaping a little). At most three stacks:
+        False, and a word from him, if there's no room for more."""
         ctx, cfg = self.ctx, self.ctx.config
-        if ctx.food is not None:
-            ctx.food = Food(ctx.food.x, ctx.food.y, in_cage=ctx.food.in_cage)
-        elif ctx.cage is not None and not ctx.cage.door_open:
-            ctx.food = Food(ctx.cage.shown_x, ctx.cage.y, in_cage=True)
+        cage = ctx.cage
+        if cage is not None and not cage.door_open:
+            added = cage.dish.add_stack()
+            if added:
+                cage.feedings += 1
         else:
-            area, reach = ctx.area(), cfg.px(PECK_REACH)
-            x = ctx.body.x + int(ctx.body.facing) * cfg.px(45)
-            lo, hi = area.left + ctx.margin + reach, area.right - ctx.margin - reach
-            ctx.food = Food(min(max(x, lo), hi), area.bottom)
-        ctx.say("seeds!! ♥", 1.6, mood="love")
+            if ctx.food is None:
+                area, reach = ctx.area(), cfg.px(STAND_OFF)
+                x = ctx.body.x + int(ctx.body.facing) * cfg.px(45)
+                lo, hi = area.left + ctx.margin + reach, area.right - ctx.margin - reach
+                ctx.food = Food(min(max(x, lo), hi), area.bottom)
+            added = ctx.food.pile.add_stack()
+        if not added:
+            ctx.say("that's plenty! ♥", 1.8, mood="love")
+        elif ctx.hunger.hungry:
+            ctx.say("seeds!! ♥", 1.6, mood="love")
+        else:
+            ctx.say("for later! ♥", 1.6, mood="love")
+        return added
+
+    @property
+    def food_stacks(self) -> int:
+        """Stacks of seeds out for him where he'd eat them now: his dish, or the pile."""
+        ctx = self.ctx
+        if ctx.cage is not None and not ctx.cage.door_open:
+            return ctx.cage.dish.stacks
+        return ctx.food.pile.stacks if ctx.food is not None else 0
 
     def let_out(self) -> None:
         """Open the cage door; he flies out and the cage goes."""
