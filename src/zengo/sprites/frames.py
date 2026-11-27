@@ -100,6 +100,49 @@ FRAME_LAYERS: Mapping[str, tuple[Layer, ...]] = {
 }
 
 
+_MIDLINE = ANCHOR_COLUMN - PADDING
+"""Art column the front view is symmetric about."""
+
+_FRONT_UP = (art.FRONT_CREST, art.FRONT_HEAD)
+_FRONT_SITTING = (art.FRONT_FEET, art.FRONT_BODY)
+# Preening from the front: the head turns to a shoulder in profile, beak in the wing.
+_PREEN_TO_SIDE = _shifted(-6, 5, art.CREST_FLAT, art.HEAD, art.EYE_CLOSED)
+
+FRONT_LAYERS: Mapping[str, tuple[Layer, ...]] = {
+    "front_perch": (*_FRONT_SITTING, *_FRONT_UP),
+    "front_blink": (*_FRONT_SITTING, *_FRONT_UP, art.FRONT_EYES_CLOSED),
+    "front_look_l": (*_FRONT_SITTING, *_shifted(-1, 0, *_FRONT_UP)),
+    "front_look_r": (*_FRONT_SITTING, *_shifted(1, 0, *_FRONT_UP)),
+    "front_alert": (*_FRONT_SITTING, art.FRONT_CREST_RAISED, art.FRONT_HEAD),
+    "front_preen_a": (*_FRONT_SITTING, *_PREEN_TO_SIDE),
+    "front_preen_b": (*_FRONT_SITTING, *(layer.mirrored(_MIDLINE) for layer in _PREEN_TO_SIDE)),
+    "front_fluff_a": (
+        *_FRONT_SITTING,
+        art.FRONT_PUFF,
+        *_shifted(-1, 0, art.FRONT_CREST_RAISED, art.FRONT_HEAD),
+    ),
+    "front_fluff_b": (
+        *_FRONT_SITTING,
+        art.FRONT_PUFF,
+        *_shifted(1, 0, art.FRONT_CREST_RAISED, art.FRONT_HEAD),
+    ),
+    "front_sleep": (
+        *_FRONT_SITTING,
+        art.FRONT_PUFF,
+        *_shifted(0, 2, art.FRONT_CREST_FLAT, art.FRONT_HEAD, art.FRONT_EYES_CLOSED),
+    ),
+}
+"""Facing you. On the ground the tail is hidden behind him."""
+
+BRANCH_LAYERS: Mapping[str, tuple[Layer, ...]] = {
+    name.replace("front_", "branch_"): (art.FRONT_TAIL, *layers)
+    for name, layers in FRONT_LAYERS.items()
+}
+"""The same poses sitting on the branch, the tail hanging down behind it."""
+
+FRAME_LAYERS = {**FRAME_LAYERS, **FRONT_LAYERS, **BRANCH_LAYERS}
+
+
 def build_frames(
     palette: Mapping[str, RGBA] = PALETTE,
     outline: Callable[[RGBA], RGBA] | None = outline_for,

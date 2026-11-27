@@ -44,3 +44,17 @@ def test_replaying_current_clip_continues_unless_restarted():
 def test_unknown_clip_raises():
     with pytest.raises(KeyError):
         Animator(CLIPS, "loop").play("nope")
+
+
+def test_interjected_clip_shows_once_while_the_current_one_runs_on():
+    clips = {
+        "walk": Clip(("a", "b"), (0.5, 0.5)),
+        "turn": Clip(("t",), (0.2,), loop=False),
+    }
+    animator = Animator(clips, initial="walk")
+    animator.update(0.4)
+    animator.interject("turn")
+    assert animator.frame == "t"
+    assert animator.clip_name == "walk"
+    animator.update(0.25)  # the turn is over; the walk ran on underneath it
+    assert animator.frame == "b"

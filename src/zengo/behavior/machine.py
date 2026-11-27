@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from zengo.behavior.context import Context
-from zengo.behavior.states import Alert, Dragged, Fall, Idle, State
+from zengo.behavior.states import Dragged, Fall, Idle, State
 
 
 class Brain:
@@ -12,6 +12,7 @@ class Brain:
         self._grab_offset = (0.0, 0.0)
         self._state: State = initial or Idle()
         self._state.enter(ctx)
+        self._facing = ctx.body.facing
 
     @property
     def state(self) -> State:
@@ -22,11 +23,17 @@ class Brain:
         state.enter(self.ctx)
 
     def tick(self, dt: float) -> None:
-        self.ctx.animator.update(dt)
-        if (following := self._state.update(self.ctx, dt)) is not None:
+        ctx = self.ctx
+        ctx.animator.update(dt)
+        ctx.scenery.update(ctx, dt, occupied=self._state.holds_branch)
+        if (following := self._state.update(ctx, dt)) is not None:
             self.transition(following)
         if self._state.grounded:
             self._settle()
+            if ctx.body.facing is not self._facing:
+                # Turning round on the ground: a glimpse of his front, not a flip.
+                ctx.animator.interject("ground_turn")
+        self._facing = ctx.body.facing
 
     def _settle(self) -> None:
         """Keep a grounded pet on the ground line and on-screen.
@@ -41,9 +48,9 @@ class Brain:
     # --- Input -------------------------------------------------------------
 
     def click(self) -> None:
-        """A poke startles him, but only when he's settled: not mid-air or held."""
-        if self._state.grounded:
-            self.transition(Alert())
+        """A poke: what it does depends on what he's doing (see :meth:`State.clicked`)."""
+        if (following := self._state.clicked(self.ctx)) is not None:
+            self.transition(following)
 
     def grab(self, x: float, y: float) -> None:
         """Mouse pressed on Zengo at screen ``(x, y)`` and started moving."""

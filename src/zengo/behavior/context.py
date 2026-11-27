@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from zengo.animation import Animator
 from zengo.behavior.body import Body
+from zengo.behavior.scenery import Scenery
 from zengo.config import Config
 from zengo.world import Area, World
 
@@ -18,6 +19,7 @@ class Context:
     animator: Animator
     config: Config
     rng: random.Random
+    scenery: Scenery = field(default_factory=Scenery)
 
     def area(self) -> Area:
         # Probe slightly above the feet: the ground line is the area's exclusive bottom edge.

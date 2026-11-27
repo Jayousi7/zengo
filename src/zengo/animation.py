@@ -36,6 +36,8 @@ class Animator:
         self._clips = clips
         self._name = initial
         self._time = 0.0
+        self._aside: tuple[str, float] | None = None
+        """A one-shot clip shown over the current one, and how long it has played."""
 
     @property
     def clip_name(self) -> str:
@@ -43,14 +45,26 @@ class Animator:
 
     def play(self, name: str, *, restart: bool = False) -> None:
         """Switch clips. Re-playing the current clip continues it unless ``restart``."""
-        if name not in self._clips:
-            raise KeyError(f"no clip named {name!r}")
+        self._check(name)
         if restart or name != self._name:
             self._name = name
             self._time = 0.0
 
+    def interject(self, name: str) -> None:
+        """Show the non-looping clip ``name`` once over the current clip.
+
+        The current clip keeps running underneath, so it carries on where it
+        would have been, as when a turn flashes up in the middle of a walk.
+        """
+        self._check(name)
+        self._aside = (name, 0.0)
+
     def update(self, dt: float) -> None:
         self._time += dt
+        if self._aside is not None:
+            name, t = self._aside
+            t += dt
+            self._aside = (name, t) if t < self._clips[name].length else None
 
     @property
     def finished(self) -> bool:
@@ -60,10 +74,20 @@ class Animator:
 
     @property
     def frame(self) -> str:
-        clip = self._clips[self._name]
-        t = self._time % clip.length if clip.loop else min(self._time, clip.length)
-        for name, duration in zip(clip.frames, clip.durations, strict=True):
-            if t < duration:
-                return name
-            t -= duration
-        return clip.frames[-1]
+        if self._aside is not None:
+            name, t = self._aside
+            return _frame_at(self._clips[name], t)
+        return _frame_at(self._clips[self._name], self._time)
+
+    def _check(self, name: str) -> None:
+        if name not in self._clips:
+            raise KeyError(f"no clip named {name!r}")
+
+
+def _frame_at(clip: Clip, time: float) -> str:
+    t = time % clip.length if clip.loop else min(time, clip.length)
+    for name, duration in zip(clip.frames, clip.durations, strict=True):
+        if t < duration:
+            return name
+        t -= duration
+    return clip.frames[-1]

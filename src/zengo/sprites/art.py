@@ -439,3 +439,140 @@ TURN_WINGS_DOWN = _layer(
     x=13,
     y=19,
 )
+
+
+# --- Front view --------------------------------------------------------------
+# Facing you, drawn symmetric about the anchor column so it is the same either
+# way he was facing. Used sitting on the branch and now and then on the ground.
+
+# Crest from the front: a fan of strands, the middle one tallest.
+FRONT_CREST = _layer(
+    """
+    ...B
+    ...B
+    B..B..B
+    .B.L.B
+    .L.L.L
+    ..LLL
+    .LLLLL
+    LLLLLLL
+    """,
+    x=27,
+    y=0,
+)
+
+
+# Startled: the strands flare up and out.
+FRONT_CREST_RAISED = _layer(
+    """
+    B...B...B
+    B...B...B
+    .B..B..B
+    .L..L..L
+    ..L.L.L
+    ...LLL
+    ..LLLLL
+    .LLLLLLL
+    """,
+    x=26,
+    y=0,
+)
+
+
+# Asleep: only a tuft shows.
+FRONT_CREST_FLAT = _layer(
+    """
+    ..B.B
+    LLLLLLL
+    """,
+    x=27,
+    y=6,
+)
+
+
+# White face, an eye on each side, beak in the middle.
+FRONT_HEAD = _layer(
+    """
+    .LWWWWWL
+    LWWWWWWWL
+    WWWWWWWWW
+    WKWWWWWKW
+    WWWWQWWWW
+    LWWQQqWWL
+    .LWWqWWL
+    .BLWWWLB
+    """,
+    x=26,
+    y=8,
+)
+
+
+FRONT_EYES_CLOSED = _layer(
+    """
+    WDD...DDW
+    """,
+    x=26,
+    y=11,
+)
+
+
+# Chest, and the folded wings at the sides with the white patch showing.
+FRONT_BODY = _layer(
+    """
+    .CBLLLLLLLBC
+    SCBLLLLLLLBCS
+    SCPBLLLLLBPCS
+    SCPBLLLLLBPCS
+    SDCPBLLLBPCDS
+    SDCCBLLLBCCDS
+    SDDCBBLBBCDDS
+    .SDDBBBBBDDS
+    .SDDSBBBSDDS
+    ..SDSBBBSDS
+    ...SSBBBSS
+    """,
+    x=24,
+    y=16,
+)
+
+
+# Feathers fluffed out by a pixel each side.
+FRONT_PUFF = _layer(
+    """
+    S.............S
+    S.............S
+    S.............S
+    S.............S
+    S.............S
+    S.............S
+    .S...........S
+    .S...........S
+    """,
+    x=23,
+    y=17,
+)
+
+
+FRONT_FEET = _layer(
+    """
+    .F...F
+    FFF.FFF
+    """,
+    x=27,
+    y=27,
+)
+
+
+# Seen from the front on the branch, the tail hangs down behind it.
+FRONT_TAIL = _layer(
+    """
+    tTt
+    tTt
+    tTt
+    tTt
+    tTt
+    .t
+    """,
+    x=29,
+    y=27,
+)

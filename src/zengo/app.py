@@ -22,6 +22,7 @@ from zengo.config import Config
 from zengo.sprites.clips import CLIPS
 from zengo.sprites.compose import Frame
 from zengo.sprites.frames import ANCHOR_COLUMN, CANVAS_WIDTH, GROUND_ROW, build_frames
+from zengo.ui.branch_window import BranchWindow
 from zengo.ui.qt_world import QtWorld
 from zengo.ui.sheet_loader import SheetError, load_sheet
 from zengo.ui.sprites import SpriteSheet
@@ -33,7 +34,12 @@ MAX_FRAME_DT = 0.1
 
 class Pet:
     def __init__(
-        self, config: Config, frames: Mapping[str, Frame], rng: random.Random | None = None
+        self,
+        config: Config,
+        frames: Mapping[str, Frame],
+        rng: random.Random | None = None,
+        *,
+        branch_now: bool = False,
     ) -> None:
         self._config = config
         self._world = QtWorld()
@@ -42,6 +48,8 @@ class Pet:
         body = Body(x=(area.left + area.right) / 2, y=area.bottom)
         animator = Animator(CLIPS, initial="idle")
         self._brain = Brain(Context(body, self._world, animator, config, rng or random.Random()))
+        if branch_now:
+            self._brain.ctx.scenery.grow(self._brain.ctx)
 
         self._sheet = SpriteSheet(frames, config.scale)
         self._window = PetWindow(config.drag_threshold)
@@ -49,6 +57,8 @@ class Pet:
         self._window.grabbed.connect(self._brain.grab)
         self._window.dragged.connect(self._brain.drag)
         self._window.released.connect(self._brain.release)
+        self._branch = BranchWindow(config)
+        self._window.released.connect(self._branch.keep_in_front)
         self._window.quit_requested.connect(QApplication.quit)
 
         self._timer = QTimer(timerType=Qt.TimerType.PreciseTimer, interval=1000 // config.fps)
@@ -78,6 +88,7 @@ class Pet:
         left = body.x - self._config.px(anchor + 0.5)
         top = body.y - self._config.px(GROUND_ROW + 1)
         self._window.show_sprite(sprite, QPoint(round(left), round(top)))
+        self._branch.show_branch(ctx.scenery.branch)
 
 
 @dataclass(frozen=True)
@@ -85,6 +96,8 @@ class Options:
     config: Config
     sprites: Path | None
     """Aseprite JSON export whose frames replace the built-in ones by name."""
+    branch_now: bool = False
+    """Grow a branch straight away instead of waiting for one."""
 
 
 def parse_args(argv: list[str]) -> Options:
@@ -99,10 +112,15 @@ def parse_args(argv: list[str]) -> Options:
         metavar="SHEET.json",
         help="Aseprite JSON export overriding built-in frames by name",
     )
+    parser.add_argument(
+        "--branch-now",
+        action="store_true",
+        help="grow a branch for Zengo straight away instead of waiting for one",
+    )
     args = parser.parse_args(argv)
     if args.scale < 1 or args.fps < 1:
         parser.error("--scale and --fps must be positive")
-    return Options(Config(scale=args.scale, fps=args.fps), args.sprites)
+    return Options(Config(scale=args.scale, fps=args.fps), args.sprites, args.branch_now)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -121,6 +139,6 @@ def main(argv: list[str] | None = None) -> int:
     # Let Ctrl+C in a terminal quit cleanly; the frame timer gives Python a chance to run it.
     signal.signal(signal.SIGINT, lambda *_: app.quit())
 
-    pet = Pet(options.config, frames)
+    pet = Pet(options.config, frames, branch_now=options.branch_now)
     pet.start()
     return app.exec()

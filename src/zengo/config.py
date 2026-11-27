@@ -52,6 +52,24 @@ class Config:
     cursor_reach: float = 400.0
     """Art pixels: how far away a resting pointer can be for him to fly over to it."""
 
+    branch_every: tuple[float, float] = (600.0, 1200.0)
+    """Seconds between one branch withdrawing and the next growing out."""
+
+    branch_stays: tuple[float, float] = (180.0, 300.0)
+    """Seconds a branch stays out if Zengo leaves it alone."""
+
+    branch_linger: tuple[float, float] = (20.0, 40.0)
+    """Seconds it stays after he leaves it, at least."""
+
+    branch_grow_seconds: float = 1.2
+    """Time to grow out from the edge, and to withdraw."""
+
+    branch_height: tuple[float, float] = (0.25, 0.6)
+    """Where it grows, as a share of the screen height from the top."""
+
+    branch_visit: tuple[float, float] = (40.0, 150.0)
+    """Seconds Zengo sits on the branch before flying off."""
+
     sleep_after: float = 300.0
     """Seconds of user inactivity after which Zengo becomes sleepy."""
 

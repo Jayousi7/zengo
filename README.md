@@ -8,6 +8,11 @@ follows the cursor, and falls asleep when you're away or late at night. Rest the
 mouse still above the ground near him and he may fly up and perch on the pointer;
 move it and he flutters off.
 
+Every 10 to 20 minutes a leafy branch grows out from the side of the screen. He
+flies over and sits on it facing you: looking about, preening, fluffing up,
+napping if it's late, until he flies off and it withdraws. Drop him just above
+it and he grabs it. Now and then he sits facing you on the ground too.
+
 | Input | Reaction |
 |---|---|
 | Left click | Crest up, startled |
@@ -28,6 +33,7 @@ python -m venv .venv
 .venv/bin/zengo                         # or: python -m zengo
 .venv/bin/zengo --scale 3               # bigger bird
 .venv/bin/zengo --sprites art.json      # use hand-drawn frames (see below)
+.venv/bin/zengo --branch-now            # grow a branch straight away
 ```
 
 Requires Python 3.11+. On Linux, Qt's X11 plugin needs `libxcb-cursor0`
@@ -76,6 +82,7 @@ src/zengo/
     context.py      what states may read and mutate
     states.py       one class per behaviour
     flight.py       smooth flight paths through waypoints
+    scenery.py      the branch: when it grows, stays and withdraws
     machine.py      Brain: runs states, routes mouse input
   sprites/
     palette.py      Zengo's colours
@@ -83,11 +90,13 @@ src/zengo/
     compose.py      layers -> RGBA frames, generated outline
     frames.py       named frames and canvas geometry
     clips.py        animation catalogue
+    branch.py       the branch's art and where he can sit on it
   ui/
     qt_world.py     World backed by Qt screens and cursor
     sprites.py      frames -> scaled, mirrored pixmaps and click masks
     window.py       translucent always-on-top window, gestures
     sheet_loader.py Aseprite JSON + PNG -> frames
+    branch_window.py click-through window the branch is drawn in
 ```
 
 Only `ui/` and `app.py` import Qt. Everything else is plain Python and is
@@ -107,7 +116,9 @@ Perched poses are the base drawing (`TAIL`, `BODY`, `WING_FOLDED`, `HEAD`, `CRES
 has its own level body with the head moved forward and a long pointed wing in
 one of four beat positions (up, level, down, recover); the glide holds the wing
 level and the landing flares it up. Turning round in the air, he banks through a
-front view with both wings spread (`turn_up`, `turn_down`). The rows below the ground row are only used
+front view with both wings spread (`turn_up`, `turn_down`). Sitting facing you
+(`FRONT_*` layers) is drawn symmetric about the anchor column; on the branch the
+same poses add the tail hanging down behind it. The rows below the ground row are only used
 by the downstroke. `frames.py` stacks layers into named frames and `clips.py`
 sequences them. `tests/test_sprites.py` checks that frames line up with the
 ground row and that every clip refers to a real frame.
@@ -120,7 +131,10 @@ pixel on row 29 and the gap between the feet on column 31 (zero-based). Name
 each frame after the one it replaces (`perch`, `blink`, `alert`, `step_back`,
 `step_front`, `preen_a`, `preen_b`, `sleep`, `wings_up`, `wings_level`,
 `wings_down`, `wings_recover`, `held`, `held_blink`, `held_kick_a`, `held_kick_b`,
-`held_look`, `held_flick`, `shake_a`, `shake_b`, `turn_up`, `turn_down`) and export a sprite sheet with JSON data, hash or array layout.
+`held_look`, `held_flick`, `shake_a`, `shake_b`, `turn_up`, `turn_down`, the
+front views `front_perch`, `front_blink`, `front_look_l`, `front_look_r`,
+`front_alert`, `front_preen_a`, `front_preen_b`, `front_fluff_a`, `front_fluff_b`,
+`front_sleep`, and the same front views on the branch as `branch_...`) and export a sprite sheet with JSON data, hash or array layout.
 Frames not in the sheet keep the built-in art. Run with
 `zengo --sprites sheet.json`. Draw your own outline here; generated outlines
 only apply to the built-in art.

@@ -35,6 +35,13 @@ PALETTE: dict[str, RGBA] = {
     "Q": _rgb("#f0c4b6"),  # beak
     "q": _rgb("#ce928a"),  # beak shadow
     "F": _rgb("#eca8a0"),  # feet
+    # Scenery: the branch's bark and leaves.
+    "O": _rgb("#a8876c"),  # bark, lit upper surface
+    "N": _rgb("#8b6b55"),  # bark
+    "n": _rgb("#634a3c"),  # bark shadow
+    "Y": _rgb("#aecb8f"),  # leaf, lit side
+    "V": _rgb("#86a86e"),  # leaf
+    "v": _rgb("#5f8052"),  # leaf shadow
 }
 
 

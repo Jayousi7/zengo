@@ -34,6 +34,12 @@ class Layer:
     def shifted(self, dx: int, dy: int) -> Layer:
         return Layer(self.rows, self.x + dx, self.y + dy)
 
+    def mirrored(self, about: int) -> Layer:
+        """Flipped left to right about canvas column ``about``."""
+        width = max((len(row) for row in self.rows), default=0)
+        rows = tuple(row.ljust(width, TRANSPARENT)[::-1] for row in self.rows)
+        return Layer(rows, 2 * about - (self.x + width - 1), self.y)
+
 
 @dataclass(frozen=True)
 class Frame:

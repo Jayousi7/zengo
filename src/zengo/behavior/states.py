@@ -17,6 +17,7 @@ from typing import ClassVar
 from zengo.behavior.body import Facing
 from zengo.behavior.context import Context
 from zengo.behavior.flight import FlightPath, Point, ease
+from zengo.behavior.scenery import Branch
 
 
 class State:
@@ -37,6 +38,16 @@ class State:
 
     def step(self, ctx: Context, dt: float) -> State | None:
         return None
+
+    def clicked(self, ctx: Context) -> State | None:
+        """A poke. It startles him when he's settled on the ground; mid-air or held,
+        he doesn't notice."""
+        return Alert() if self.grounded else None
+
+    @property
+    def holds_branch(self) -> bool:
+        """He's on the branch or on his way to it, so it mustn't withdraw yet."""
+        return False
 
     def __repr__(self) -> str:
         return type(self).__name__
@@ -73,7 +84,9 @@ def choose_activity(ctx: Context) -> State:
         (Fly.hop, 0.6),
         (Fly.tour, 0.8),
         (lambda _: Follow(), 1.5 if _cursor_on_same_screen(ctx) else 0.0),
+        (lambda _: FrontIdle(), 1.2),
         (Fly.to_cursor, 3.0 if cursor_is_inviting(ctx) else 0.0),
+        (Fly.to_branch, 6.0 if branch_is_inviting(ctx) else 0.0),  # he loves the branch
     ]
     makers, weights = zip(*options, strict=True)
     return ctx.rng.choices(makers, weights)[0](ctx)
@@ -81,6 +94,29 @@ def choose_activity(ctx: Context) -> State:
 
 def _cursor_on_same_screen(ctx: Context) -> bool:
     return ctx.world.area_at(*ctx.world.cursor()) == ctx.area()
+
+
+def branch_is_inviting(ctx: Context) -> bool:
+    """A branch is fully out on Zengo's screen and staying a while."""
+    branch = ctx.scenery.branch
+    if branch is None or not branch.ready or ctx.scenery.phase != "out":
+        return False
+    lo, hi = branch.perch_span(ctx.config)
+    return ctx.world.area_at((lo + hi) / 2, branch.top) == ctx.area()
+
+
+class FrontIdle(State):
+    """Sitting facing you for a while, looking about."""
+
+    clip = "front_idle"
+    sit_for: ClassVar[tuple[float, float]] = (4.0, 10.0)
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        self.duration = ctx.rng.uniform(*self.sit_for)
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        return choose_activity(ctx) if self.elapsed >= self.duration else None
 
 
 class Walk(State):
@@ -176,7 +212,11 @@ class Fly(State):
         super().__init__()
         self.waypoints = None if waypoints is None else tuple(waypoints)
         self.onto = onto
-        """What he lands on: ``"ground"`` or ``"cursor"``."""
+        """What he lands on: ``"ground"``, ``"cursor"`` or ``"branch"``."""
+
+    @property
+    def holds_branch(self) -> bool:
+        return self.onto == "branch"
 
     # --- Planners -----------------------------------------------------------
 
@@ -222,12 +262,24 @@ class Fly(State):
         return cls([*_takeoff(ctx, towards=cx), approach, (cx, cy)], onto="cursor")
 
     @classmethod
+    def to_branch(cls, ctx: Context) -> Fly:
+        """Fly to the branch, coming in from the open side and landing on the perch."""
+        cfg, branch = ctx.config, ctx.scenery.branch
+        assert branch is not None
+        lo, hi = branch.perch_span(cfg)
+        x = ctx.rng.uniform(lo, hi)
+        approach_x = ctx.area().clamp_x(x + branch.inward * cfg.px(55), ctx.margin)
+        approach = (approach_x, branch.top - cfg.px(18))
+        return cls([*_takeoff(ctx, towards=approach_x), approach, (x, branch.top)], onto="branch")
+
+    @classmethod
     def down(cls, ctx: Context) -> Fly:
-        """Glide down from a perch to the ground a little way ahead."""
-        cfg = ctx.config
-        x1 = ctx.body.x + int(ctx.body.facing) * ctx.rng.uniform(cfg.px(60), cfg.px(150))
-        x1 = ctx.area().clamp_x(x1, ctx.margin)
-        return cls(_landing(ctx, x1, coming_from=ctx.body.x))
+        """Hop off a perch and glide down to the ground a little way ahead."""
+        cfg, body = ctx.config, ctx.body
+        d = int(body.facing)
+        x1 = ctx.area().clamp_x(body.x + d * ctx.rng.uniform(cfg.px(60), cfg.px(150)), ctx.margin)
+        hop = [(body.x + d * cfg.px(20), body.y - cfg.px(10))]
+        return cls([*hop, *_landing(ctx, x1, coming_from=body.x)])
 
     # --- Flying -------------------------------------------------------------
 
@@ -266,14 +318,16 @@ class Fly(State):
                 self.turning = self.turn_seconds
                 body.facing = want
 
-        if self.onto == "cursor" and math.dist(ctx.world.cursor(), landing_spot) > cfg.px(12):
+        if self._perch_is_gone(ctx, landing_spot):
             # The perch moved away: carry on with the speed he has and glide down.
             speed, norm = self.path.length / self.duration, math.hypot(dx, dy) or 1.0
             body.vx, body.vy = dx / norm * speed, dy / norm * speed
             return Glide.from_fall(ctx)
         if p >= 1.0:
             body.x, body.y = landing_spot
-            return CursorPerch() if self.onto == "cursor" else Idle()
+            if self.onto == "cursor":
+                return CursorPerch()
+            return OnBranch() if self.onto == "branch" else Idle()
 
         descent = dy / (math.hypot(dx, dy) or 1.0)
         if self.gliding and descent < self.flap_below:
@@ -287,6 +341,14 @@ class Fly(State):
         else:
             ctx.animator.play("glide" if self.gliding else "fly")
         return None
+
+    def _perch_is_gone(self, ctx: Context, spot: Point) -> bool:
+        if self.onto == "cursor":
+            return math.dist(ctx.world.cursor(), spot) > ctx.config.px(12)
+        if self.onto == "branch":
+            branch = ctx.scenery.branch
+            return branch is None or not branch.ready
+        return False
 
 
 def _takeoff(ctx: Context, towards: float) -> list[Point]:
@@ -459,10 +521,13 @@ class Fall(State):
 
     def step(self, ctx: Context, dt: float) -> State | None:
         cfg, body, area = ctx.config, ctx.body, ctx.area()
+        previous_y = body.y
         body.vx *= math.exp(-cfg.air_drag * dt)
         body.vy = min(body.vy + cfg.px(cfg.gravity) * dt, cfg.px(cfg.max_fall_speed))
         body.x += body.vx * dt
         body.y += body.vy * dt
+        if _catches_branch(ctx, previous_y):
+            return OnBranch(settle_in=True)
 
         lo, hi = area.left + ctx.margin, area.right - ctx.margin
         if not lo <= body.x <= hi:  # bounce softly off the screen's sides
@@ -524,10 +589,107 @@ class Glide(State):
     def step(self, ctx: Context, dt: float) -> State | None:
         p = min(self.elapsed / self.duration, 1.0)
         (x0, y0), (x1, y1) = self.start, self.end
+        previous_y = ctx.body.y
         ctx.body.x = x0 + (x1 - x0) * p
         ctx.body.y = y0 + (y1 - y0) * math.sin(math.pi / 2 * p)
+        if _catches_branch(ctx, previous_y):
+            return OnBranch(settle_in=True)
         if p >= 1.0:
             ctx.body.y = y1
             return Shake()
         ctx.animator.play("glide" if p < self.flare_from else "flare")
         return None
+
+
+def _catches_branch(ctx: Context, previous_y: float) -> bool:
+    """Coming down through the branch's perch this tick: he grabs it."""
+    branch = ctx.scenery.branch
+    if branch is None or not branch.ready:
+        return False
+    lo, hi = branch.perch_span(ctx.config)
+    reach = ctx.config.px(6)
+    crossed = previous_y <= branch.top <= ctx.body.y
+    if crossed and lo - reach <= ctx.body.x <= hi + reach:
+        ctx.body.x = min(max(ctx.body.x, lo), hi)
+        ctx.body.y, ctx.body.vx, ctx.body.vy = branch.top, 0.0, 0.0
+        return True
+    return False
+
+
+class OnBranch(State):
+    """Sitting on the branch, facing you.
+
+    He looks about, preens, fluffs up, and naps when sleepy, then after a while
+    flies off, down to the ground or on a tour. If the branch goes, he drops off
+    and glides down. A poke startles him, but he stays put.
+    """
+
+    clip = "branch_idle"
+    grounded = False
+    sit_for: ClassVar[tuple[float, float]] = (4.0, 10.0)
+    clips: ClassVar[dict[str, str]] = {
+        "sit": "branch_idle",
+        "preen": "branch_preen",
+        "fluff": "branch_fluff",
+        "sleep": "branch_sleep",
+        "alert": "branch_alert",
+    }
+
+    def __init__(self, *, settle_in: bool = False) -> None:
+        super().__init__()
+        self.settle_in = settle_in
+        """Caught the branch on the way down: ruffle his feathers first."""
+
+    @property
+    def holds_branch(self) -> bool:
+        return True
+
+    def enter(self, ctx: Context) -> None:
+        super().enter(ctx)
+        self.stay = ctx.rng.uniform(*ctx.config.branch_visit)
+        self._do(ctx, "fluff" if self.settle_in else "sit")
+
+    def clicked(self, ctx: Context) -> State | None:
+        self._do(ctx, "alert")
+        return None
+
+    def step(self, ctx: Context, dt: float) -> State | None:
+        branch = ctx.scenery.branch
+        if branch is None or not branch.ready:  # it's going: drop off and glide down
+            ctx.body.vx = ctx.body.vy = 0.0
+            return Fall()
+        lo, hi = branch.perch_span(ctx.config)
+        ctx.body.x, ctx.body.y = min(max(ctx.body.x, lo), hi), branch.top
+
+        if self.doing == "sleep":
+            if not is_sleepy(ctx):
+                self._do(ctx, "sit")
+            return None
+        if self.doing != "sit":
+            if ctx.animator.finished:
+                self._do(ctx, "sit")
+            return None
+        if self.elapsed < self.until:
+            return None
+        if self.elapsed >= self.stay:
+            return self._fly_off(ctx, branch)
+        if is_sleepy(ctx) and ctx.rng.random() < 0.6:
+            self._do(ctx, "sleep")
+        else:
+            self._do(ctx, ctx.rng.choices(("preen", "fluff", "sit"), (0.4, 0.2, 0.4))[0])
+        return None
+
+    def _fly_off(self, ctx: Context, branch: Branch) -> Fly:
+        """Launch into the screen, then glide down or set off on a tour."""
+        cfg, body = ctx.config, ctx.body
+        body.facing = Facing(branch.inward)
+        if ctx.rng.random() >= 0.3:
+            return Fly.down(ctx)
+        launch = (body.x + branch.inward * cfg.px(30), branch.top - cfg.px(12))
+        tour = Fly.tour(ctx).waypoints or ()
+        return Fly([launch, *tour])
+
+    def _do(self, ctx: Context, what: str) -> None:
+        self.doing = what
+        ctx.animator.play(self.clips[what], restart=True)
+        self.until = self.elapsed + ctx.rng.uniform(*self.sit_for)

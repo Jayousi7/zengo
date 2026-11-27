@@ -52,3 +52,43 @@ CLIPS: dict[str, Clip] = {
         loop=False,
     ),
 }
+
+# Facing you, sitting: long looks between blinks and glances to either side.
+_FRONT_IDLE = (
+    ("front_perch", 2.6),
+    ("front_blink", 0.12),
+    ("front_perch", 1.4),
+    ("front_look_l", 0.9),
+    ("front_perch", 0.5),
+    ("front_look_r", 0.9),
+    ("front_perch", 1.8),
+    ("front_blink", 0.12),
+    ("front_perch", 0.2),
+    ("front_blink", 0.12),
+)
+
+FRONT_CLIPS: dict[str, Clip] = {
+    "front_idle": Clip(*zip(*_FRONT_IDLE, strict=True)),
+    "front_alert": Clip(("front_alert", "front_blink", "front_alert"), (0.7, 0.1, 0.6), loop=False),
+    # Nibbling one shoulder, then the other.
+    "front_preen": Clip(
+        ("front_preen_a", "front_perch", "front_preen_b", "front_perch") * 2 + ("front_preen_a",),
+        (0.45, 0.2, 0.45, 0.2) * 2 + (0.5,),
+        loop=False,
+    ),
+    "front_fluff": Clip(
+        ("front_fluff_a", "front_fluff_b") * 3 + ("front_perch",), (0.07,) * 6 + (0.3,), loop=False
+    ),
+    "front_sleep": Clip(("front_sleep",), (1.0,)),
+}
+
+
+def _on_branch(clip: Clip) -> Clip:
+    names = tuple(name.replace("front_", "branch_") for name in clip.frames)
+    return Clip(names, clip.durations, clip.loop)
+
+
+CLIPS.update(FRONT_CLIPS)
+CLIPS.update({name.replace("front_", "branch_"): _on_branch(c) for name, c in FRONT_CLIPS.items()})
+# Turning round on the ground: a glimpse of his front, played over whatever he's doing.
+CLIPS["ground_turn"] = Clip(("front_perch",), (0.18,), loop=False)
