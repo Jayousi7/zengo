@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 import sys
 import tempfile
+import time
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -89,11 +90,17 @@ class SoundPlayer:
     def close(self) -> None:
         self._release()
         self._effects.clear()
+        if self._folder is None:
+            return
         from PySide6.QtCore import QCoreApplication, QEvent
 
-        # Destroy the released effects now, so their files are closed before
-        # the folder goes (Windows keeps open files from being deleted).
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
-        if self._folder is not None:
+        # Qt reads sound files on a background thread, and Windows won't delete a
+        # file that's open: give any reads still going a moment to finish.
+        for _ in range(40):
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
             shutil.rmtree(self._folder, ignore_errors=True)
-            self._folder = None
+            if not self._folder.exists():
+                break
+            QCoreApplication.processEvents()
+            time.sleep(0.025)
+        self._folder = None
