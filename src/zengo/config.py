@@ -76,7 +76,7 @@ class Config:
     moult_every: tuple[float, float] = (3600.0, 7200.0)
     """Seconds between feathers falling (less in spring and autumn, and on moulting days)."""
 
-    toy_every: tuple[float, float] = (60.0, 180.0)
+    toy_every: tuple[float, float] = (240.0, 600.0)
     """Seconds, at least, between one game with a toy and the next."""
 
     damp_seconds: float = 60.0

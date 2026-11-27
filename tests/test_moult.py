@@ -95,12 +95,12 @@ def test_a_moulting_day_is_settled_once_a_day(ctx):
 
 def test_he_preens_more_on_a_moulting_day(ctx):
     def preens():
-        return sum(isinstance(choose_activity(ctx), Preen) for _ in range(400))
+        return sum(isinstance(choose_activity(ctx), Preen) for _ in range(3000))
 
     ctx.moult._day, ctx.moult._moulting_day = time.localtime(ctx.clock())[:3], False
     usual = preens()
     ctx.moult._moulting_day = True
-    assert preens() > usual * 1.6
+    assert preens() > usual * 1.25
 
 
 def test_on_the_branch_in_autumn_a_leaf_falls_instead_sometimes(ctx):

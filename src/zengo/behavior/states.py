@@ -146,13 +146,13 @@ def choose_activity(ctx: Context) -> State:
     options: list[tuple[Callable[[Context], State], float]] = [
         (lambda _: Idle(), 1.0),
         (lambda _: Walk(), 4.0),
-        (lambda _: Preen(), 5.0 if ctx.moult.moulting_day(ctx) else 2.0),
+        (lambda _: Preen(), 3.5 if ctx.moult.moulting_day(ctx) else 2.0),
         (Fly.hop, 0.6 if flies else 0.0),
         (Fly.tour, 0.8 if flies else 0.0),
         (lambda _: Follow(), 1.5 * fondness if _cursor_on_same_screen(ctx) else 0.0),
         (lambda _: FrontIdle(), 1.2),
-        (lambda _: Puffed(), 3.0 if season == "winter" else 0.0),  # cold
-        (lambda _: Whistle(), 1.5 if season == "spring" else 0.0),  # full of song
+        (lambda _: Puffed(), 2.0 if season == "winter" else 0.0),  # cold
+        (lambda _: Whistle(), 0.6 if season == "spring" else 0.0),  # full of song
         (Fly.to_cursor, 3.0 * fondness if flies and cursor_is_inviting(ctx) else 0.0),
         (lambda _: Sulk(), 3.0 if ctx.bond.grumpy(ctx.config) else 0.0),
         (Fly.to_branch, 6.0 if flies and branch_is_inviting(ctx) else 0.0),  # he loves it
