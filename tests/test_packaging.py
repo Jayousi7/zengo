@@ -1,5 +1,9 @@
 """Packaging: running from an AppImage, and the package build script."""
 
+import sys
+
+import pytest
+
 from zengo.ui.autostart import _desktop_split, own_command
 from zengo.ui.menu_entry import ensure_menu_entry
 
@@ -37,6 +41,7 @@ def test_not_from_an_appimage_the_menu_is_left_alone(tmp_path):
     assert not any(tmp_path.iterdir())
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux packages: Unix permissions")
 def test_the_package_layout(tmp_path):
     import importlib.util
     import stat
