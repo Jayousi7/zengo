@@ -91,7 +91,7 @@ def appimage(binary: Path, v: str, tool: Path) -> Path:
     _executable(appdir / "AppRun")
     out = DIST / f"Zengo-{v}-x86_64.AppImage"
     env = {**os.environ, "ARCH": "x86_64", "APPIMAGE_EXTRACT_AND_RUN": "1"}
-    subprocess.run([str(tool), str(appdir), str(out)], check=True, env=env)
+    subprocess.run([str(tool.resolve()), str(appdir), str(out)], check=True, env=env)
     return out
 
 
