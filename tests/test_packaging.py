@@ -41,6 +41,29 @@ def test_not_from_an_appimage_the_menu_is_left_alone(tmp_path):
     assert not any(tmp_path.iterdir())
 
 
+def test_an_entry_for_a_deleted_appimage_is_cleared_away(tmp_path):
+    image = tmp_path / "Zengo-0.7.0-x86_64.AppImage"
+    image.write_bytes(b"")
+    home = tmp_path / "share"
+    ensure_menu_entry(b"png", str(image), home)
+    entry = home / "applications" / "zengo.desktop"
+    icon = home / "icons/hicolor/256x256/apps/zengo.png"
+    assert not ensure_menu_entry(b"png", "", home)  # the AppImage is still there: kept
+    assert entry.exists()
+    image.unlink()
+    assert ensure_menu_entry(b"png", "", home)  # now from the .deb: it would hide its entry
+    assert not entry.exists() and not icon.exists()
+    assert not ensure_menu_entry(b"png", "", home)
+
+
+def test_an_entry_he_didnt_write_for_an_appimage_is_left_alone(tmp_path):
+    entry = tmp_path / "applications" / "zengo.desktop"
+    entry.parent.mkdir(parents=True)
+    entry.write_text("[Desktop Entry]\nExec=/gone/zengo --scale 3\n", encoding="utf-8")
+    assert not ensure_menu_entry(b"png", "", tmp_path)
+    assert entry.exists()
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="Linux packages: Unix permissions")
 def test_the_package_layout(tmp_path):
     import importlib.util
