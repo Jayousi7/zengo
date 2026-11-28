@@ -2,9 +2,7 @@
 
 A desktop pet of Zengo, a cinnamon white-face cockatiel. Pixel art, Windows and Linux.
 
-![Zengo pottering about: walking, whistling, preening, bobbing to your typing](docs/zengo.gif)
-
-![Some of his poses: sitting, facing you, flying, petted, in his winter scarf, damp from a bath, crouched to pounce, sulking](docs/poses.png)
+![Zengo saying hi, strolling, whistling, being petted, then taking a bath and shaking himself dry](docs/zengo.gif)
 
 ## Install
 
